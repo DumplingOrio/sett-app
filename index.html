@@ -91,15 +91,30 @@
   .listrow:last-child{border-bottom:none;}
 
   /* logger */
-  .setgrid{display:grid; grid-template-columns:34px 1fr 1fr 38px 34px; gap:8px; align-items:center; margin-top:8px;}
-  .setgrid input{text-align:center; padding:10px 6px; font-weight:700; font-size:16px;}
+  .setgrid{display:grid; grid-template-columns:30px 1fr 1fr 52px 34px; gap:8px; align-items:center; margin-top:8px;}
+  .setgrid input{text-align:center; padding:11px 6px; font-weight:700; font-size:16px;}
   .setidx{color:var(--faint); font-weight:800; text-align:center; font-size:14px;}
   .setidx.drop{color:var(--accent);}
   .sethead{color:var(--faint); font-size:10px; font-weight:700; text-transform:uppercase;
-    letter-spacing:.08em; text-align:center;}
+    letter-spacing:.06em; text-align:center;}
   .ssbadge{font-size:10px; font-weight:800; letter-spacing:.04em; padding:2px 8px;
     border-radius:99px; background:var(--accent-soft); color:var(--accent);}
   .elapsed{font-variant-numeric:tabular-nums; font-weight:800; color:var(--accent);}
+  /* drop-set toggle per row: labelled, obvious, tap again to undo */
+  .droptog{display:flex; align-items:center; justify-content:center; height:38px; border-radius:10px;
+    border:1px solid var(--line); background:var(--card2); color:var(--muted);
+    font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;}
+  .droptog.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+  /* exercise control row (reorder / superset / delete) — labelled, own line */
+  .exctrl{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;}
+  .exctrl button{display:flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px;
+    border:1px solid var(--line); background:var(--card2); color:var(--muted); font-size:12px; font-weight:700;}
+  .exctrl button.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+  .exctrl button.del{color:var(--bad); border-color:color-mix(in srgb, var(--bad) 35%, var(--line));}
+  .exctrl .sp{flex:1;}
+  .noteline{width:100%; margin-top:10px;}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:6px; font-size:11px; color:var(--faint);}
+  .legend b{color:var(--accent);}
 
   /* ranks */
   .rankbadge{display:inline-flex; align-items:center; gap:7px; padding:4px 12px; border-radius:99px;
@@ -127,10 +142,18 @@
     backdrop-filter:blur(4px); overflow-y:auto;}
   #overlay.show{display:block;}
   .sheet{max-width:640px; margin:8vh auto 0; background:var(--card); border:1px solid var(--line);
-    border-radius:20px 20px 0 0; min-height:60vh; padding:18px 18px calc(30px + env(safe-area-inset-bottom));
+    border-radius:20px 20px 0 0; min-height:60vh; padding:0 18px calc(30px + env(safe-area-inset-bottom));
     animation:up .18s ease-out;}
   @keyframes up{from{transform:translateY(30px); opacity:.4;} to{transform:none; opacity:1;}}
-  .sheet .grab{width:44px; height:5px; border-radius:99px; background:var(--line); margin:0 auto 14px;}
+  .sheethead{position:sticky; top:0; z-index:3; display:flex; align-items:center; justify-content:flex-end;
+    height:52px; margin:0 -18px 4px; padding:0 14px;
+    background:color-mix(in srgb, var(--card) 94%, transparent); backdrop-filter:blur(8px);
+    border-radius:20px 20px 0 0;}
+  .sheethead .grab{position:absolute; left:50%; top:9px; transform:translateX(-50%);
+    width:44px; height:5px; border-radius:99px; background:var(--line);}
+  .sheetclose{width:38px; height:38px; border-radius:50%; background:var(--card2); color:var(--text);
+    font-size:17px; display:flex; align-items:center; justify-content:center; flex:none;}
+  .sheetclose:active{background:var(--line);}
 
   #toast{position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom)); transform:translateX(-50%);
     z-index:60; background:var(--card2); border:1px solid var(--line); color:var(--text);
@@ -166,13 +189,33 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.3.0';
+const APP_VERSION='0.4.0';
 const CHANGELOG=[
+  {v:'0.4.0', date:'2026-07-05', desc:'Easier to use: sheets now have a clear close button, the drop-set and superset controls are labelled and obvious (and tap again to undo a misclick), and the notes field sits on its own line so nothing is cut off. New colour themes live under Appearance in More. Strength ranks can now use male, female or unisex standards — pick yours in More or right after importing a CSV — so the app works for more than one person. The changelog is tucked away so it no longer fills the screen.'},
   {v:'0.3.0', date:'2026-07-05', desc:'Statistics reworked RepCount-style: tap any overall stat (duration, volume, sets, reps, reps per set, bodyweight, workouts) to see its trend over time. Every exercise gained quick buttons for History, Charts (pick a metric and time range) and Personal Records including rep-max records. Past workouts can now be edited — sets, exercises, and start/end times. History shows calendar-style date badges, and narrow-screen layout issues on the log view were fixed.'},
   {v:'0.2.0', date:'2026-07-05', desc:'Every exercise now has an animated visual showing how it is performed, with primary and secondary muscles, equipment and step-by-step instructions — including a browsable catalog of 873 exercises to add from. You can link any visual to your own custom exercises. More lifts are ranked (dumbbell lifts by weight, pull-ups/dips/push-ups by reps), stats gained total reps, reps per set and average duration, workouts can be reordered while logging, and your data can be exported as a RepCount-style CSV for Excel.'},
   {v:'0.1.0', date:'2026-07-05', desc:'First version. Log workouts with supersets and drop sets, browse your full history, exercise library with editable form notes, records and estimated 1RM per exercise, Liftoff-style strength ranks, stats, and import of RepCount CSV exports. Installable on iPhone as a home-screen app that works offline.'},
 ];
 const KEY='sett:store';
+/* Colour themes — all dark (gym-friendly), only accent + surface shades vary,
+   so light text stays legible everywhere. Applied by setting CSS variables. */
+const THEMES={
+  ember:  {name:'Ember',  accent:'#ff7a3c', bg:'#0e1013', card:'#171a20', card2:'#1f242d', line:'#272d38'},
+  ocean:  {name:'Ocean',  accent:'#4cc2ff', bg:'#0a0f16', card:'#121926', card2:'#1a2432', line:'#25303f'},
+  forest: {name:'Forest', accent:'#5fd07a', bg:'#0b1210', card:'#131b18', card2:'#1b2621', line:'#26332c'},
+  grape:  {name:'Grape',  accent:'#c792ea', bg:'#100d16', card:'#191522', card2:'#221d2e', line:'#2e2839'},
+  rose:   {name:'Rose',   accent:'#ff6f9c', bg:'#140d11', card:'#1e151a', card2:'#291d23', line:'#372730'},
+  slate:  {name:'Slate',  accent:'#9fb2c9', bg:'#0d0f11', card:'#161a1e', card2:'#1e242a', line:'#2a3138'},
+};
+const THEME_ORDER=['ember','ocean','forest','grape','rose','slate'];
+function applyTheme(id){
+  const t=THEMES[id]||THEMES.ember;const r=document.documentElement.style;
+  r.setProperty('--accent',t.accent);
+  r.setProperty('--accent-soft',t.accent+'24');
+  r.setProperty('--bg',t.bg);r.setProperty('--card',t.card);
+  r.setProperty('--card2',t.card2);r.setProperty('--line',t.line);
+  const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.content=t.bg;
+}
 const CATS=['Chest','Back','Legs','Shoulders','Biceps','Triceps','Abs','Cardio','Other'];
 const CAT_COLORS={Chest:'#ff7a3c',Back:'#4cc2ff',Legs:'#7ee081',Shoulders:'#ffd166',
   Biceps:'#c792ea',Triceps:'#f47fb2',Abs:'#6ee7d8',Cardio:'#ff5c5c',Other:'#8b93a3'};
@@ -195,7 +238,7 @@ const TIERS=[
    Only lifts with published strength standards are ranked. Machine and cable
    exercises are deliberately unranked: stack numbers aren't comparable
    between gyms (different brands, pulleys and lever ratios). */
-const RANK_STANDARDS={
+const STANDARDS_MALE={
   'Bench Press':            {t:'bw', s:[0.50,0.75,1.00,1.50,2.00,2.30]},
   'Incline Bench Press':    {t:'bw', s:[0.40,0.65,0.90,1.30,1.75,2.00]},
   'Close Grip Bench Press': {t:'bw', s:[0.45,0.70,0.95,1.40,1.85,2.10]},
@@ -219,6 +262,32 @@ const RANK_STANDARDS={
   'Dips':                   {t:'reps', s:[4,12,22,35,50,60]},
   'Push-ups':               {t:'reps', s:[10,25,45,70,100,120]},
 };
+/* Female standards are derived from the male table by movement-group factors
+   (women lift a smaller multiple of bodyweight, most so on upper-body pressing,
+   least on lower body). Approximate, aligned with strengthlevel.com's separate
+   male/female bands. "Neutral" (unisex) sits halfway between the two. */
+const MOVEMENT_GROUP={
+  'Bench Press':'press','Incline Bench Press':'press','Close Grip Bench Press':'press',
+  'Military Press':'press','Dumbbell Press':'press','Incline Dumbbell Press':'press','Shoulder Dumbbell Press':'press',
+  'Barbell Row':'pull','Dumbbell Row':'pull',
+  'EZ Bar Curl':'arms','Dumbbell Bicep Curl':'arms','Seated Bicep Curl':'arms','Hammer Curl':'arms',
+  'Squat':'legs','Deadlift':'legs','Romanian Deadlift':'legs','Hip thrust':'legs','Leg Press':'legs',
+  'Pull Up':'body','Chin Up':'body','Dips':'body','Push-ups':'body',
+};
+const FEMALE_FACTOR={press:0.62,pull:0.65,arms:0.58,legs:0.72,body:0.50};
+function deriveStandards(kind){
+  if(kind==='male')return STANDARDS_MALE;
+  const out={};
+  for(const [name,def] of Object.entries(STANDARDS_MALE)){
+    let f=FEMALE_FACTOR[MOVEMENT_GROUP[name]||'press'];
+    if(kind==='neutral')f=(1+f)/2;
+    out[name]={t:def.t,s:def.s.map(v=>def.t==='reps'?Math.max(1,Math.round(v*f)):Math.round(v*f*100)/100)};
+  }
+  return out;
+}
+const STANDARDS_BY_SEX={male:STANDARDS_MALE,female:deriveStandards('female'),neutral:deriveStandards('neutral')};
+const SEX_LABEL={male:'Male',female:'Female',neutral:'Unisex'};
+function STD(){return STANDARDS_BY_SEX[(store&&store.settings&&store.settings.sex)||'male'];}
 
 /* ============================== helpers ============================== */
 const $=id=>document.getElementById(id);
@@ -386,7 +455,7 @@ function latestBW(){for(const w of store.workouts)if(w.bw)return w.bw;return sto
 
 /* ============================== ranks ============================== */
 function rankFor(name){
-  const std=RANK_STANDARDS[name];if(!std)return null;
+  const std=STD()[name];if(!std)return null;
   let value,unit,bw=null;
   if(std.t==='bw'){
     bw=latestBW();if(!bw)return {locked:'bw'};
@@ -407,7 +476,7 @@ function rankFor(name){
 }
 function overallRank(){
   const parts=[];
-  for(const name of Object.keys(RANK_STANDARDS)){
+  for(const name of Object.keys(STD())){
     const r=rankFor(name);
     if(r&&!r.locked)parts.push(r.tier+r.prog);
   }
@@ -499,29 +568,34 @@ function renderActive(){
       '<input class="grow" type="datetime-local" data-act="wend" value="'+dtVal(a.end)+'"></div>':'')+
     '<div class="row" style="margin-top:10px"><span class="small muted">Bodyweight</span>'+
     '<input style="width:90px;text-align:center" type="number" inputmode="decimal" data-act="bw" value="'+(a.bw??'')+'"><span class="small muted">kg</span></div></div>';
+  if(a.entries.length)h+='<div class="legend"><span><b>Drop</b> = drop set</span><span><b>⛓ Superset</b> = paired with the exercise above</span><span>tap either again to undo</span></div>';
   const ssColors=['#ff7a3c','#4cc2ff','#7ee081','#ffd166','#c792ea'];
   a.entries.forEach((e,ei)=>{
     const meta=store.ex[e.name]||{cat:'Other'};
+    const linked=e.ss!=null;
     h+='<div class="card"><div class="row">'+
       '<div class="grow"><span style="font-weight:800">'+esc(e.name)+'</span> '+
-      (e.ss!=null?'<span class="ssbadge" style="color:'+ssColors[e.ss%5]+';background:'+ssColors[e.ss%5]+'22">SUPERSET '+String.fromCharCode(65+e.ss%26)+'</span>':'')+
+      (linked?'<span class="ssbadge" style="color:'+ssColors[e.ss%5]+';background:'+ssColors[e.ss%5]+'22">SUPERSET '+String.fromCharCode(65+e.ss%26)+'</span>':'')+
       '<div class="tiny muted">'+esc(meta.cat)+lastTimeHint(e.name)+'</div></div>'+
-      (ei>0?'<button class="iconbtn" title="Move up" onclick="moveEntry('+ei+',-1)">↑</button>':'')+
-      (ei<a.entries.length-1?'<button class="iconbtn" title="Move down" onclick="moveEntry('+ei+',1)">↓</button>':'')+
-      (ei>0?'<button class="iconbtn" title="Superset with previous" onclick="toggleSS('+ei+')">⛓</button>':'')+
-      '<button class="iconbtn" onclick="removeEntry('+ei+')">✕</button></div>';
-    h+='<div class="setgrid"><span class="sethead">Set</span><span class="sethead">kg</span><span class="sethead">reps</span><span class="sethead">drop</span><span></span>';
+      exActionBtns(e.name)+'</div>';
+    h+='<div class="setgrid"><span class="sethead">Set</span><span class="sethead">kg</span><span class="sethead">reps</span><span class="sethead">Drop</span><span></span>';
     e.sets.forEach((s,si)=>{
       h+='<span class="setidx'+(s.drop?' drop':'')+'">'+(s.drop?'D':si+1)+'</span>'+
         '<input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'">'+
         '<input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'">'+
-        '<button class="iconbtn" style="'+(s.drop?'color:var(--accent)':'')+'" onclick="toggleDrop('+ei+','+si+')">▾</button>'+
-        '<button class="iconbtn" onclick="removeSet('+ei+','+si+')">✕</button>';
+        '<button class="droptog'+(s.drop?' on':'')+'" title="Mark this as a drop set" onclick="toggleDrop('+ei+','+si+')">Drop</button>'+
+        '<button class="iconbtn" title="Remove set" onclick="removeSet('+ei+','+si+')">✕</button>';
     });
-    h+='</div><div class="row" style="margin-top:10px">'+
-      '<button class="btn ghost small" onclick="addSet('+ei+')">＋ Add set</button>'+
-      '<input class="grow small" placeholder="Notes (grip, tempo…)" data-ei="'+ei+'" data-f="note" value="'+esc(e.note)+'">'+
-      exActionBtns(e.name)+'</div></div>';
+    h+='</div>'+
+      '<button class="btn ghost small" style="margin-top:10px" onclick="addSet('+ei+')">＋ Add set</button>'+
+      '<input class="noteline small" placeholder="Notes (grip, tempo, machine setting…)" data-ei="'+ei+'" data-f="note" value="'+esc(e.note)+'">'+
+      '<div class="exctrl">'+
+      (ei>0?'<button title="Move up" onclick="moveEntry('+ei+',-1)">↑ Up</button>':'')+
+      (ei<a.entries.length-1?'<button title="Move down" onclick="moveEntry('+ei+',1)">↓ Down</button>':'')+
+      (ei>0?'<button class="'+(linked?'on':'')+'" onclick="toggleSS('+ei+')">⛓ Superset'+(linked?' ✓':'')+'</button>':'')+
+      '<span class="sp"></span>'+
+      '<button class="del" onclick="removeEntry('+ei+')">Delete</button>'+
+      '</div></div>';
   });
   h+='<button class="btn wide" onclick="openPicker()">＋ Add exercise</button>'+
      '<div class="row" style="margin-top:14px">'+
@@ -989,10 +1063,11 @@ function renderStats(){
     '<div class="listrow" onclick="openStatChart(\''+k+'\')"><div class="grow" style="font-weight:600">'+l+'</div>'+
     '<span class="small muted">'+v+'</span><span class="muted">›</span></div>').join('')+'</div>';
   // lifts ranks
-  const ranked=Object.keys(RANK_STANDARDS).map(n=>({n,r:rankFor(n)})).filter(x=>x.r&&!x.r.locked)
+  const ranked=Object.keys(STD()).map(n=>({n,r:rankFor(n)})).filter(x=>x.r&&!x.r.locked)
     .sort((a,b)=>(b.r.tier+b.r.prog)-(a.r.tier+a.r.prog));
   if(ranked.length){
-    h+='<div class="card"><h3>Lift ranks</h3>';
+    h+='<div class="card"><div class="row"><h3 class="grow">Lift ranks</h3>'+
+      '<span class="chip">'+SEX_LABEL[(store.settings&&store.settings.sex)||'male']+' standards</span></div>';
     for(const {n,r} of ranked){
       const t=TIERS[r.tier];
       h+='<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div class="row">'+
@@ -1000,7 +1075,7 @@ function renderStats(){
         '<span class="tiny muted">'+(r.unit==='reps'?r.value+' reps':r.value.toFixed(2)+'× BW')+'</span>'+rankBadge(r.tier)+'</div>'+
         '<div class="rankbar"><i style="width:'+Math.round(r.prog*100)+'%;background:'+t.color+'"></i></div></div>';
     }
-    h+='<p class="tiny muted" style="margin:10px 0 0">Only lifts with published strength standards are ranked — barbell and dumbbell lifts by weight relative to bodyweight, pull-ups/dips/push-ups by reps. Machine and cable exercises stay unranked because weight stacks differ between gym equipment brands.</p></div>';
+    h+='<p class="tiny muted" style="margin:10px 0 0">Only lifts with published strength standards are ranked — barbell and dumbbell lifts by weight relative to bodyweight, pull-ups/dips/push-ups by reps. Machine and cable exercises stay unranked because weight stacks differ between gym equipment brands. Change the standard (male / female / unisex) under More → Strength standards.</p></div>';
   }
   // categories by sets
   const catCount={};
@@ -1063,17 +1138,46 @@ function renderMore(){
     '<button class="btn wide" style="margin-bottom:10px" onclick="exportJson()">Export backup (JSON)</button>'+
     '<button class="btn wide" style="margin-bottom:10px" onclick="exportCsv()">Export CSV (Excel / RepCount format)</button>'+
     '<label class="btn wide">Restore backup<input type="file" accept=".json,application/json" style="display:none" id="jsonfile"></label></div>';
+  // strength standards (male / female / unisex)
+  const sex=(store.settings&&store.settings.sex)||'male';
+  h+='<div class="card"><h3>Strength standards</h3>'+
+    '<p class="small muted" style="margin:0 0 10px">Which reference to rank your lifts against. Pick what fits you.</p>'+
+    '<div class="seg" style="margin:0">'+['male','female','neutral'].map(k=>
+      '<button class="'+(sex===k?'on':'')+'" onclick="setSex(\''+k+'\')">'+SEX_LABEL[k]+'</button>').join('')+'</div></div>';
+  // appearance / themes — compact swatch row
+  const curTheme=(store.settings&&store.settings.theme)||'ember';
+  h+='<div class="card"><h3>Appearance</h3>'+
+    '<div class="row" style="gap:12px;overflow-x:auto;padding:2px">'+THEME_ORDER.map(id=>{
+      const t=THEMES[id];const on=curTheme===id;
+      return '<button onclick="setTheme(\''+id+'\')" title="'+t.name+'" style="flex:none;text-align:center">'+
+        '<span style="display:block;width:44px;height:44px;border-radius:50%;background:'+t.card+';'+
+        'border:2px solid '+(on?t.accent:'transparent')+';box-shadow:inset 0 0 0 3px '+t.bg+'">'+
+        '<span style="display:block;width:16px;height:16px;border-radius:50%;background:'+t.accent+';margin:12px auto"></span></span>'+
+        '<span class="tiny '+(on?'':'muted')+'" style="'+(on?'color:var(--accent);font-weight:700':'')+'">'+t.name+'</span></button>';
+    }).join('')+'</div></div>';
   h+='<div class="card"><h3>On iPhone</h3><p class="small muted" style="margin:0">Open this page in Safari, tap Share, then <b>Add to Home Screen</b>. Sett then runs fullscreen, works offline, and keeps your data on the phone. When online it picks up new versions by itself.</p></div>';
-  h+='<div class="card"><h3>Changelog</h3>';
-  for(const c of CHANGELOG)h+='<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>v'+c.v+'</b> <span class="tiny muted">'+c.date+'</span><div class="small muted">'+esc(c.desc)+'</div></div>';
+  // changelog — latest shown, older tucked into a details panel so it doesn't flood
+  const clRow=c=>'<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>v'+c.v+'</b> <span class="tiny muted">'+c.date+'</span><div class="small muted">'+esc(c.desc)+'</div></div>';
+  h+='<div class="card"><h3>What’s new <span class="tiny muted">v'+CHANGELOG[0].v+'</span></h3>'+clRow(CHANGELOG[0]);
+  if(CHANGELOG.length>1)h+='<details style="margin-top:6px"><summary class="small muted" style="cursor:pointer;padding:6px 0">Version history ('+(CHANGELOG.length-1)+' older)</summary>'+
+    CHANGELOG.slice(1).map(clRow).join('')+'</details>';
   h+='</div>';
   h+='<div class="card"><h3>Danger zone</h3><button class="btn danger wide" onclick="wipeAll()">Delete all data on this device</button></div>';
-  h+='<p class="tiny muted" style="text-align:center;margin:20px 0">Sett v'+APP_VERSION+' · ranks use male strength standards (e1RM ÷ bodyweight)</p>';
+  h+='<p class="tiny muted" style="text-align:center;margin:20px 0">Sett v'+APP_VERSION+' · '+SEX_LABEL[sex]+' strength standards</p>';
   return h;
+}
+function setSex(k){store.settings=store.settings||{};store.settings.sex=k;save();toast(SEX_LABEL[k]+' standards');render();}
+function setTheme(id){store.settings=store.settings||{};store.settings.theme=id;save();applyTheme(id);render();}
+function askSexIfUnset(){
+  if(store.settings&&store.settings.sex)return;
+  openModal('<h2>Whose standards?</h2>'+
+    '<p class="small muted">Strength ranks compare your lifts to a reference. Choose the one that fits — you can change it later in More.</p>'+
+    '<div style="margin-top:14px">'+['male','female','neutral'].map(k=>
+      '<button class="btn wide" style="margin-bottom:10px" onclick="setSex(\''+k+'\');closeModal()">'+SEX_LABEL[k]+'</button>').join('')+'</div>');
 }
 function importBundled(){
   const res=importCsv(window.SETT_LOCAL_CSV);
-  toast(res.msg);render();
+  toast(res.msg);render();if(res.ok&&res.added)askSexIfUnset();
 }
 function exportJson(){
   const blob=new Blob([JSON.stringify(store,null,1)],{type:'application/json'});
@@ -1100,7 +1204,10 @@ function wipeAll(){
 }
 
 /* ============================== modal & wiring ============================== */
-function openModal(html){$('sheet').innerHTML='<div class="grab"></div>'+html;$('overlay').classList.add('show');document.body.style.overflow='hidden';}
+function openModal(html){
+  $('sheet').innerHTML='<div class="sheethead"><div class="grab" onclick="closeModal()"></div>'+
+    '<button class="sheetclose" onclick="closeModal()" aria-label="Close">✕</button></div>'+html;
+  $('overlay').classList.add('show');$('overlay').scrollTop=0;document.body.style.overflow='hidden';}
 function closeModal(){$('overlay').classList.remove('show');document.body.style.overflow='';clearInterval(visTimer);}
 function wireInputs(){
   document.querySelectorAll('#main [data-ei]').forEach(el=>{
@@ -1125,7 +1232,7 @@ function wireInputs(){
   document.querySelectorAll('#main [data-ex]').forEach(el=>el.onclick=()=>openExercise(el.dataset.ex));
   const csv=$('csvfile');if(csv)csv.onchange=()=>{
     const f=csv.files[0];if(!f)return;
-    f.text().then(t=>{const res=importCsv(t);toast(res.msg);render();});
+    f.text().then(t=>{const res=importCsv(t);toast(res.msg);render();if(res.ok&&res.added)askSexIfUnset();});
   };
   const js=$('jsonfile');if(js)js.onchange=()=>{
     const f=js.files[0];if(!f)return;
@@ -1145,6 +1252,7 @@ if(firstRun){
   save();
 }
 migrateVisuals();
+applyTheme((store.settings&&store.settings.theme)||'ember');
 if(store.active)state.view='log';
 render();
 
