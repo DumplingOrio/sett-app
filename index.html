@@ -162,7 +162,8 @@
   /* modal */
   #overlay{position:fixed; inset:0; z-index:50; display:none; background:rgba(5,6,8,.72);
     backdrop-filter:blur(4px); overflow-y:auto;}
-  #overlay.show{display:block;}
+  #overlay.show{display:block; animation:ovl .2s ease-out;}
+  @keyframes ovl{from{opacity:0;} to{opacity:1;}}
   .sheet{max-width:640px; margin:8vh auto 0; background:var(--card); border:1px solid var(--line);
     border-radius:20px 20px 0 0; min-height:60vh; padding:0 18px calc(30px + env(safe-area-inset-bottom));
     animation:up .28s cubic-bezier(.22,.61,.36,1);}
@@ -219,6 +220,41 @@
   .excard.dragging{opacity:.92; box-shadow:0 14px 34px rgba(0,0,0,.55);}
   .excard.drop-before{box-shadow:inset 0 3px 0 var(--accent);}
   .excard.drop-after{box-shadow:inset 0 -3px 0 var(--accent);}
+  /* inline icons */
+  .ico{width:18px; height:18px; flex:none; vertical-align:-3px;}
+  .menu button .ico{width:20px; height:20px; color:var(--muted);}
+  .menu button.del .ico{color:var(--bad);}
+  .exctrl button .ico{width:15px; height:15px;}
+  .btn .ico{width:17px; height:17px;}
+
+  /* #1 denser logger: leaner set rows, less boxy, more on screen */
+  .excard{padding:13px 14px;}
+  .setcols{display:grid; grid-template-columns:22px 1fr 1fr 30px; gap:6px; align-items:center;}
+  .sethdr{margin:8px 2px 0;}
+  .setrow{padding:2px 0;}
+  .setcols input{text-align:center; padding:6px 4px; font-weight:700; font-size:15px;
+    background:transparent; border:1px solid transparent; border-bottom:1.5px solid var(--line); border-radius:0;}
+  .setcols input:focus{border-bottom-color:var(--accent); background:var(--card2);}
+  .sethdr .sethead{font-size:9px;}
+  .setmenu{width:30px; height:30px; font-size:16px;}
+
+  /* #3 rest button in the workout header corner */
+  .hbtn{width:36px; height:36px; flex:none; display:inline-flex; align-items:center; justify-content:center;
+    border-radius:10px; border:1px solid var(--line); background:var(--card2); color:var(--muted);}
+  .hbtn:active{background:var(--line); color:var(--accent);}
+  .hbtn .ico{width:19px; height:19px;}
+
+  /* #5 swipe-to-reveal actions behind set rows / exercise cards */
+  .swipe{position:relative; overflow:hidden;}
+  .swipe .swipe-fg{position:relative; z-index:1; background:var(--card); transition:transform .18s cubic-bezier(.22,.61,.36,1);}
+  .excard .swipe .swipe-fg{background:var(--card);}
+  .swipe .swipe-act{position:absolute; top:0; bottom:0; display:flex; align-items:center; gap:14px;
+    padding:0 18px; font-weight:700; font-size:13px;}
+  .swipe .swipe-act.right{right:0; justify-content:flex-end; color:var(--accent);}
+  .swipe .swipe-act.left{left:0; color:var(--bad);}
+  .swipe .swipe-act .ico{width:20px; height:20px;}
+  .swipe.swiping .swipe-fg{transition:none;}
+
   @media(prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important;}}
 </style>
 </head>
@@ -241,8 +277,9 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.7.0';
+const APP_VERSION='0.8.0';
 const CHANGELOG=[
+  {v:'0.8.0', date:'2026-07-05', desc:'A big polish pass from real gym testing. The little emoji in menus and buttons are gone, replaced with clean line icons that match the rest of the app. Routines are truly your own now — the confusing history list has left the Routines screen. To do a past workout again, open it under Log and tap Repeat: last time\'s weights and reps show as faint hints you type over, instead of being pre-filled for you to delete. You can also turn any past workout into a proper saved routine with Save as routine. Every workout now shows its start and end time. While logging you can swipe a set sideways to copy it, or swipe an exercise to remove it (both are also in the ⋯ menus). The rest timer is now a button in the top corner of the workout rather than under each exercise, and the set rows are leaner so more fits on screen.'},
   {v:'0.7.0', date:'2026-07-05', desc:'A calmer workout screen. Each exercise is now much cleaner — the row of buttons is gone, tucked into a ⋯ menu (notes, superset, move, history, charts, records, remove), and each set has its own ⋯ for drop-set and remove. Weight and reps inputs are more compact, so you see more at a glance without losing anything. Page transitions are a touch slower and smoother, dragging an exercise now opens a gap so you can see where it will land, and the rest-timer bar no longer sits too low behind the tab bar. The statistics you tap into now make sense per measure — bodyweight shows its range and net change instead of a meaningless "biggest" number. Also fixed a layout jump on the More tab.'},
   {v:'0.6.0', date:'2026-07-05', desc:'Saved routines with targets. Build a routine under Routines → New routine: add exercises and set a target weight and rep range (or an exact rep count) for each set. Starting a saved routine shows those targets as faint placeholders in the logger, so you always know what to aim for — type your actual numbers over them. You can also pair exercises as supersets inside a routine, turn any workout in progress into a routine with the new "Save as routine" button, and edit or delete routines anytime. Your history-based suggestions and popular splits are still there, now under "From your history" and "Popular routines". Plus a smoother feel throughout: pages now slide as you move between tabs, first-time users get a friendly welcome that helps them import a CSV or start fresh and choose their rank settings, the Browse catalog and New exercise buttons sit at the top of Exercises so you no longer scroll past your whole list, and discarding a workout drops you back on Routines to quickly pick another. There is now a rest timer between sets — it starts automatically when you add a set (turn that off or change the default time in Settings), with quick −15/+15 and skip controls and a chime when time is up. And while logging you can drag exercises by the ⠿ handle to reorder them, in addition to the up/down buttons.'},
   {v:'0.5.0', date:'2026-07-05', desc:'Reorganised: Log is now your workout history, and Routines is its own tab with your own routines plus popular splits like Push/Pull/Legs, Upper/Lower and Full Body. A new Settings screen (gear, top right) holds themes, strength ranks, data import/export and updates. Strength ranks can be turned off entirely (asked once after your first import). The app now updates itself when you open it, with a manual "Check for updates" button too. Fresh installs start empty — no demo data to clear.'},
@@ -353,6 +390,8 @@ const toDate=s=>new Date(String(s).replace(' ','T'));
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const fmtDay=s=>{const d=toDate(s);return DAYS[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3);};
+const fmtClock=s=>{if(!s)return'';const d=toDate(s);return pad2(d.getHours())+':'+pad2(d.getMinutes());};
+const fmtClockRange=(a,b)=>{const s=fmtClock(a);if(!s)return'';return b?s+'–'+fmtClock(b):s;};
 const fmtMonth=s=>{const d=toDate(s);return MONTHS[d.getMonth()]+' '+d.getFullYear();};
 const monthKey=s=>String(s).slice(0,7);
 const fmtNum=n=>Math.round(n).toLocaleString('en-US').replace(/,/g,' ');
@@ -538,6 +577,23 @@ const ICONS={
   stats:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
   more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
 };
+/* inline UI icons — same feather line-style as the nav, replacing emoji */
+const ICO={
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  trash:'<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  bars:'<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+  star:'<path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17l-5.3 2.6 1-5.8-4.2-4.1 5.9-.9z"/>',
+  note:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  timer:'<path d="M9 2h6M12 2v3"/><circle cx="12" cy="13" r="8"/><path d="M12 10v3.5l2 1.5"/>',
+  up:'<path d="M18 15l-6-6-6 6"/>',
+  down:'<path d="M6 9l6 6 6-6"/>',
+  copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  bookmark:'<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>',
+  repeat:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+};
+function ico(name,sz){return '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(sz?' style="width:'+sz+'px;height:'+sz+'px"':'')+'>'+(ICO[name]||'')+'</svg>';}
 function setView(v){
   const oldIdx=NAV.indexOf(state.view), newIdx=NAV.indexOf(v);
   state.view=v;render();
@@ -563,14 +619,6 @@ function catChip(cat){const c=CAT_COLORS[cat]||CAT_COLORS.Other;
   return '<span class="chip"><span class="dot" style="background:'+c+'"></span>'+esc(cat)+'</span>';}
 
 /* ============================== LOG view ============================== */
-function templates(){
-  const seen=new Map();
-  for(const w of store.workouts){
-    const r=(w.routine||'').trim();if(!r||seen.has(r))continue;
-    seen.set(r,{name:r,last:w.start,count:w.entries.length,id:w.id});
-  }
-  return [...seen.values()].slice(0,8);
-}
 /* LOG = history of past workouts (active workout takes over when in progress) */
 function renderLog(){
   if(store.active)return renderActive();
@@ -612,19 +660,9 @@ function renderRoutines(){
       const sets=r.exercises.reduce((n,e)=>n+e.sets.length,0);
       h+='<div class="listrow"><div class="grow" style="cursor:pointer" onclick="startRoutine(\''+esc(r.id)+'\')"><div style="font-weight:700">'+esc(r.name)+'</div>'+
         '<div class="tiny muted">'+r.exercises.length+' exercises · '+sets+' sets</div></div>'+
-        '<button class="iconbtn" title="Edit routine" onclick="editRoutineById(\''+esc(r.id)+'\')">✎</button>'+
-        '<button class="iconbtn" title="Delete routine" onclick="deleteRoutine(\''+esc(r.id)+'\')">🗑</button></div>';
+        '<button class="iconbtn" title="Edit routine" onclick="editRoutineById(\''+esc(r.id)+'\')">'+ico('edit')+'</button>'+
+        '<button class="iconbtn" title="Delete routine" onclick="deleteRoutine(\''+esc(r.id)+'\')">'+ico('trash')+'</button></div>';
     }
-    h+='</div>';
-  }
-  const tpl=templates();
-  if(tpl.length){
-    h+='<div class="row" style="margin:16px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">From your history</h3>'+
-       '<span class="tiny muted">past workouts</span></div><div class="card" style="padding:4px 14px">';
-    for(const t of tpl)h+='<div class="listrow" onclick="startFromTemplate(\''+esc(t.id)+'\')">'+
-      '<div class="grow"><div style="font-weight:700">'+esc(t.name)+'</div>'+
-      '<div class="tiny muted">'+t.count+' exercises · last '+fmtDay(t.last)+'</div></div>'+
-      '<div class="muted">›</div></div>';
     h+='</div>';
   }
   h+='<div class="row" style="margin:16px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">Popular routines</h3>'+
@@ -635,7 +673,7 @@ function renderRoutines(){
       '<div class="tiny muted">'+r.ex.length+' exercises · '+esc(r.ex.slice(0,3).join(', '))+'…</div></div>'+
       '<div class="muted">›</div></div>';
   });
-  h+='</div><p class="tiny muted" style="margin:8px 4px">Saved routines start with your targets shown as placeholders — fill in what you actually lift. Popular splits and history routines start empty.</p>';
+  h+='</div><p class="tiny muted" style="margin:8px 4px">Saved routines start with your targets shown as faint placeholders — fill in what you actually lift. Popular splits start empty. To turn a workout you\'ve already done into a routine, open it in <b>Log</b> and tap <b>Save as routine</b>.</p>';
   return h;
 }
 /* ---- saved routines (store.routines): editor + lifecycle ---- */
@@ -674,7 +712,7 @@ function renderRoutineEditor(){
   const ssColors=['#ff7a3c','#4cc2ff','#7ee081','#ffd166','#c792ea'];
   let h='<div class="card"><div class="tiny" style="color:var(--accent);font-weight:700;margin-bottom:8px">'+(d.id?'EDIT ROUTINE':'NEW ROUTINE')+'</div>'+
     '<input data-rname placeholder="Routine name" value="'+esc(d.name||'')+'" style="width:100%;font-weight:700"></div>';
-  if(d.exercises.length>1)h+='<div class="legend"><span><b>⛓ Superset</b> = paired with the exercise above</span><span>tap again to undo</span></div>';
+  if(d.exercises.length>1)h+='<div class="legend"><span><b>'+ico('link')+' Superset</b> = paired with the exercise above</span><span>tap again to undo</span></div>';
   d.exercises.forEach((ex,xi)=>{
     const meta=store.ex[ex.name]||{cat:'Other'};
     const linked=ex.ss!=null;
@@ -693,7 +731,7 @@ function renderRoutineEditor(){
       '<div class="exctrl">'+
       (xi>0?'<button title="Move up" onclick="moveRoutineEx('+xi+',-1)">↑ Up</button>':'')+
       (xi<d.exercises.length-1?'<button title="Move down" onclick="moveRoutineEx('+xi+',1)">↓ Down</button>':'')+
-      (xi>0?'<button class="'+(linked?'on':'')+'" onclick="toggleRoutineSS('+xi+')">⛓ Superset'+(linked?' ✓':'')+'</button>':'')+
+      (xi>0?'<button class="'+(linked?'on':'')+'" onclick="toggleRoutineSS('+xi+')">'+ico('link')+'Superset'+(linked?' ✓':'')+'</button>':'')+
       '<span class="sp"></span><button class="del" onclick="removeRoutineEx('+xi+')">Remove</button></div></div>';
   });
   h+='<button class="btn wide" onclick="openPicker(\'routine\')">＋ Add exercise</button>'+
@@ -726,12 +764,31 @@ function weekSummary(){
   return n===0?'No workouts yet this week.':n+' workout'+(n>1?'s':'')+' this week.';
 }
 function startWorkout(){store.active={start:nowStr(),routine:'',bw:latestBW(),entries:[]};save();setView('log');}
-function startFromTemplate(wid){
+function repeatWorkout(wid){
   const src=store.workouts.find(w=>w.id===wid);if(!src)return;
+  if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}
+  for(const e of src.entries)ensureEx(e.name);
   store.active={start:nowStr(),routine:src.routine,bw:latestBW(),
-    entries:src.entries.map(e=>({name:e.name,ss:e.ss,note:'',
-      sets:e.sets.map(s=>({w:s.w,r:s.r,dur:s.dur,dist:null,note:'',drop:false}))}))};
-  save();setView('log');toast('Loaded “'+src.routine+'” from last time — tweak as you go');
+    entries:src.entries.map(e=>({name:e.name,ss:e.ss??null,note:'',
+      sets:e.sets.map(s=>({w:null,r:null,dur:null,dist:null,note:'',drop:false,
+        tgt:{tw:s.w??null,rlo:s.r??null,rhi:s.r??null}}))}))};
+  save();closeModal();setView('log');toast('Repeating “'+(src.routine||'workout')+'” — last time\'s numbers shown as hints');
+}
+function saveWorkoutAsRoutine(wid){
+  const w=store.workouts.find(x=>x.id===wid);if(!w)return;
+  openModal('<h2>Save as routine</h2>'+
+    '<p class="muted small">Creates a reusable routine. Targets are seeded from this workout — edit them anytime under Routines.</p>'+
+    '<input id="rtname2" style="width:100%;margin:12px 0" placeholder="Routine name" value="'+esc(w.routine||'')+'">'+
+    '<button class="btn primary wide" onclick="commitWorkoutAsRoutine(\''+esc(wid)+'\')">Save routine</button>');
+  $('rtname2').focus();
+}
+function commitWorkoutAsRoutine(wid){
+  const w=store.workouts.find(x=>x.id===wid);if(!w)return;
+  const name=($('rtname2').value||'').trim();if(!name){toast('Name it first');return;}
+  const r={id:'r'+Date.now(),name,
+    exercises:w.entries.map(e=>({name:e.name,ss:e.ss??null,
+      sets:e.sets.map(s=>({tw:s.w??null,rlo:s.r??null,rhi:s.r??null}))}))};
+  store.routines.push(r);save();closeModal();toast('Saved “'+name+'” to your routines');
 }
 let tick=null;
 function renderActive(){
@@ -742,7 +799,9 @@ function renderActive(){
   let h='<div class="card">'+(a.editing?'<div class="tiny" style="color:var(--accent);font-weight:700;margin-bottom:8px">EDITING PAST WORKOUT</div>':'')+
     '<div class="row">'+
     '<input class="grow" data-act="routine" placeholder="Routine name" value="'+esc(a.routine)+'">'+
-    (a.editing?'':'<span class="elapsed" id="elapsed">'+elapsedStr()+'</span>')+'</div>'+
+    (a.editing?'':'<span class="elapsed" id="elapsed">'+elapsedStr()+'</span>')+
+    (a.editing?'':'<button class="hbtn" onclick="startRest()" title="Start rest timer" aria-label="Rest timer">'+ico('timer')+'</button>')+'</div>'+
+    (a.editing?'':'<div class="tiny muted" style="margin-top:4px">Started '+fmtClock(a.start)+'</div>')+
     (a.editing?'<div class="row" style="margin-top:10px"><span class="small muted" style="width:40px">Start</span>'+
       '<input class="grow" type="datetime-local" data-act="wstart" value="'+dtVal(a.start)+'"></div>'+
       '<div class="row" style="margin-top:8px"><span class="small muted" style="width:40px">End</span>'+
@@ -753,29 +812,35 @@ function renderActive(){
   a.entries.forEach((e,ei)=>{
     const meta=store.ex[e.name]||{cat:'Other'};
     const linked=e.ss!=null;
-    h+='<div class="card excard" data-ei="'+ei+'"><div class="row">'+
+    h+='<div class="card excard" data-ei="'+ei+'">'+
+      '<div class="swipe" data-swipe="ex" data-ei="'+ei+'">'+
+      '<div class="swipe-act left">'+ico('trash')+'Remove</div>'+
+      '<div class="swipe-fg"><div class="row">'+
       (a.entries.length>1?'<span class="draghandle" data-drag="'+ei+'" title="Drag to reorder">⠿</span>':'')+
       '<div class="grow"><span style="font-weight:800">'+esc(e.name)+'</span> '+
       (linked?'<span class="ssbadge" style="color:'+ssColors[e.ss%5]+';background:'+ssColors[e.ss%5]+'22">SUPERSET '+String.fromCharCode(65+e.ss%26)+'</span>':'')+
       '<div class="tiny muted">'+esc(meta.cat)+lastTimeHint(e.name)+'</div></div>'+
-      '<button class="setmenu" title="Exercise options" onclick="exMenu('+ei+')">⋯</button></div>';
-    if(e.note)h+='<div class="tiny muted" style="margin-top:6px">📝 '+esc(e.note)+'</div>';
-    h+='<div class="setgrid"><span class="sethead">Set</span><span class="sethead">kg</span><span class="sethead">reps</span><span></span>';
+      '<button class="setmenu" title="Exercise options" onclick="exMenu('+ei+')">⋯</button>'+
+      '</div></div></div>';
+    if(e.note)h+='<div class="tiny muted" style="margin-top:6px">'+ico('note')+' '+esc(e.note)+'</div>';
+    h+='<div class="setcols sethdr"><span class="sethead">Set</span><span class="sethead">kg</span><span class="sethead">reps</span><span></span></div>';
     e.sets.forEach((s,si)=>{
       const twPh=s.tgt&&s.tgt.tw!=null?' placeholder="'+s.tgt.tw+'"':'';
       const rPh=s.tgt&&repRange(s.tgt)?' placeholder="'+repRange(s.tgt)+'"':'';
-      h+='<span class="setidx'+(s.drop?' drop':'')+'" title="'+(s.drop?'Drop set':'')+'">'+(s.drop?'D':si+1)+'</span>'+
+      h+='<div class="swipe" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
+        '<div class="swipe-act right">'+ico('copy')+'Copy</div>'+
+        '<div class="swipe-fg setcols setrow">'+
+        '<span class="setidx'+(s.drop?' drop':'')+'" title="'+(s.drop?'Drop set':'')+'">'+(s.drop?'D':si+1)+'</span>'+
         '<input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'>'+
         '<input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'>'+
-        '<button class="setmenu" title="Set options" onclick="setMenu('+ei+','+si+')">⋯</button>';
+        '<button class="setmenu" title="Set options" onclick="setMenu('+ei+','+si+')">⋯</button>'+
+        '</div></div>';
     });
-    h+='</div>'+
-      '<div class="row" style="margin-top:10px"><button class="btn ghost small grow" onclick="addSet('+ei+')">＋ Add set</button>'+
-      (a.editing?'':'<button class="btn ghost small" onclick="startRest()" title="Start rest timer">⏱ Rest</button>')+'</div>'+
+    h+='<div class="row" style="margin-top:10px"><button class="btn ghost small grow" onclick="addSet('+ei+')">＋ Add set</button></div>'+
       '</div>';
   });
   h+='<button class="btn wide" onclick="openPicker()">＋ Add exercise</button>'+
-     (a.editing||!a.entries.length?'':'<button class="btn ghost wide small" style="margin-top:8px" onclick="saveActiveAsRoutine()">☆ Save as routine</button>')+
+     (a.editing||!a.entries.length?'':'<button class="btn ghost wide small" style="margin-top:8px" onclick="saveActiveAsRoutine()">'+ico('bookmark')+'Save as routine</button>')+
      '<div class="row" style="margin-top:14px">'+
      '<button class="btn danger" onclick="discardWorkout()">'+(a.editing?'Cancel':'Discard')+'</button>'+
      '<button class="btn primary grow" onclick="finishWorkout()">'+(a.editing?'Save changes':'Finish workout')+'</button></div>';
@@ -813,6 +878,11 @@ function addSet(ei){const e=store.active.entries[ei];const p=e.sets[e.sets.lengt
   e.sets.push({w:p?p.w:null,r:p?p.r:null,dur:null,dist:null,note:'',drop:false});save();render();
   if(store.active&&!store.active.editing&&restAutoOn())startRest();}
 function removeSet(ei,si){store.active.entries[ei].sets.splice(si,1);save();render();}
+function copySet(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
+  e.sets.splice(si+1,0,{w:s.w,r:s.r,dur:s.dur,dist:s.dist,note:'',drop:false,tgt:s.tgt?{...s.tgt}:null});
+  save();render();}
+function copySetToRest(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
+  for(let i=si+1;i<e.sets.length;i++){e.sets[i].w=s.w;e.sets[i].r=s.r;}save();render();}
 function toggleDrop(ei,si){const s=store.active.entries[ei].sets[si];s.drop=!s.drop;save();render();}
 function removeEntry(ei){store.active.entries.splice(ei,1);save();render();}
 function moveEntry(ei,dir){const es=store.active.entries;const j=ei+dir;if(j<0||j>=es.length)return;
@@ -831,20 +901,22 @@ function exMenu(ei){
     '<p class="tiny muted" style="margin-bottom:12px">'+esc(meta.cat)+'</p>'+
     '<textarea class="howto" placeholder="Notes for this exercise (grip, tempo, machine setting…)" oninput="setEntryNote('+ei+',this.value)" style="margin-bottom:8px">'+esc(e.note||'')+'</textarea>'+
     '<div class="menu">'+
-    (ei>0?'<button onclick="toggleSS('+ei+');closeModal()">⛓ '+(e.ss!=null?'Unlink from superset':'Superset with exercise above')+'</button>':'')+
-    (ei>0?'<button onclick="moveEntry('+ei+',-1);closeModal()">↑ Move up</button>':'')+
-    (ei<a.entries.length-1?'<button onclick="moveEntry('+ei+',1);closeModal()">↓ Move down</button>':'')+
-    '<button onclick="closeModal();openExHistory(store.active.entries['+ei+'].name)">📈 History</button>'+
-    '<button onclick="closeModal();openExCharts(store.active.entries['+ei+'].name)">📊 Charts</button>'+
-    '<button onclick="closeModal();openExPRs(store.active.entries['+ei+'].name)">⭐ Personal records</button>'+
-    '<button class="del" onclick="removeEntry('+ei+');closeModal()">🗑 Remove exercise</button>'+
+    (ei>0?'<button onclick="toggleSS('+ei+');closeModal()">'+ico('link')+(e.ss!=null?'Unlink from superset':'Superset with exercise above')+'</button>':'')+
+    (ei>0?'<button onclick="moveEntry('+ei+',-1);closeModal()">'+ico('up')+'Move up</button>':'')+
+    (ei<a.entries.length-1?'<button onclick="moveEntry('+ei+',1);closeModal()">'+ico('down')+'Move down</button>':'')+
+    '<button onclick="closeModal();openExHistory(store.active.entries['+ei+'].name)">'+ico('clock')+'History</button>'+
+    '<button onclick="closeModal();openExCharts(store.active.entries['+ei+'].name)">'+ico('bars')+'Charts</button>'+
+    '<button onclick="closeModal();openExPRs(store.active.entries['+ei+'].name)">'+ico('star')+'Personal records</button>'+
+    '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+'Remove exercise</button>'+
     '</div>');
 }
 function setMenu(ei,si){
   const a=store.active;if(!a)return;const e=a.entries[ei];if(!e)return;const s=e.sets[si];if(!s)return;
   openModal('<h2>Set '+(si+1)+'</h2><div class="menu">'+
-    '<button onclick="toggleDrop('+ei+','+si+');closeModal()">'+(s.drop?'Unmark as drop set':'Mark as drop set')+'</button>'+
-    '<button class="del" onclick="removeSet('+ei+','+si+');closeModal()">Remove set</button>'+
+    '<button onclick="copySet('+ei+','+si+');closeModal()">'+ico('copy')+'Copy set</button>'+
+    (si<e.sets.length-1?'<button onclick="copySetToRest('+ei+','+si+');closeModal()">'+ico('copy')+'Copy to remaining sets</button>':'')+
+    '<button onclick="toggleDrop('+ei+','+si+');closeModal()">'+ico('down')+(s.drop?'Unmark as drop set':'Mark as drop set')+'</button>'+
+    '<button class="del" onclick="removeSet('+ei+','+si+');closeModal()">'+ico('trash')+'Remove set</button>'+
     '</div>');
 }
 /* ============================== rest timer ============================== */
@@ -1017,8 +1089,9 @@ function saveNewExercise(){
 function openWorkout(id){
   const w=store.workouts.find(x=>x.id===id);if(!w)return;
   const ssColors=['#ff7a3c','#4cc2ff','#7ee081','#ffd166','#c792ea'];
+  const times=fmtClockRange(w.start,w.end);const dur=fmtDur(w.start,w.end);
   let h='<h2>'+esc(w.routine||'Workout')+'</h2>'+
-    '<p class="muted small">'+fmtDay(w.start)+' · '+fmtDur(w.start,w.end)+(w.bw?' · BW '+fmtW(w.bw)+' kg':'')+'</p>';
+    '<p class="muted small">'+fmtDay(w.start)+(times?' · '+times:'')+(dur?' · '+dur:'')+(w.bw?' · BW '+fmtW(w.bw)+' kg':'')+'</p>';
   for(const e of w.entries){
     h+='<div class="card" style="padding:12px 14px"><div class="row"><b class="grow">'+esc(e.name)+'</b>'+
       (e.ss!=null?'<span class="ssbadge" style="color:'+ssColors[e.ss%5]+';background:'+ssColors[e.ss%5]+'22">SS '+String.fromCharCode(65+e.ss%26)+'</span>':'')+'</div>';
@@ -1038,6 +1111,9 @@ function openWorkout(id){
     h+='</div>';
   }
   h+='<div class="row" style="margin-top:8px">'+
+    '<button class="btn grow" onclick="repeatWorkout(\''+esc(w.id)+'\')">Repeat</button>'+
+    '<button class="btn grow" onclick="saveWorkoutAsRoutine(\''+esc(w.id)+'\')">Save as routine</button></div>'+
+    '<div class="row" style="margin-top:8px">'+
     '<button class="btn danger" onclick="deleteWorkout(\''+esc(w.id)+'\')">Delete</button>'+
     '<button class="btn primary grow" onclick="editWorkout(\''+esc(w.id)+'\')">Edit workout</button></div>';
   openModal(h);
@@ -1290,7 +1366,7 @@ function openExPRs(name){
     (d?'<div class="tiny muted">'+fmtDay(d)+'</div>':'')+'</div>';
   let h='<h2>Personal records</h2><p class="tiny muted">'+esc(name)+'</p>';
   if(rr.length){
-    h+='<div class="card"><h3>🏆 Rep records</h3>';
+    h+='<div class="card"><h3>'+ico('star')+' Rep records</h3>';
     for(const x of rr)h+='<div class="row small" style="padding:6px 0;border-bottom:1px solid var(--line)">'+
       '<span style="width:90px" class="muted">'+x.r+' rep max</span><b class="grow">'+fmtW(x.w)+' kg</b>'+
       '<span class="tiny muted">'+fmtDay(x.date)+'</span></div>';
@@ -1471,7 +1547,7 @@ function renderSettings(){
   const restT=restDefault(), restAuto=restAutoOn();
   h+='<div class="card"><div class="row"><h3 class="grow">Rest timer</h3>'+
     '<button class="'+(restAuto?'toggle on':'toggle')+'" onclick="setRestAuto('+(!restAuto)+')"><span class="knob"></span></button></div>'+
-    '<p class="small muted" style="margin:6px 0 12px">'+(restAuto?'A rest countdown starts automatically each time you add a set. You can also start it yourself with the ⏱ Rest button.':'Start the rest timer yourself with the ⏱ Rest button while logging.')+'</p>'+
+    '<p class="small muted" style="margin:6px 0 12px">'+(restAuto?'A rest countdown starts automatically each time you add a set. You can also start it yourself with the timer button in the top corner of the workout.':'Start the rest timer yourself with the timer button in the top corner of the workout.')+'</p>'+
     '<div class="row"><span class="small muted grow">Default rest</span>'+
     '<button class="btn small" onclick="setRestTime('+(restT-15)+')">−15s</button>'+
     '<span style="min-width:56px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums">'+Math.floor(restT/60)+':'+pad2(restT%60)+'</span>'+
@@ -1617,6 +1693,44 @@ function wireInputs(){
   };
 }
 
+/* #5 swipe-to-reveal: set rows → copy, exercise header → remove */
+let _sw=null;
+function swipeStart(ev){
+  if(ev.touches.length!==1){_sw=null;return;}
+  const el=ev.target.closest('.swipe');if(!el)return;
+  if(ev.target.closest('[data-drag],button,input,textarea,select,a'))return;
+  _sw={el,fg:el.querySelector('.swipe-fg'),x0:ev.touches[0].clientX,y0:ev.touches[0].clientY,dx:0,axis:0};
+}
+function swipeMove(ev){
+  if(!_sw)return;
+  const t=ev.touches[0],dx=t.clientX-_sw.x0,dy=t.clientY-_sw.y0;
+  if(!_sw.axis){
+    if(Math.abs(dx)<8&&Math.abs(dy)<8)return;
+    _sw.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
+    if(_sw.axis==='x')_sw.el.classList.add('swiping');
+    else{_sw=null;return;}
+  }
+  ev.preventDefault();
+  const isSet=_sw.el.dataset.swipe==='set';
+  const d=isSet?Math.max(0,Math.min(dx,110)):Math.min(0,Math.max(dx,-110));
+  _sw.dx=d;_sw.fg.style.transform='translateX('+d+'px)';
+}
+function swipeEnd(){
+  if(!_sw)return;
+  const s=_sw;_sw=null;s.el.classList.remove('swiping');if(s.fg)s.fg.style.transform='';
+  if(s.axis!=='x'||Math.abs(s.dx)<64)return;
+  const ei=+s.el.dataset.ei;
+  if(s.el.dataset.swipe==='set'){copySet(ei,+s.el.dataset.si);toast('Set copied');}
+  else if(confirm('Remove this exercise?'))removeEntry(ei);
+}
+function wireSwipe(){
+  const m=$('main');if(!m||m._swWired)return;m._swWired=true;
+  m.addEventListener('touchstart',swipeStart,{passive:true});
+  m.addEventListener('touchmove',swipeMove,{passive:false});
+  m.addEventListener('touchend',swipeEnd);
+  m.addEventListener('touchcancel',swipeEnd);
+}
+
 /* ============================== init ============================== */
 if(firstRun){
   if(window.SETT_LOCAL_CSV){const r=importCsv(window.SETT_LOCAL_CSV);console.log('[sett] auto-import:',r.msg);}
@@ -1626,6 +1740,7 @@ migrateVisuals();
 applyTheme((store.settings&&store.settings.theme)||'ember');
 if(store.active)state.view='log';
 render();
+wireSwipe();
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
