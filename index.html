@@ -96,6 +96,8 @@
   /* logger */
   .setgrid{display:grid; grid-template-columns:30px 1fr 1fr 52px 34px; gap:8px; align-items:center; margin-top:8px;}
   .setgrid input{text-align:center; padding:11px 6px; font-weight:700; font-size:16px;}
+  .tgtgrid{display:grid; grid-template-columns:30px 1fr 1fr 1fr 34px; gap:8px; align-items:center; margin-top:8px;}
+  .tgtgrid input{text-align:center; padding:11px 6px; font-weight:700; font-size:16px;}
   .setidx{color:var(--faint); font-weight:800; text-align:center; font-size:14px;}
   .setidx.drop{color:var(--accent);}
   .sethead{color:var(--faint); font-size:10px; font-weight:700; text-transform:uppercase;
@@ -154,6 +156,14 @@
     border-radius:20px 20px 0 0; min-height:60vh; padding:0 18px calc(30px + env(safe-area-inset-bottom));
     animation:up .18s ease-out;}
   @keyframes up{from{transform:translateY(30px); opacity:.4;} to{transform:none; opacity:1;}}
+  #main.slide-up{animation:sUp .2s ease;}
+  #main.slide-left{animation:sLeft .24s cubic-bezier(.22,.61,.36,1);}
+  #main.slide-right{animation:sRight .24s cubic-bezier(.22,.61,.36,1);}
+  @keyframes sUp{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+  @keyframes sLeft{from{opacity:0; transform:translateX(-18px);} to{opacity:1; transform:none;}}
+  @keyframes sRight{from{opacity:0; transform:translateX(18px);} to{opacity:1; transform:none;}}
+  .tab{transition:color .15s ease, transform .1s ease;}
+  .tab:active{transform:scale(.9);}
   .sheethead{position:sticky; top:0; z-index:3; display:flex; align-items:center; justify-content:flex-end;
     height:52px; margin:0 -18px 4px; padding:0 14px;
     background:color-mix(in srgb, var(--card) 94%, transparent); backdrop-filter:blur(8px);
@@ -180,6 +190,24 @@
   ol.instructions li{margin:7px 0; color:var(--text); font-size:14px;}
   .banner{background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
     color:var(--accent); border-radius:12px; padding:10px 14px; font-size:13px; font-weight:600; margin:12px 0;}
+  #restbar{position:fixed; left:0; right:0; z-index:29; display:none; padding:0 12px;
+    bottom:calc(66px + env(safe-area-inset-bottom)); pointer-events:none;}
+  #restbar.show{display:block; animation:up .18s ease-out;}
+  #restbar .inner{max-width:616px; margin:0 auto; pointer-events:auto; display:flex; align-items:center; gap:8px;
+    background:var(--card2); border:1px solid var(--accent); border-radius:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,.45); padding:9px 12px;}
+  #restbar .rlabel{font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.05em;}
+  #restbar .rt{font-weight:800; font-size:22px; line-height:1.05; font-variant-numeric:tabular-nums; color:var(--accent);}
+  #restbar .inner.done{border-color:var(--good);}
+  #restbar .inner.done .rt{color:var(--good);}
+  #restbar button{border:1px solid var(--line); background:var(--card); color:var(--text);
+    border-radius:10px; padding:9px 11px; font-weight:700; font-size:13px; min-width:44px;}
+  .draghandle{touch-action:none; cursor:grab; color:var(--faint); font-size:20px; line-height:1;
+    padding:2px 8px 2px 0; margin-right:2px; align-self:center; user-select:none;}
+  .draghandle:active{cursor:grabbing; color:var(--accent);}
+  .excard.dragging{opacity:.92; box-shadow:0 14px 34px rgba(0,0,0,.55);}
+  .excard.drop-before{box-shadow:inset 0 3px 0 var(--accent);}
+  .excard.drop-after{box-shadow:inset 0 -3px 0 var(--accent);}
   @media(prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important;}}
 </style>
 </head>
@@ -192,6 +220,7 @@
   </button>
 </header>
 <main id="main"></main>
+<div id="restbar"></div>
 <nav class="tabbar" id="tabbar"></nav>
 <div id="overlay" onclick="if(event.target===this)closeModal()"><div class="sheet" id="sheet"></div></div>
 <div id="toast"></div>
@@ -201,8 +230,9 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.5.0';
+const APP_VERSION='0.6.0';
 const CHANGELOG=[
+  {v:'0.6.0', date:'2026-07-05', desc:'Saved routines with targets. Build a routine under Routines → New routine: add exercises and set a target weight and rep range (or an exact rep count) for each set. Starting a saved routine shows those targets as faint placeholders in the logger, so you always know what to aim for — type your actual numbers over them. You can also pair exercises as supersets inside a routine, turn any workout in progress into a routine with the new "Save as routine" button, and edit or delete routines anytime. Your history-based suggestions and popular splits are still there, now under "From your history" and "Popular routines". Plus a smoother feel throughout: pages now slide as you move between tabs, first-time users get a friendly welcome that helps them import a CSV or start fresh and choose their rank settings, the Browse catalog and New exercise buttons sit at the top of Exercises so you no longer scroll past your whole list, and discarding a workout drops you back on Routines to quickly pick another. There is now a rest timer between sets — it starts automatically when you add a set (turn that off or change the default time in Settings), with quick −15/+15 and skip controls and a chime when time is up. And while logging you can drag exercises by the ⠿ handle to reorder them, in addition to the up/down buttons.'},
   {v:'0.5.0', date:'2026-07-05', desc:'Reorganised: Log is now your workout history, and Routines is its own tab with your own routines plus popular splits like Push/Pull/Legs, Upper/Lower and Full Body. A new Settings screen (gear, top right) holds themes, strength ranks, data import/export and updates. Strength ranks can be turned off entirely (asked once after your first import). The app now updates itself when you open it, with a manual "Check for updates" button too. Fresh installs start empty — no demo data to clear.'},
   {v:'0.4.0', date:'2026-07-05', desc:'Easier to use: sheets now have a clear close button, the drop-set and superset controls are labelled and obvious (and tap again to undo a misclick), and the notes field sits on its own line so nothing is cut off. New colour themes live under Appearance in More. Strength ranks can now use male, female or unisex standards — pick yours in More or right after importing a CSV — so the app works for more than one person. The changelog is tucked away so it no longer fills the screen.'},
   {v:'0.3.0', date:'2026-07-05', desc:'Statistics reworked RepCount-style: tap any overall stat (duration, volume, sets, reps, reps per set, bodyweight, workouts) to see its trend over time. Every exercise gained quick buttons for History, Charts (pick a metric and time range) and Personal Records including rep-max records. Past workouts can now be edited — sets, exercises, and start/end times. History shows calendar-style date badges, and narrow-screen layout issues on the log view were fixed.'},
@@ -318,13 +348,16 @@ const fmtW=w=>w==null?'—':(Math.round(w*10)/10).toString().replace(/\.0$/,'');
 function fmtDur(a,b){if(!a||!b)return'';const m=Math.max(0,Math.round((toDate(b)-toDate(a))/60000));return m>=60?Math.floor(m/60)+' h '+pad2(m%60)+' min':m+' min';}
 function epley(w,r){if(w==null||!r||r<1)return null;if(r===1)return w;return w*(1+r/30);}
 function setVol(s){return (s.w||0)*(s.r||0);}
+function repRange(t){if(!t)return '';const lo=t.rlo,hi=t.rhi;if(lo==null&&hi==null)return '';if(lo!=null&&hi!=null)return lo===hi?String(lo):lo+'–'+hi;return String(lo!=null?lo:hi);}
 function toast(msg,ms){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>t.style.display='none',ms||2400);}
 
 /* ============================== store ============================== */
-function freshStore(){return {schema:1, demo:false, workouts:[], ex:{}, settings:{}};}
+function freshStore(){return {schema:1, demo:false, workouts:[], ex:{}, settings:{}, routines:[]};}
+function normalizeStore(){if(!Array.isArray(store.routines))store.routines=[];}
 let store=null, firstRun=false;
 try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.schema===1)store=s;}}catch(e){console.warn('store load failed',e);}
 if(!store){store=freshStore();firstRun=true;}
+normalizeStore();
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){toast('Could not save — storage full?');console.error(e);}}
 
 /* exercise catalog (exercises.js, generated from free-exercise-db, public domain) */
@@ -482,7 +515,7 @@ function rankBadge(tier,extra){
 }
 
 /* ============================== state & render ============================== */
-const state={view:'log', exQuery:'', exCat:'All'};
+const state={view:'log', exQuery:'', exCat:'All', editRoutine:null, pickTarget:'active'};
 const NAV=['log','routines','exercises','stats','more'];
 const TITLES={log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', more:'More', settings:'Settings'};
 const showRanks=()=>!(store.settings&&store.settings.showRanks===false);
@@ -493,7 +526,18 @@ const ICONS={
   stats:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
   more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
 };
-function setView(v){state.view=v;render();window.scrollTo(0,0);}
+function setView(v){
+  const oldIdx=NAV.indexOf(state.view), newIdx=NAV.indexOf(v);
+  state.view=v;render();
+  playViewAnim(oldIdx>=0&&newIdx>=0&&oldIdx!==newIdx?(newIdx>oldIdx?'right':'left'):'up');
+  window.scrollTo(0,0);
+}
+function playViewAnim(dir){
+  const m=$('main');if(!m)return;
+  m.classList.remove('slide-up','slide-left','slide-right');
+  void m.offsetWidth; // restart the animation
+  m.classList.add(dir==='left'?'slide-left':dir==='right'?'slide-right':'slide-up');
+}
 function render(){
   $('vtitle').textContent=TITLES[state.view]||'';
   $('gear').classList.toggle('on',state.view==='settings');
@@ -546,11 +590,25 @@ function historyList(){
 }
 /* ROUTINES = start a workout: empty, from your own history, or a popular split */
 function renderRoutines(){
-  let h='<button class="btn primary wide" style="margin:4px 0 6px" onclick="startWorkout()">＋ Start empty workout</button>';
+  if(state.editRoutine)return renderRoutineEditor();
+  let h='<button class="btn primary wide" style="margin:4px 0 6px" onclick="startWorkout()">＋ Start empty workout</button>'+
+        '<button class="btn wide" style="margin:0 0 6px" onclick="newRoutine()">＋ New routine</button>';
+  if(store.routines.length){
+    h+='<div class="row" style="margin:16px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">Your routines</h3>'+
+       '<span class="tiny muted">saved · with targets</span></div><div class="card" style="padding:4px 14px">';
+    for(const r of store.routines){
+      const sets=r.exercises.reduce((n,e)=>n+e.sets.length,0);
+      h+='<div class="listrow"><div class="grow" style="cursor:pointer" onclick="startRoutine(\''+esc(r.id)+'\')"><div style="font-weight:700">'+esc(r.name)+'</div>'+
+        '<div class="tiny muted">'+r.exercises.length+' exercises · '+sets+' sets</div></div>'+
+        '<button class="iconbtn" title="Edit routine" onclick="editRoutineById(\''+esc(r.id)+'\')">✎</button>'+
+        '<button class="iconbtn" title="Delete routine" onclick="deleteRoutine(\''+esc(r.id)+'\')">🗑</button></div>';
+    }
+    h+='</div>';
+  }
   const tpl=templates();
   if(tpl.length){
-    h+='<div class="row" style="margin:16px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">Your routines</h3>'+
-       '<span class="tiny muted">from your history</span></div><div class="card" style="padding:4px 14px">';
+    h+='<div class="row" style="margin:16px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">From your history</h3>'+
+       '<span class="tiny muted">past workouts</span></div><div class="card" style="padding:4px 14px">';
     for(const t of tpl)h+='<div class="listrow" onclick="startFromTemplate(\''+esc(t.id)+'\')">'+
       '<div class="grow"><div style="font-weight:700">'+esc(t.name)+'</div>'+
       '<div class="tiny muted">'+t.count+' exercises · last '+fmtDay(t.last)+'</div></div>'+
@@ -565,8 +623,82 @@ function renderRoutines(){
       '<div class="tiny muted">'+r.ex.length+' exercises · '+esc(r.ex.slice(0,3).join(', '))+'…</div></div>'+
       '<div class="muted">›</div></div>';
   });
-  h+='</div><p class="tiny muted" style="margin:8px 4px">Starting a routine creates the exercises with empty sets — fill in your weights as you go.</p>';
+  h+='</div><p class="tiny muted" style="margin:8px 4px">Saved routines start with your targets shown as placeholders — fill in what you actually lift. Popular splits and history routines start empty.</p>';
   return h;
+}
+/* ---- saved routines (store.routines): editor + lifecycle ---- */
+function newRoutine(){state.editRoutine={id:null,name:'',exercises:[]};render();playViewAnim('up');}
+function editRoutineById(id){const r=store.routines.find(x=>x.id===id);if(!r)return;
+  state.editRoutine=JSON.parse(JSON.stringify(r));render();playViewAnim('up');}
+function cancelRoutineEdit(){state.editRoutine=null;render();playViewAnim('up');}
+function deleteRoutine(id){const r=store.routines.find(x=>x.id===id);if(!r)return;
+  if(!confirm('Delete routine “'+r.name+'”? This cannot be undone.'))return;
+  store.routines=store.routines.filter(x=>x.id!==id);save();render();}
+function addTgtSet(xi){const ex=state.editRoutine.exercises[xi];const p=ex.sets[ex.sets.length-1];
+  ex.sets.push(p?{...p}:{tw:null,rlo:null,rhi:null});render();}
+function removeTgtSet(xi,si){state.editRoutine.exercises[xi].sets.splice(si,1);render();}
+function removeRoutineEx(xi){state.editRoutine.exercises.splice(xi,1);render();}
+function moveRoutineEx(xi,dir){const es=state.editRoutine.exercises,j=xi+dir;if(j<0||j>=es.length)return;
+  [es[xi],es[j]]=[es[j],es[xi]];render();}
+function toggleRoutineSS(xi){
+  const es=state.editRoutine.exercises,e=es[xi],prev=es[xi-1];if(!prev)return;
+  if(e.ss!=null&&e.ss===prev.ss){e.ss=null;}
+  else{if(prev.ss==null){let g=0;for(const x of es)if(x.ss!=null)g=Math.max(g,x.ss+1);prev.ss=g;}e.ss=prev.ss;}
+  render();
+}
+function saveRoutine(){
+  const d=state.editRoutine;const name=(d.name||'').trim();
+  if(!name){toast('Name your routine first');return;}
+  if(!d.exercises.length){toast('Add at least one exercise');return;}
+  const clean={id:d.id||('r'+Date.now()),name,
+    exercises:d.exercises.map(ex=>({name:ex.name,ss:ex.ss??null,
+      sets:ex.sets.map(t=>({tw:t.tw??null,rlo:t.rlo??null,rhi:t.rhi??null}))}))};
+  const idx=store.routines.findIndex(x=>x.id===clean.id);
+  if(idx>=0)store.routines[idx]=clean;else store.routines.push(clean);
+  state.editRoutine=null;save();toast('Routine saved');render();playViewAnim('up');
+}
+function renderRoutineEditor(){
+  const d=state.editRoutine;
+  const ssColors=['#ff7a3c','#4cc2ff','#7ee081','#ffd166','#c792ea'];
+  let h='<div class="card"><div class="tiny" style="color:var(--accent);font-weight:700;margin-bottom:8px">'+(d.id?'EDIT ROUTINE':'NEW ROUTINE')+'</div>'+
+    '<input data-rname placeholder="Routine name" value="'+esc(d.name||'')+'" style="width:100%;font-weight:700"></div>';
+  if(d.exercises.length>1)h+='<div class="legend"><span><b>⛓ Superset</b> = paired with the exercise above</span><span>tap again to undo</span></div>';
+  d.exercises.forEach((ex,xi)=>{
+    const meta=store.ex[ex.name]||{cat:'Other'};
+    const linked=ex.ss!=null;
+    h+='<div class="card"><div class="row"><div class="grow"><span style="font-weight:800">'+esc(ex.name)+'</span> '+
+      (linked?'<span class="ssbadge" style="color:'+ssColors[ex.ss%5]+';background:'+ssColors[ex.ss%5]+'22">SUPERSET '+String.fromCharCode(65+ex.ss%26)+'</span>':'')+
+      '<div class="tiny muted">'+esc(meta.cat)+'</div></div></div>'+
+      '<div class="tgtgrid"><span class="sethead">Set</span><span class="sethead">kg</span><span class="sethead">min</span><span class="sethead">max</span><span></span>';
+    ex.sets.forEach((t,si)=>{
+      h+='<span class="setidx">'+(si+1)+'</span>'+
+        '<input type="number" inputmode="decimal" step="0.5" data-rx="'+xi+'" data-rs="'+si+'" data-rf="tw" value="'+(t.tw??'')+'" placeholder="—">'+
+        '<input type="number" inputmode="numeric" data-rx="'+xi+'" data-rs="'+si+'" data-rf="rlo" value="'+(t.rlo??'')+'" placeholder="—">'+
+        '<input type="number" inputmode="numeric" data-rx="'+xi+'" data-rs="'+si+'" data-rf="rhi" value="'+(t.rhi??'')+'" placeholder="—">'+
+        '<button class="iconbtn" title="Remove set" onclick="removeTgtSet('+xi+','+si+')">✕</button>';
+    });
+    h+='</div><button class="btn ghost small" style="margin-top:10px" onclick="addTgtSet('+xi+')">＋ Add set</button>'+
+      '<div class="exctrl">'+
+      (xi>0?'<button title="Move up" onclick="moveRoutineEx('+xi+',-1)">↑ Up</button>':'')+
+      (xi<d.exercises.length-1?'<button title="Move down" onclick="moveRoutineEx('+xi+',1)">↓ Down</button>':'')+
+      (xi>0?'<button class="'+(linked?'on':'')+'" onclick="toggleRoutineSS('+xi+')">⛓ Superset'+(linked?' ✓':'')+'</button>':'')+
+      '<span class="sp"></span><button class="del" onclick="removeRoutineEx('+xi+')">Remove</button></div></div>';
+  });
+  h+='<button class="btn wide" onclick="openPicker(\'routine\')">＋ Add exercise</button>'+
+     '<p class="tiny muted" style="margin:10px 4px">Leave weight or reps blank to decide live. One rep number = an exact target; fill both min and max for a range (e.g. 8–12).</p>'+
+     '<div class="row" style="margin-top:14px">'+
+     '<button class="btn" onclick="cancelRoutineEdit()">Cancel</button>'+
+     '<button class="btn primary grow" onclick="saveRoutine()">Save routine</button></div>';
+  return h;
+}
+function startRoutine(id){
+  const r=store.routines.find(x=>x.id===id);if(!r)return;
+  if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}
+  for(const ex of r.exercises)ensureEx(ex.name);
+  store.active={start:nowStr(),routine:r.name,bw:latestBW(),
+    entries:r.exercises.map(ex=>({name:ex.name,ss:ex.ss??null,note:'',
+      sets:ex.sets.map(t=>({w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:{tw:t.tw??null,rlo:t.rlo??null,rhi:t.rhi??null}}))}))};
+  save();setView('log');toast('Started “'+r.name+'”');
 }
 function startPopular(i){
   const r=POPULAR_ROUTINES[i];if(!r)return;
@@ -610,21 +742,25 @@ function renderActive(){
   a.entries.forEach((e,ei)=>{
     const meta=store.ex[e.name]||{cat:'Other'};
     const linked=e.ss!=null;
-    h+='<div class="card"><div class="row">'+
+    h+='<div class="card excard" data-ei="'+ei+'"><div class="row">'+
+      (a.entries.length>1?'<span class="draghandle" data-drag="'+ei+'" title="Drag to reorder">⠿</span>':'')+
       '<div class="grow"><span style="font-weight:800">'+esc(e.name)+'</span> '+
       (linked?'<span class="ssbadge" style="color:'+ssColors[e.ss%5]+';background:'+ssColors[e.ss%5]+'22">SUPERSET '+String.fromCharCode(65+e.ss%26)+'</span>':'')+
       '<div class="tiny muted">'+esc(meta.cat)+lastTimeHint(e.name)+'</div></div>'+
       exActionBtns(e.name)+'</div>';
     h+='<div class="setgrid"><span class="sethead">Set</span><span class="sethead">kg</span><span class="sethead">reps</span><span class="sethead">Drop</span><span></span>';
     e.sets.forEach((s,si)=>{
+      const twPh=s.tgt&&s.tgt.tw!=null?' placeholder="'+s.tgt.tw+'"':'';
+      const rPh=s.tgt&&repRange(s.tgt)?' placeholder="'+repRange(s.tgt)+'"':'';
       h+='<span class="setidx'+(s.drop?' drop':'')+'">'+(s.drop?'D':si+1)+'</span>'+
-        '<input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'">'+
-        '<input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'">'+
+        '<input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'>'+
+        '<input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'>'+
         '<button class="droptog'+(s.drop?' on':'')+'" title="Mark this as a drop set" onclick="toggleDrop('+ei+','+si+')">Drop</button>'+
         '<button class="iconbtn" title="Remove set" onclick="removeSet('+ei+','+si+')">✕</button>';
     });
     h+='</div>'+
-      '<button class="btn ghost small" style="margin-top:10px" onclick="addSet('+ei+')">＋ Add set</button>'+
+      '<div class="row" style="margin-top:10px"><button class="btn ghost small grow" onclick="addSet('+ei+')">＋ Add set</button>'+
+      (a.editing?'':'<button class="btn ghost small" onclick="startRest()" title="Start rest timer">⏱ Rest</button>')+'</div>'+
       '<input class="noteline small" placeholder="Notes (grip, tempo, machine setting…)" data-ei="'+ei+'" data-f="note" value="'+esc(e.note)+'">'+
       '<div class="exctrl">'+
       (ei>0?'<button title="Move up" onclick="moveEntry('+ei+',-1)">↑ Up</button>':'')+
@@ -635,10 +771,30 @@ function renderActive(){
       '</div></div>';
   });
   h+='<button class="btn wide" onclick="openPicker()">＋ Add exercise</button>'+
+     (a.editing||!a.entries.length?'':'<button class="btn ghost wide small" style="margin-top:8px" onclick="saveActiveAsRoutine()">☆ Save as routine</button>')+
      '<div class="row" style="margin-top:14px">'+
      '<button class="btn danger" onclick="discardWorkout()">'+(a.editing?'Cancel':'Discard')+'</button>'+
      '<button class="btn primary grow" onclick="finishWorkout()">'+(a.editing?'Save changes':'Finish workout')+'</button></div>';
   return h;
+}
+function saveActiveAsRoutine(){
+  const a=store.active;if(!a||!a.entries.length){toast('Nothing to save yet');return;}
+  openModal('<h2>Save as routine</h2>'+
+    '<p class="muted small">Targets are seeded from what you\'ve logged so far — tweak them anytime under Routines.</p>'+
+    '<input id="rtname" style="width:100%;margin:12px 0" placeholder="Routine name" value="'+esc(a.routine||'')+'">'+
+    '<button class="btn primary wide" onclick="commitActiveAsRoutine()">Save routine</button>');
+  $('rtname').focus();
+}
+function tgtFromSet(s){
+  const t=s.tgt||{};
+  return {tw:(s.w!=null?s.w:t.tw)??null, rlo:(s.r!=null?s.r:t.rlo)??null, rhi:(s.r!=null?s.r:t.rhi)??null};
+}
+function commitActiveAsRoutine(){
+  const name=($('rtname').value||'').trim();if(!name){toast('Name it first');return;}
+  const a=store.active;
+  const r={id:'r'+Date.now(),name,
+    exercises:a.entries.map(e=>({name:e.name,ss:e.ss??null,sets:e.sets.map(tgtFromSet)}))};
+  store.routines.push(r);save();closeModal();toast('Saved “'+name+'” to your routines');
 }
 function elapsedStr(){const m=Math.floor((Date.now()-toDate(store.active.start))/60000);return Math.floor(m/60)+':'+pad2(m%60);}
 function lastTimeHint(name){
@@ -650,7 +806,8 @@ function lastTimeHint(name){
   return '';
 }
 function addSet(ei){const e=store.active.entries[ei];const p=e.sets[e.sets.length-1];
-  e.sets.push({w:p?p.w:null,r:p?p.r:null,dur:null,dist:null,note:'',drop:false});save();render();}
+  e.sets.push({w:p?p.w:null,r:p?p.r:null,dur:null,dist:null,note:'',drop:false});save();render();
+  if(store.active&&!store.active.editing&&restAutoOn())startRest();}
 function removeSet(ei,si){store.active.entries[ei].sets.splice(si,1);save();render();}
 function toggleDrop(ei,si){const s=store.active.entries[ei].sets[si];s.drop=!s.drop;save();render();}
 function removeEntry(ei){store.active.entries.splice(ei,1);save();render();}
@@ -662,13 +819,94 @@ function toggleSS(ei){
   else{if(prev.ss==null){let g=0;for(const x of es)if(x.ss!=null)g=Math.max(g,x.ss+1);prev.ss=g;}e.ss=prev.ss;}
   save();render();
 }
+/* ============================== rest timer ============================== */
+let restTimer=null, restEnd=0, restTotal=0, _actx=null;
+function restDefault(){return (store.settings&&store.settings.restTime)||90;}
+function restAutoOn(){return !(store.settings&&store.settings.restAuto===false);}
+function setRestTime(sec){sec=Math.max(15,Math.min(600,sec));store.settings=store.settings||{};store.settings.restTime=sec;save();render();}
+function setRestAuto(on){store.settings=store.settings||{};store.settings.restAuto=on;save();render();}
+function primeBeep(){try{_actx=_actx||new (window.AudioContext||window.webkitAudioContext)();if(_actx.state==='suspended')_actx.resume();}catch(e){}}
+function beep(){try{if(!_actx)return;const t=_actx.currentTime;const o=_actx.createOscillator(),g=_actx.createGain();
+  o.frequency.value=880;o.connect(g);g.connect(_actx.destination);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.35,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.45);
+  o.start(t);o.stop(t+.5);}catch(e){}}
+function startRest(sec){
+  primeBeep();
+  restTotal=sec||restDefault();restEnd=Date.now()+restTotal*1000;
+  $('restbar').classList.add('show');
+  clearInterval(restTimer);restTimer=setInterval(tickRest,200);tickRest();
+}
+function tickRest(){
+  const leftMs=restEnd-Date.now();
+  drawRestBar(Math.max(0,Math.ceil(leftMs/1000)),false);
+  if(leftMs<=0)finishRest();
+}
+function drawRestBar(left,done){
+  $('restbar').innerHTML='<div class="inner'+(done?' done':'')+'">'+
+    '<div><div class="rlabel">'+(done?'Rest done':'Rest')+'</div>'+
+    '<div class="rt">'+Math.floor(left/60)+':'+pad2(left%60)+'</div></div>'+
+    '<span style="flex:1"></span>'+
+    (done?'<button onclick="stopRest()">Dismiss</button>':
+      '<button onclick="addRest(-15)">−15</button><button onclick="addRest(15)">+15</button>'+
+      '<button onclick="stopRest()">Skip</button>')+'</div>';
+}
+function addRest(d){restEnd+=d*1000;const now=Date.now();if(restEnd<now+1000)restEnd=now+1000;
+  if(restEnd-now>restTotal*1000)restTotal=Math.ceil((restEnd-now)/1000);tickRest();}
+function finishRest(){
+  clearInterval(restTimer);restTimer=null;
+  drawRestBar(0,true);beep();if(navigator.vibrate)navigator.vibrate([120,60,120]);
+  clearTimeout(finishRest._t);finishRest._t=setTimeout(stopRest,6000);
+}
+function stopRest(){clearInterval(restTimer);restTimer=null;clearTimeout(finishRest._t);
+  const b=$('restbar');b.classList.remove('show');b.innerHTML='';}
+/* ============================== drag-to-reorder (active workout) ============================== */
+let drag=null;
+function dragCards(){return [...document.querySelectorAll('#main .excard')];}
+function startDrag(e,handle){
+  if(!store.active)return;
+  const card=handle.closest('.excard');if(!card)return;
+  const cards=dragCards();
+  drag={pid:e.pointerId,card,from:+card.dataset.ei,startY:e.clientY,
+    centers:cards.map(c=>{const r=c.getBoundingClientRect();return r.top+r.height/2;}),target:+card.dataset.ei};
+  try{handle.setPointerCapture(e.pointerId);}catch(_){}
+  card.classList.add('dragging');
+  document.addEventListener('pointermove',onDragMove,{passive:false});
+  document.addEventListener('pointerup',onDragEnd);
+  document.addEventListener('pointercancel',onDragEnd);
+  e.preventDefault();
+}
+function onDragMove(e){
+  if(!drag)return;e.preventDefault();
+  drag.card.style.transform='translateY('+(e.clientY-drag.startY)+'px)';
+  drag.card.style.position='relative';drag.card.style.zIndex='20';
+  let ti=0;for(const c of drag.centers)if(e.clientY>c)ti++;
+  ti=Math.max(0,Math.min(drag.centers.length,ti));drag.target=ti;
+  const cards=dragCards();cards.forEach(c=>c.classList.remove('drop-before','drop-after'));
+  if(ti>=cards.length)cards[cards.length-1].classList.add('drop-after');
+  else cards[ti].classList.add('drop-before');
+}
+function onDragEnd(){
+  if(!drag)return;
+  document.removeEventListener('pointermove',onDragMove);
+  document.removeEventListener('pointerup',onDragEnd);
+  document.removeEventListener('pointercancel',onDragEnd);
+  const from=drag.from;let to=drag.target;if(to>from)to--;
+  const card=drag.card;drag=null;
+  dragCards().forEach(c=>c.classList.remove('drop-before','drop-after','dragging'));
+  card.style.transform='';card.style.position='';card.style.zIndex='';
+  if(store.active&&to!==from&&to>=0){
+    const es=store.active.entries;const [m]=es.splice(from,1);es.splice(to,0,m);save();render();
+  }
+}
 function discardWorkout(){
   const editing=store.active&&store.active.editing;
   if(!confirm(editing?'Cancel editing? Your changes will be lost.':'Discard this workout? Nothing will be saved.'))return;
-  store.active=null;save();clearInterval(tick);render();}
+  store.active=null;save();clearInterval(tick);
+  if(editing)render();else setView('routines');
+}
 function finishWorkout(){
   const a=store.active;
-  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null)})).filter(e=>e.sets.length);
+  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
   if(!entries.length){toast('Log at least one set first');return;}
   if(a.editing){
     const idx=store.workouts.findIndex(x=>x.id===a.editing);
@@ -699,7 +937,8 @@ function finishWorkout(){
   render();
 }
 /* exercise picker */
-function openPicker(){
+function openPicker(target){
+  state.pickTarget=target||'active';
   openModal('<h2>Add exercise</h2>'+
     '<input id="pickq" placeholder="Search or type a new name…" style="width:100%;margin:12px 0" oninput="renderPickList()">'+
     '<div id="picklist"></div>');
@@ -720,6 +959,9 @@ function renderPickList(){
   $('picklist').querySelectorAll('[data-new]').forEach(el=>el.onclick=()=>createExercise(el.dataset.new));
 }
 function pickExercise(name){
+  if(state.pickTarget==='routine'){ensureEx(name);
+    state.editRoutine.exercises.push({name,ss:null,sets:[{tw:null,rlo:null,rhi:null}]});
+    closeModal();render();return;}
   store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});
   save();closeModal();render();
 }
@@ -733,7 +975,8 @@ function createExercise(name){
 function saveNewExercise(){
   const name=$('newname').value.trim();if(!name)return;
   store.ex[name]={cat:$('newcat').value,howto:$('newhow').value.trim(),custom:true,vid:autoVisual(name)};
-  if(store.active)store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});
+  if(state.pickTarget==='routine'&&state.editRoutine){state.editRoutine.exercises.push({name,ss:null,sets:[{tw:null,rlo:null,rhi:null}]});}
+  else if(store.active)store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});
   save();closeModal();render();
 }
 
@@ -782,7 +1025,9 @@ function deleteWorkout(id){
 function renderExercises(){
   const names=Object.keys(store.ex).sort((a,b)=>a.localeCompare(b));
   const cats=['All',...CATS.filter(c=>names.some(n=>store.ex[n].cat===c))];
-  let h='<input style="width:100%;margin:8px 0" placeholder="Search '+names.length+' exercises…" data-act="exq" value="'+esc(state.exQuery)+'">';
+  let h='<div class="row" style="margin:4px 0 2px"><button class="btn grow" onclick="openCatalog()">Browse catalog</button>'+
+     '<button class="btn primary grow" onclick="createExercise(\'\')">＋ New exercise</button></div>';
+  h+='<input style="width:100%;margin:8px 0" placeholder="Search '+names.length+' exercises…" data-act="exq" value="'+esc(state.exQuery)+'">';
   h+='<div class="chiprow">'+cats.map(c=>'<button class="chip'+(state.exCat===c?' on':'')+'" onclick="state.exCat=\''+c+'\';render()">'+c+'</button>').join('')+'</div>';
   h+='<div class="card" style="padding:4px 14px">';
   let shown=0;
@@ -800,8 +1045,7 @@ function renderExercises(){
       (rk&&!rk.locked?rankBadge(rk.tier):'')+'</div>';
   }
   h+=shown?'':'<p class="muted small" style="padding:12px 0">Nothing matches.</p>';
-  h+='</div><div class="row"><button class="btn grow" onclick="openCatalog()">Browse catalog</button>'+
-     '<button class="btn grow" onclick="createExercise(\'\')">＋ New exercise</button></div>';
+  h+='</div>';
   return h;
 }
 let visTimer=null;
@@ -1171,6 +1415,15 @@ function renderSettings(){
       '<div class="seg" style="margin:0">'+['male','female','neutral'].map(k=>
         '<button class="'+(sex===k?'on':'')+'" onclick="setSex(\''+k+'\')">'+SEX_LABEL[k]+'</button>').join('')+'</div></div>':'')+
     '</div>';
+  // rest timer
+  const restT=restDefault(), restAuto=restAutoOn();
+  h+='<div class="card"><div class="row"><h3 class="grow">Rest timer</h3>'+
+    '<button class="'+(restAuto?'toggle on':'toggle')+'" onclick="setRestAuto('+(!restAuto)+')"><span class="knob"></span></button></div>'+
+    '<p class="small muted" style="margin:6px 0 12px">'+(restAuto?'A rest countdown starts automatically each time you add a set. You can also start it yourself with the ⏱ Rest button.':'Start the rest timer yourself with the ⏱ Rest button while logging.')+'</p>'+
+    '<div class="row"><span class="small muted grow">Default rest</span>'+
+    '<button class="btn small" onclick="setRestTime('+(restT-15)+')">−15s</button>'+
+    '<span style="min-width:56px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums">'+Math.floor(restT/60)+':'+pad2(restT%60)+'</span>'+
+    '<button class="btn small" onclick="setRestTime('+(restT+15)+')">+15s</button></div></div>';
   // data
   h+='<div class="card"><h3>Your data</h3>'+
     '<p class="small muted" style="margin:0 0 12px">Everything lives on this device only — nothing is uploaded anywhere. Export a backup now and then.</p>'+
@@ -1219,6 +1472,20 @@ function askSexIfUnset(){
     '<button class="btn wide ghost" style="margin-top:4px" onclick="setRanks(false);markOnboarded();closeModal()">No thanks, hide ranks</button></div>');
 }
 function markOnboarded(){store.settings=store.settings||{};store.settings._onboarded=true;save();}
+/* first-run onboarding: welcome → import or start fresh → ranks */
+function startOnboarding(){
+  openModal('<h2>Welcome to Sett 💪</h2>'+
+    '<p class="small muted" style="margin-bottom:6px">A private workout log — everything stays on this device, nothing is uploaded.</p>'+
+    '<p class="small muted" style="margin-bottom:18px">Coming from RepCount or another app? Import your history to carry on where you left off. New to tracking? Start fresh — you can always import later from Settings.</p>'+
+    '<label class="btn primary wide" style="margin-bottom:10px">Import a RepCount CSV<input type="file" accept=".csv,text/csv" style="display:none" onchange="onboardImportCsv(this)"></label>'+
+    '<button class="btn wide ghost" onclick="onboardFresh()">Start fresh</button>');
+}
+function onboardImportCsv(input){
+  const f=input.files[0];if(!f)return;
+  f.text().then(t=>{const res=importCsv(t);toast(res.msg);render();
+    if(res.ok&&res.added)askSexIfUnset();else startOnboarding();});
+}
+function onboardFresh(){closeModal();askSexIfUnset();}
 function importBundled(){
   const res=importCsv(window.SETT_LOCAL_CSV);
   toast(res.msg);render();if(res.ok&&res.added)askSexIfUnset();
@@ -1273,6 +1540,15 @@ function wireInputs(){
         clearTimeout(wireInputs._t);wireInputs._t=setTimeout(()=>{const el2=document.querySelector('[data-act=exq]');const pos=el2.selectionStart;render();const el3=document.querySelector('[data-act=exq]');el3.focus();el3.setSelectionRange(pos,pos);},250);}
     });
   });
+  document.querySelectorAll('#main [data-rname]').forEach(el=>el.addEventListener('input',()=>{if(state.editRoutine)state.editRoutine.name=el.value;}));
+  document.querySelectorAll('#main [data-rx]').forEach(el=>el.addEventListener('input',()=>{
+    if(!state.editRoutine)return;
+    const ex=state.editRoutine.exercises[+el.dataset.rx];if(!ex)return;
+    const s=ex.sets[+el.dataset.rs];if(!s)return;
+    const f=el.dataset.rf;
+    s[f]=el.value===''?null:(f==='tw'?parseFloat(el.value):parseInt(el.value,10));
+  }));
+  document.querySelectorAll('#main .draghandle').forEach(h=>h.addEventListener('pointerdown',e=>startDrag(e,h)));
   document.querySelectorAll('#main [data-ex]').forEach(el=>el.onclick=()=>openExercise(el.dataset.ex));
   const csv=$('csvfile');if(csv)csv.onchange=()=>{
     const f=csv.files[0];if(!f)return;
@@ -1283,7 +1559,7 @@ function wireInputs(){
     f.text().then(t=>{
       try{const s=JSON.parse(t);
         if(!s||s.schema!==1||!Array.isArray(s.workouts))throw new Error('bad shape');
-        store=s;save();toast('Backup restored — '+store.workouts.length+' workouts');render();
+        store=s;normalizeStore();save();toast('Backup restored — '+store.workouts.length+' workouts');render();
       }catch(e){toast('That file is not a Sett backup.');}
     });
   };
@@ -1298,6 +1574,7 @@ migrateVisuals();
 applyTheme((store.settings&&store.settings.theme)||'ember');
 if(store.active)state.view='log';
 render();
+if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
 let swReg=null, swRefreshing=false, swManualCheck=false;
