@@ -125,6 +125,14 @@
     max-width:88vw; text-align:center;}
 
   textarea.howto{width:100%; min-height:90px; resize:vertical;}
+  .visual{background:#fff; border-radius:14px; overflow:hidden; margin:12px 0; text-align:center;}
+  .visual img{display:block; width:100%; max-width:440px; margin:0 auto;}
+  .thumb{width:52px; height:52px; border-radius:10px; background:#fff; object-fit:cover; flex:none;}
+  .musclegrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0;}
+  .musclegrid .l{font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em;}
+  .musclegrid .v{font-weight:700; text-transform:capitalize;}
+  ol.instructions{margin:0; padding-left:20px;}
+  ol.instructions li{margin:7px 0; color:var(--text); font-size:14px;}
   .banner{background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
     color:var(--accent); border-radius:12px; padding:10px 14px; font-size:13px; font-weight:600; margin:12px 0;}
   @media(prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important;}}
@@ -140,12 +148,14 @@
 <div id="overlay" onclick="if(event.target===this)closeModal()"><div class="sheet" id="sheet"></div></div>
 <div id="toast"></div>
 
+<script src="exercises.js" onerror="window.SETT_CATALOG=[];window.SETT_ALIAS={}"></script>
 <script src="data.local.js" onerror="window.SETT_LOCAL_CSV=null"></script>
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.1.0';
+const APP_VERSION='0.2.0';
 const CHANGELOG=[
+  {v:'0.2.0', date:'2026-07-05', desc:'Every exercise now has an animated visual showing how it is performed, with primary and secondary muscles, equipment and step-by-step instructions — including a browsable catalog of 873 exercises to add from. You can link any visual to your own custom exercises. More lifts are ranked (dumbbell lifts by weight, pull-ups/dips/push-ups by reps), stats gained total reps, reps per set and average duration, workouts can be reordered while logging, and your data can be exported as a RepCount-style CSV for Excel.'},
   {v:'0.1.0', date:'2026-07-05', desc:'First version. Log workouts with supersets and drop sets, browse your full history, exercise library with editable form notes, records and estimated 1RM per exercise, Liftoff-style strength ranks, stats, and import of RepCount CSV exports. Installable on iPhone as a home-screen app that works offline.'},
 ];
 const KEY='sett:store';
@@ -165,17 +175,35 @@ const TIERS=[
   {name:'Diamond',  color:'#6ab7ff'},
   {name:'Master',   color:'#b06af0'},
 ];
+/* Two kinds of standards:
+   type 'bw'   — thresholds are e1RM ÷ bodyweight ratios (dumbbell lifts: per hand)
+   type 'reps' — thresholds are max reps in one bodyweight set
+   Only lifts with published strength standards are ranked. Machine and cable
+   exercises are deliberately unranked: stack numbers aren't comparable
+   between gyms (different brands, pulleys and lever ratios). */
 const RANK_STANDARDS={
-  'Bench Press':            [0.50,0.75,1.00,1.50,2.00,2.30],
-  'Incline Bench Press':    [0.40,0.65,0.90,1.30,1.75,2.00],
-  'Close Grip Bench Press': [0.45,0.70,0.95,1.40,1.85,2.10],
-  'Squat':                  [0.75,1.25,1.50,2.25,2.75,3.15],
-  'Deadlift':               [1.00,1.50,2.00,2.50,3.00,3.45],
-  'Romanian Deadlift':      [0.80,1.20,1.60,2.10,2.60,3.00],
-  'Military Press':         [0.35,0.55,0.80,1.05,1.40,1.60],
-  'Barbell Row':            [0.50,0.75,1.00,1.50,1.75,2.00],
-  'Hip Thrust':             [0.85,1.35,1.90,2.60,3.30,3.80],
-  'EZ Bar Curl':            [0.25,0.40,0.60,0.85,1.15,1.30],
+  'Bench Press':            {t:'bw', s:[0.50,0.75,1.00,1.50,2.00,2.30]},
+  'Incline Bench Press':    {t:'bw', s:[0.40,0.65,0.90,1.30,1.75,2.00]},
+  'Close Grip Bench Press': {t:'bw', s:[0.45,0.70,0.95,1.40,1.85,2.10]},
+  'Squat':                  {t:'bw', s:[0.75,1.25,1.50,2.25,2.75,3.15]},
+  'Deadlift':               {t:'bw', s:[1.00,1.50,2.00,2.50,3.00,3.45]},
+  'Romanian Deadlift':      {t:'bw', s:[0.80,1.20,1.60,2.10,2.60,3.00]},
+  'Military Press':         {t:'bw', s:[0.35,0.55,0.80,1.05,1.40,1.60]},
+  'Barbell Row':            {t:'bw', s:[0.50,0.75,1.00,1.50,1.75,2.00]},
+  'Hip thrust':             {t:'bw', s:[0.85,1.35,1.90,2.60,3.30,3.80]},
+  'EZ Bar Curl':            {t:'bw', s:[0.25,0.40,0.60,0.85,1.15,1.30]},
+  'Dumbbell Press':         {t:'bw', s:[0.15,0.30,0.45,0.65,0.85,1.00]},
+  'Incline Dumbbell Press': {t:'bw', s:[0.13,0.27,0.42,0.60,0.80,0.95]},
+  'Shoulder Dumbbell Press':{t:'bw', s:[0.10,0.22,0.35,0.50,0.66,0.75]},
+  'Dumbbell Row':           {t:'bw', s:[0.20,0.40,0.60,0.80,1.05,1.20]},
+  'Dumbbell Bicep Curl':    {t:'bw', s:[0.06,0.12,0.21,0.32,0.44,0.50]},
+  'Seated Bicep Curl':      {t:'bw', s:[0.06,0.12,0.21,0.32,0.44,0.50]},
+  'Hammer Curl':            {t:'bw', s:[0.06,0.13,0.22,0.33,0.45,0.52]},
+  'Leg Press':              {t:'bw', s:[1.00,1.75,2.50,3.50,4.50,5.20]},
+  'Pull Up':                {t:'reps', s:[1,6,13,22,33,40]},
+  'Chin Up':                {t:'reps', s:[2,8,16,26,38,45]},
+  'Dips':                   {t:'reps', s:[4,12,22,35,50,60]},
+  'Push-ups':               {t:'reps', s:[10,25,45,70,100,120]},
 };
 
 /* ============================== helpers ============================== */
@@ -202,7 +230,28 @@ let store=null, firstRun=false;
 try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.schema===1)store=s;}}catch(e){console.warn('store load failed',e);}
 if(!store){store=freshStore();firstRun=true;}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){toast('Could not save — storage full?');console.error(e);}}
-function ensureEx(name,cat){if(!store.ex[name])store.ex[name]={cat:cat||'Other',howto:'',custom:false};else if(cat&&store.ex[name].cat==='Other')store.ex[name].cat=cat;return store.ex[name];}
+
+/* exercise catalog (exercises.js, generated from free-exercise-db, public domain) */
+const CATALOG=window.SETT_CATALOG||[];
+const CAT_BY_ID={};for(const c of CATALOG)CAT_BY_ID[c.i]=c;
+function autoVisual(name){
+  if(window.SETT_ALIAS&&window.SETT_ALIAS[name])return window.SETT_ALIAS[name];
+  const n=name.trim().toLowerCase();
+  for(const c of CATALOG)if(c.n.toLowerCase()===n)return c.i;
+  return null;
+}
+function ensureEx(name,cat){
+  if(!store.ex[name])store.ex[name]={cat:cat||'Other',howto:'',custom:false,vid:autoVisual(name)};
+  else if(cat&&store.ex[name].cat==='Other')store.ex[name].cat=cat;
+  return store.ex[name];
+}
+/* one-time backfill: link visuals for exercises saved before v0.2.0 */
+function migrateVisuals(){
+  let changed=false;
+  for(const [n,m] of Object.entries(store.ex))
+    if(m.vid===undefined){m.vid=autoVisual(n);changed=true;}
+  if(changed)save();
+}
 
 /* ============================== CSV import (RepCount export) ============================== */
 function parseCsv(text){
@@ -324,15 +373,23 @@ function latestBW(){for(const w of store.workouts)if(w.bw)return w.bw;return sto
 /* ============================== ranks ============================== */
 function rankFor(name){
   const std=RANK_STANDARDS[name];if(!std)return null;
-  const bw=latestBW();if(!bw)return {locked:'bw'};
-  const pr=prFor(name);if(pr.bestE1==null)return {locked:'data'};
-  const ratio=pr.bestE1/bw;
-  let tier=0;while(tier<std.length&&ratio>=std[tier])tier++;
-  // progress within current tier toward the next threshold
-  const lo=tier===0?0:std[tier-1];
-  const hi=tier<std.length?std[tier]:null;
-  const prog=hi==null?1:Math.min(1,Math.max(0,(ratio-lo)/(hi-lo)));
-  return {tier,ratio,prog,e1:pr.bestE1,bw,next:hi};
+  let value,unit,bw=null;
+  if(std.t==='bw'){
+    bw=latestBW();if(!bw)return {locked:'bw'};
+    const pr=prFor(name);if(pr.bestE1==null||pr.bestE1<=0)return {locked:'data'};
+    value=pr.bestE1/bw;unit='ratio';
+  }else{
+    let best=null;
+    for(const {s} of allSetsOf(name))if((s.w==null||s.w===0)&&s.r&&(best==null||s.r>best))best=s.r;
+    if(best==null)return {locked:'data'};
+    value=best;unit='reps';
+  }
+  const s=std.s;
+  let tier=0;while(tier<s.length&&value>=s[tier])tier++;
+  const lo=tier===0?0:s[tier-1];
+  const hi=tier<s.length?s[tier]:null;
+  const prog=hi==null?1:Math.min(1,Math.max(0,(value-lo)/(hi-lo)));
+  return {tier,value,unit,prog,bw,next:hi,e1:unit==='ratio'?value*bw:null};
 }
 function overallRank(){
   const parts=[];
@@ -429,6 +486,8 @@ function renderActive(){
       '<div class="grow"><span style="font-weight:800">'+esc(e.name)+'</span> '+
       (e.ss!=null?'<span class="ssbadge" style="color:'+ssColors[e.ss%5]+';background:'+ssColors[e.ss%5]+'22">SUPERSET '+String.fromCharCode(65+e.ss%26)+'</span>':'')+
       '<div class="tiny muted">'+esc(meta.cat)+lastTimeHint(e.name)+'</div></div>'+
+      (ei>0?'<button class="iconbtn" title="Move up" onclick="moveEntry('+ei+',-1)">↑</button>':'')+
+      (ei<a.entries.length-1?'<button class="iconbtn" title="Move down" onclick="moveEntry('+ei+',1)">↓</button>':'')+
       (ei>0?'<button class="iconbtn" title="Superset with previous" onclick="toggleSS('+ei+')">⛓</button>':'')+
       '<button class="iconbtn" onclick="removeEntry('+ei+')">✕</button></div>';
     h+='<div class="setgrid"><span class="sethead">Set</span><span class="sethead">kg</span><span class="sethead">reps</span><span class="sethead">drop</span><span></span>';
@@ -463,6 +522,8 @@ function addSet(ei){const e=store.active.entries[ei];const p=e.sets[e.sets.lengt
 function removeSet(ei,si){store.active.entries[ei].sets.splice(si,1);save();render();}
 function toggleDrop(ei,si){const s=store.active.entries[ei].sets[si];s.drop=!s.drop;save();render();}
 function removeEntry(ei){store.active.entries.splice(ei,1);save();render();}
+function moveEntry(ei,dir){const es=store.active.entries;const j=ei+dir;if(j<0||j>=es.length)return;
+  [es[ei],es[j]]=[es[j],es[ei]];save();render();}
 function toggleSS(ei){
   const es=store.active.entries,e=es[ei],prev=es[ei-1];if(!prev)return;
   if(e.ss!=null&&e.ss===prev.ss){e.ss=null;}
@@ -528,7 +589,7 @@ function createExercise(name){
 }
 function saveNewExercise(){
   const name=$('newname').value.trim();if(!name)return;
-  store.ex[name]={cat:$('newcat').value,howto:$('newhow').value.trim(),custom:true};
+  store.ex[name]={cat:$('newcat').value,howto:$('newhow').value.trim(),custom:true,vid:autoVisual(name)};
   if(store.active)store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});
   save();closeModal();render();
 }
@@ -597,30 +658,58 @@ function renderExercises(){
     shown++;
     const pr=prFor(n);const rk=rankFor(n);
     h+='<div class="listrow" data-ex="'+esc(n)+'">'+
-      '<span class="dot" style="width:9px;height:9px;border-radius:50%;background:'+(CAT_COLORS[m.cat]||CAT_COLORS.Other)+';flex:none"></span>'+
+      (m.vid?'<img class="thumb" loading="lazy" src="exercises/'+esc(m.vid)+'/0.jpg" alt="">':
+        '<span class="thumb" style="background:var(--card2);display:inline-flex;align-items:center;justify-content:center;color:'+(CAT_COLORS[m.cat]||CAT_COLORS.Other)+';font-weight:800">'+esc(n[0])+'</span>')+
       '<div class="grow"><div style="font-weight:600">'+esc(n)+'</div>'+
       '<div class="tiny muted">'+(pr.sessions?pr.sessions+' sessions'+(pr.bestE1?' · best e1RM '+fmtW(pr.bestE1)+' kg':''):'never logged')+'</div></div>'+
       (rk&&!rk.locked?rankBadge(rk.tier):'')+'</div>';
   }
   h+=shown?'':'<p class="muted small" style="padding:12px 0">Nothing matches.</p>';
-  h+='</div><button class="btn wide" onclick="createExercise(\'\')">＋ New exercise</button>';
+  h+='</div><div class="row"><button class="btn grow" onclick="openCatalog()">Browse catalog</button>'+
+     '<button class="btn grow" onclick="createExercise(\'\')">＋ New exercise</button></div>';
   return h;
+}
+let visTimer=null;
+function startVisual(vid){
+  clearInterval(visTimer);
+  let f=0;
+  visTimer=setInterval(()=>{
+    const img=document.querySelector('#visual img');
+    if(!img){clearInterval(visTimer);return;}
+    f=1-f;img.src='exercises/'+vid+'/'+f+'.jpg';
+  },900);
+}
+function rankCardHtml(rk){
+  const t=TIERS[rk.tier];const next=rk.tier<TIERS.length-1?TIERS[rk.tier+1]:null;
+  const now=rk.unit==='reps'?rk.value+' reps best':fmtW(rk.e1)+' kg e1RM · '+rk.value.toFixed(2)+'× BW';
+  const goal=rk.unit==='reps'?rk.next+' reps':rk.next?rk.next.toFixed(2)+'× BW ≈ '+fmtW(rk.next*rk.bw)+' kg':'';
+  return '<div class="card"><div class="row">'+rankBadge(rk.tier)+
+    '<span class="small muted grow right">'+now+'</span></div>'+
+    '<div class="rankbar"><i style="width:'+Math.round(rk.prog*100)+'%;background:'+t.color+'"></i></div>'+
+    (next?'<div class="tiny muted" style="margin-top:6px">'+Math.round(rk.prog*100)+'% of the way to '+next.name+' ('+goal+')</div>':'<div class="tiny muted" style="margin-top:6px">Top tier reached. Monster.</div>')+
+    '</div>';
 }
 function openExercise(name){
   const m=store.ex[name];if(!m)return;
   const pr=prFor(name);const rk=rankFor(name);
   const sessions=exSessions(name);
+  const cat=m.vid?CAT_BY_ID[m.vid]:null;
   let h='<h2>'+esc(name)+'</h2><div class="row" style="margin:8px 0 4px">'+catChip(m.cat)+(m.custom?'<span class="chip">custom</span>':'')+'</div>';
+  if(cat){
+    h+='<div class="visual" id="visual"><img src="exercises/'+esc(m.vid)+'/0.jpg" alt="How to perform '+esc(name)+'"></div>'+
+      '<div class="musclegrid">'+
+      '<div><div class="l">Primary muscles</div><div class="v">'+esc(cat.p.join(', ')||'—')+'</div></div>'+
+      '<div><div class="l">Equipment</div><div class="v">'+esc(cat.q||'—')+'</div></div>'+
+      (cat.s.length?'<div style="grid-column:1/-1"><div class="l">Secondary muscles</div><div class="v">'+esc(cat.s.join(', '))+'</div></div>':'')+
+      '</div>';
+  }else{
+    h+='<div class="banner">No visual linked yet — pick one from the catalog below.</div>';
+  }
+  h+='<div class="row" style="margin:0 0 4px"><button class="btn ghost small" onclick="openVisualPicker(\''+esc(name)+'\')">'+(cat?'Change visual':'Choose visual from catalog')+'</button>'+
+     (cat?'<button class="btn ghost small" onclick="unlinkVisual(\''+esc(name)+'\')">Unlink</button>':'')+'</div>';
   if(rk){
     if(rk.locked==='bw')h+='<div class="banner">Log your bodyweight in a workout to unlock ranks.</div>';
-    else if(rk.locked!=='data'){
-      const t=TIERS[rk.tier];const next=rk.tier<TIERS.length-1?TIERS[rk.tier+1]:null;
-      h+='<div class="card"><div class="row">'+rankBadge(rk.tier)+
-        '<span class="small muted grow right">'+fmtW(rk.e1)+' kg e1RM · '+rk.ratio.toFixed(2)+'× BW</span></div>'+
-        '<div class="rankbar"><i style="width:'+Math.round(rk.prog*100)+'%;background:'+t.color+'"></i></div>'+
-        (next?'<div class="tiny muted" style="margin-top:6px">'+Math.round(rk.prog*100)+'% of the way to '+next.name+' ('+rk.next.toFixed(2)+'× BW ≈ '+fmtW(rk.next*rk.bw)+' kg)</div>':'<div class="tiny muted" style="margin-top:6px">Top tier reached. Monster.</div>')+
-        '</div>';
-    }
+    else if(rk.locked!=='data')h+=rankCardHtml(rk);
   }
   h+='<div class="statgrid" style="margin:12px 0">'+
     '<div class="stat"><div class="v">'+(pr.maxW!=null?fmtW(pr.maxW):'—')+'</div><div class="l">best kg'+(pr.maxWr?' ×'+pr.maxWr:'')+'</div></div>'+
@@ -628,7 +717,9 @@ function openExercise(name){
     '<div class="stat"><div class="v">'+pr.total+'</div><div class="l">sets total</div></div></div>';
   const pts=sessions.slice(0,20).reverse().map(s=>s.best).filter(v=>v!=null);
   if(pts.length>1)h+='<div class="card"><h3>e1RM trend</h3>'+sparkSvg(pts,'spark')+'</div>';
-  h+='<div class="card"><h3>How to perform</h3>'+
+  if(cat&&cat.t&&cat.t.length)h+='<div class="card"><h3>Instructions</h3><ol class="instructions">'+
+    cat.t.map(step=>'<li>'+esc(step)+'</li>').join('')+'</ol></div>';
+  h+='<div class="card"><h3>Your own notes</h3>'+
     '<textarea class="howto" id="howto" placeholder="Your own cues: setup, grip, seat height, tempo…">'+esc(m.howto)+'</textarea>'+
     '<div class="row" style="margin-top:10px"><select id="excat">'+CATS.map(c=>'<option'+(c===m.cat?' selected':'')+'>'+c+'</option>').join('')+'</select>'+
     '<button class="btn primary grow" onclick="saveExercise(\''+esc(name)+'\')">Save</button></div></div>';
@@ -642,6 +733,51 @@ function openExercise(name){
     h+='</div>';
   }
   openModal(h);
+  if(cat)startVisual(m.vid);
+}
+function unlinkVisual(name){store.ex[name].vid=null;save();openExercise(name);}
+/* visual picker: link any catalog visual to any exercise (incl. custom ones) */
+function openVisualPicker(name){
+  openModal('<h2>Choose a visual</h2><p class="tiny muted">for '+esc(name)+'</p>'+
+    '<input id="vpq" placeholder="Search 873 exercises…" style="width:100%;margin:10px 0" oninput="renderVisualList(\''+esc(name)+'\')">'+
+    '<div id="vplist"></div>');
+  renderVisualList(name);$('vpq').focus();
+}
+function renderVisualList(name){
+  const q=($('vpq').value||'').trim().toLowerCase();
+  const hits=CATALOG.filter(c=>!q||c.n.toLowerCase().includes(q)).slice(0,30);
+  $('vplist').innerHTML=hits.map(c=>
+    '<div class="listrow" data-vpick="'+esc(c.i)+'">'+
+    '<img class="thumb" loading="lazy" src="exercises/'+esc(c.i)+'/0.jpg" alt="">'+
+    '<div class="grow"><div style="font-weight:600">'+esc(c.n)+'</div>'+
+    '<div class="tiny muted">'+esc(c.p.join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div></div>').join('')
+    ||'<p class="muted small">No match.</p>';
+  $('vplist').querySelectorAll('[data-vpick]').forEach(el=>el.onclick=()=>{
+    store.ex[name].vid=el.dataset.vpick;save();openExercise(name);toast('Visual linked');
+  });
+}
+/* catalog browser: add brand-new exercises from the 873-exercise catalog */
+function openCatalog(){
+  openModal('<h2>Exercise catalog</h2><p class="tiny muted">873 exercises with visuals — tap one to add it to your library.</p>'+
+    '<input id="cbq" placeholder="Search…" style="width:100%;margin:10px 0" oninput="renderCatalogList()">'+
+    '<div id="cblist"></div>');
+  renderCatalogList();$('cbq').focus();
+}
+function renderCatalogList(){
+  const q=($('cbq').value||'').trim().toLowerCase();
+  const hits=CATALOG.filter(c=>!q||c.n.toLowerCase().includes(q)||c.p.some(p=>p.includes(q))).slice(0,30);
+  $('cblist').innerHTML=hits.map(c=>
+    '<div class="listrow" data-cadd="'+esc(c.i)+'">'+
+    '<img class="thumb" loading="lazy" src="exercises/'+esc(c.i)+'/0.jpg" alt="">'+
+    '<div class="grow"><div style="font-weight:600">'+esc(c.n)+'</div>'+
+    '<div class="tiny muted">'+esc(c.p.join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div>'+
+    (store.ex[c.n]?'<span class="chip">in library</span>':'')+'</div>').join('')
+    ||'<p class="muted small">No match.</p>';
+  $('cblist').querySelectorAll('[data-cadd]').forEach(el=>el.onclick=()=>{
+    const c=CAT_BY_ID[el.dataset.cadd];
+    if(!store.ex[c.n])store.ex[c.n]={cat:c.c,howto:'',custom:false,vid:c.i};
+    save();openExercise(c.n);toast('Added to your library');
+  });
 }
 function saveExercise(name){
   const m=store.ex[name];m.howto=$('howto').value.trim();m.cat=$('excat').value;
@@ -661,8 +797,11 @@ function sparkSvg(pts,cls){
 function renderStats(){
   if(!store.workouts.length)return '<div class="card hero"><div class="big">No data yet</div><p class="muted small">Stats appear after your first workout.</p></div>';
   const nw=store.workouts.length;
-  let nsets=0,vol=0;
-  for(const w of store.workouts)for(const e of w.entries)for(const s of e.sets){nsets++;vol+=setVol(s);}
+  let nsets=0,vol=0,nreps=0,durMin=0,durN=0;
+  for(const w of store.workouts){
+    if(w.start&&w.end){const m=(toDate(w.end)-toDate(w.start))/60000;if(m>0&&m<360){durMin+=m;durN++;}}
+    for(const e of w.entries)for(const s of e.sets){nsets++;vol+=setVol(s);nreps+=s.r||0;}
+  }
   let h='';
   // overall rank
   const ov=overallRank();
@@ -677,7 +816,10 @@ function renderStats(){
   h+='<div class="statgrid" style="margin:12px 0">'+
     '<div class="stat"><div class="v">'+nw+'</div><div class="l">workouts</div></div>'+
     '<div class="stat"><div class="v">'+fmtNum(nsets)+'</div><div class="l">sets</div></div>'+
-    '<div class="stat"><div class="v">'+(vol>=1e6?(vol/1e6).toFixed(1)+' M':fmtNum(vol))+'</div><div class="l">kg lifted</div></div></div>';
+    '<div class="stat"><div class="v">'+(vol>=1e6?(vol/1e6).toFixed(1)+' M':fmtNum(vol))+'</div><div class="l">kg lifted</div></div>'+
+    '<div class="stat"><div class="v">'+fmtNum(nreps)+'</div><div class="l">total reps</div></div>'+
+    '<div class="stat"><div class="v">'+(nsets?(nreps/nsets).toFixed(1):'—')+'</div><div class="l">reps per set</div></div>'+
+    '<div class="stat"><div class="v">'+(durN?Math.round(durMin/durN)+' min':'—')+'</div><div class="l">avg duration</div></div></div>';
   // lifts ranks
   const ranked=Object.keys(RANK_STANDARDS).map(n=>({n,r:rankFor(n)})).filter(x=>x.r&&!x.r.locked)
     .sort((a,b)=>(b.r.tier+b.r.prog)-(a.r.tier+a.r.prog));
@@ -687,10 +829,10 @@ function renderStats(){
       const t=TIERS[r.tier];
       h+='<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div class="row">'+
         '<div class="grow" style="font-weight:600" onclick="openExercise(\''+esc(n)+'\')">'+esc(n)+'</div>'+
-        '<span class="tiny muted">'+r.ratio.toFixed(2)+'× BW</span>'+rankBadge(r.tier)+'</div>'+
+        '<span class="tiny muted">'+(r.unit==='reps'?r.value+' reps':r.value.toFixed(2)+'× BW')+'</span>'+rankBadge(r.tier)+'</div>'+
         '<div class="rankbar"><i style="width:'+Math.round(r.prog*100)+'%;background:'+t.color+'"></i></div></div>';
     }
-    h+='</div>';
+    h+='<p class="tiny muted" style="margin:10px 0 0">Only lifts with published strength standards are ranked — barbell and dumbbell lifts by weight relative to bodyweight, pull-ups/dips/push-ups by reps. Machine and cable exercises stay unranked because weight stacks differ between gym equipment brands.</p></div>';
   }
   // workouts per month
   h+='<div class="card"><h3>Workouts per month</h3>'+monthsChart()+'</div>';
@@ -739,6 +881,7 @@ function renderMore(){
     '<label class="btn wide" style="margin-bottom:10px">Import RepCount CSV<input type="file" accept=".csv,text/csv" style="display:none" id="csvfile"></label>'+
     (window.SETT_LOCAL_CSV?'<button class="btn wide" style="margin-bottom:10px" onclick="importBundled()">Import bundled local CSV</button>':'')+
     '<button class="btn wide" style="margin-bottom:10px" onclick="exportJson()">Export backup (JSON)</button>'+
+    '<button class="btn wide" style="margin-bottom:10px" onclick="exportCsv()">Export CSV (Excel / RepCount format)</button>'+
     '<label class="btn wide">Restore backup<input type="file" accept=".json,application/json" style="display:none" id="jsonfile"></label></div>';
   h+='<div class="card"><h3>On iPhone</h3><p class="small muted" style="margin:0">Open this page in Safari, tap Share, then <b>Add to Home Screen</b>. Sett then runs fullscreen, works offline, and keeps your data on the phone. When online it picks up new versions by itself.</p></div>';
   h+='<div class="card"><h3>Changelog</h3>';
@@ -758,6 +901,18 @@ function exportJson(){
   a.download='sett-backup-'+nowStr().slice(0,10)+'.json';a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
+function exportCsv(){
+  const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  let rows=['Workout Start;Workout End;Exercise;Weight;Reps;Notes;Kcal;Distance;Duration;Category;Name;Bodyweight'];
+  for(const w of [...store.workouts].sort((a,b)=>a.start<b.start?1:-1))
+    for(const e of w.entries)for(const s of e.sets)
+      rows.push([w.start,w.end,q(e.name),s.w??'',s.r??'',q(s.note||e.note||''),'',s.dist??'',s.dur??'',
+        (store.ex[e.name]||{}).cat||'Other',q(w.routine||''),w.bw??''].join(';'));
+  const blob=new Blob(['﻿'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='sett-export-'+nowStr().slice(0,10)+'.csv';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
 function wipeAll(){
   if(!confirm('Delete ALL workouts and exercises stored on this device? This cannot be undone.'))return;
   if(!confirm('Really sure? Export a backup first if in doubt.'))return;
@@ -766,7 +921,7 @@ function wipeAll(){
 
 /* ============================== modal & wiring ============================== */
 function openModal(html){$('sheet').innerHTML='<div class="grab"></div>'+html;$('overlay').classList.add('show');document.body.style.overflow='hidden';}
-function closeModal(){$('overlay').classList.remove('show');document.body.style.overflow='';}
+function closeModal(){$('overlay').classList.remove('show');document.body.style.overflow='';clearInterval(visTimer);}
 function wireInputs(){
   document.querySelectorAll('#main [data-ei]').forEach(el=>{
     el.addEventListener('input',()=>{
@@ -807,6 +962,7 @@ if(firstRun){
   else seedDemo();
   save();
 }
+migrateVisuals();
 if(store.active)state.view='log';
 render();
 
