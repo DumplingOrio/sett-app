@@ -39,6 +39,9 @@
   .wordmark{font-weight:800; font-size:20px; letter-spacing:-.03em;}
   .wordmark span{color:var(--accent);}
   .topbar .vtitle{margin-left:auto; color:var(--muted); font-size:14px; font-weight:600;}
+  .gearbtn{margin-left:14px; color:var(--muted); width:30px; height:30px; display:flex; align-items:center; justify-content:center;}
+  .gearbtn svg{width:22px; height:22px;}
+  .gearbtn.on{color:var(--accent);}
 
   main{max-width:640px; margin:0 auto; padding:6px 16px 24px;}
 
@@ -136,6 +139,12 @@
   .seg button{padding:7px 13px; border-radius:99px; background:var(--card2); border:1px solid var(--line);
     font-size:13px; font-weight:700; color:var(--muted);}
   .seg button.on{background:var(--accent-soft); color:var(--accent); border-color:transparent;}
+  .toggle{width:50px; height:30px; border-radius:99px; background:var(--card2); border:1px solid var(--line);
+    position:relative; flex:none; transition:background .15s;}
+  .toggle .knob{position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%;
+    background:var(--faint); transition:transform .15s, background .15s;}
+  .toggle.on{background:var(--accent-soft); border-color:var(--accent);}
+  .toggle.on .knob{transform:translateX(20px); background:var(--accent);}
 
   /* modal */
   #overlay{position:fixed; inset:0; z-index:50; display:none; background:rgba(5,6,8,.72);
@@ -178,6 +187,9 @@
 <header class="topbar">
   <div class="wordmark">Sett<span>.</span></div>
   <div class="vtitle" id="vtitle"></div>
+  <button class="gearbtn" id="gear" onclick="setView('settings')" aria-label="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg>
+  </button>
 </header>
 <main id="main"></main>
 <nav class="tabbar" id="tabbar"></nav>
@@ -189,8 +201,9 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.4.0';
+const APP_VERSION='0.5.0';
 const CHANGELOG=[
+  {v:'0.5.0', date:'2026-07-05', desc:'Reorganised: Log is now your workout history, and Routines is its own tab with your own routines plus popular splits like Push/Pull/Legs, Upper/Lower and Full Body. A new Settings screen (gear, top right) holds themes, strength ranks, data import/export and updates. Strength ranks can be turned off entirely (asked once after your first import). The app now updates itself when you open it, with a manual "Check for updates" button too. Fresh installs start empty — no demo data to clear.'},
   {v:'0.4.0', date:'2026-07-05', desc:'Easier to use: sheets now have a clear close button, the drop-set and superset controls are labelled and obvious (and tap again to undo a misclick), and the notes field sits on its own line so nothing is cut off. New colour themes live under Appearance in More. Strength ranks can now use male, female or unisex standards — pick yours in More or right after importing a CSV — so the app works for more than one person. The changelog is tucked away so it no longer fills the screen.'},
   {v:'0.3.0', date:'2026-07-05', desc:'Statistics reworked RepCount-style: tap any overall stat (duration, volume, sets, reps, reps per set, bodyweight, workouts) to see its trend over time. Every exercise gained quick buttons for History, Charts (pick a metric and time range) and Personal Records including rep-max records. Past workouts can now be edited — sets, exercises, and start/end times. History shows calendar-style date badges, and narrow-screen layout issues on the log view were fixed.'},
   {v:'0.2.0', date:'2026-07-05', desc:'Every exercise now has an animated visual showing how it is performed, with primary and secondary muscles, equipment and step-by-step instructions — including a browsable catalog of 873 exercises to add from. You can link any visual to your own custom exercises. More lifts are ranked (dumbbell lifts by weight, pull-ups/dips/push-ups by reps), stats gained total reps, reps per set and average duration, workouts can be reordered while logging, and your data can be exported as a RepCount-style CSV for Excel.'},
@@ -386,44 +399,23 @@ function importCsv(text){
     if(existing.has(w.start+'|'+w.end)){skipped++;continue;}
     store.workouts.push(w);added++;
   }
-  if(added&&store.demo){
-    store.workouts=store.workouts.filter(w=>!String(w.id).startsWith('demo'));
-    for(const n of Object.keys(store.ex))if(store.ex[n]._demo)delete store.ex[n]._demo;
-    store.demo=false;
-  }
   store.workouts.sort((a,b)=>a.start<b.start?1:-1);
   save();
   return {ok:true,added,skipped,sets,msg:'Imported '+added+' workouts ('+sets+' sets)'+(skipped?', skipped '+skipped+' already present':'')+'.'};
 }
 
-/* ============================== demo data ============================== */
-function seedDemo(){
-  store.demo=true;
-  const d=n=>{const t=new Date(Date.now()-n*86400000);return t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate());};
-  const mk=(day,t1,t2,routine,bw,entries)=>({id:'demo'+day+t1.replace(':',''),start:day+' '+t1,end:day+' '+t2,routine,bw,entries});
-  ensureEx('Bench Press','Chest').howto='Shoulder blades pinned back and down, slight arch, feet planted. Bar to lower chest, press up and slightly back.';
-  ensureEx('Pulldowns','Back').howto='Lean back a touch, pull the bar to the collarbone, elbows down and in. Control the way up.';
-  ensureEx('Squat','Legs');ensureEx('Romanian Deadlift','Legs');ensureEx('Cable Lateral Raise','Shoulders');
-  ensureEx('EZ Bar Curl','Biceps');ensureEx('Pushdowns','Triceps');ensureEx('Deadlift','Back');
-  for(const n of Object.keys(store.ex))store.ex[n]._demo=true;
-  store.workouts=[
-    mk(d(2),'17:05','18:11','Upper (demo)',76,[
-      {name:'Bench Press',ss:null,note:'',sets:[{w:60,r:10},{w:80,r:8},{w:85,r:6},{w:85,r:5,drop:true}]},
-      {name:'Pulldowns',ss:1,note:'',sets:[{w:59,r:10},{w:63.5,r:8},{w:68,r:6}]},
-      {name:'Cable Lateral Raise',ss:1,note:'',sets:[{w:9,r:12},{w:11,r:10},{w:11,r:9}]},
-      {name:'EZ Bar Curl',ss:null,note:'',sets:[{w:25,r:10},{w:30,r:8},{w:30,r:7}]},
-    ]),
-    mk(d(5),'16:40','17:52','Legs (demo)',76,[
-      {name:'Squat',ss:null,note:'',sets:[{w:60,r:8},{w:80,r:6},{w:90,r:5}]},
-      {name:'Romanian Deadlift',ss:null,note:'',sets:[{w:70,r:10},{w:80,r:8},{w:80,r:8}]},
-    ]),
-    mk(d(8),'17:15','18:20','Pull (demo)',75.5,[
-      {name:'Deadlift',ss:null,note:'',sets:[{w:100,r:5},{w:120,r:3},{w:130,r:1}]},
-      {name:'Pulldowns',ss:null,note:'',sets:[{w:59,r:10},{w:63.5,r:8}]},
-      {name:'Pushdowns',ss:null,note:'',sets:[{w:25,r:12},{w:30,r:10}]},
-    ]),
-  ].map(w=>{w.entries.forEach(e=>e.sets.forEach(s=>{s.dur=null;s.dist=null;s.note=s.note||'';s.drop=!!s.drop;}));return w;});
-}
+/* Popular routine templates (public strength-training splits). Starting one
+   creates the exercises with empty sets; names are chosen to resolve to
+   catalog visuals via autoVisual(). */
+const POPULAR_ROUTINES=[
+  {name:'Push (PPL)', ex:['Bench Press','Incline Dumbbell Press','Shoulder Dumbbell Press','Cable Lateral Raise','Pushdowns','Overhead Tricep Extensions']},
+  {name:'Pull (PPL)', ex:['Deadlift','Pull Up','Pulldowns','Cable Row','Seated Face Pull','Dumbbell Bicep Curl','Hammer Curl']},
+  {name:'Legs (PPL)', ex:['Squat','Romanian Deadlift','Leg Press','Leg Extensions','Leg Curls','Seated Calf Raises']},
+  {name:'Upper', ex:['Bench Press','Barbell Row','Shoulder Dumbbell Press','Pulldowns','Dumbbell Bicep Curl','Triceps Extensions']},
+  {name:'Lower', ex:['Squat','Romanian Deadlift','Leg Press','Leg Extensions','Leg Curls','Seated Calf Raises']},
+  {name:'Full Body', ex:['Squat','Bench Press','Barbell Row','Shoulder Dumbbell Press','EZ Bar Curl','Pushdowns']},
+  {name:'Beginner Full Body', ex:['Goblet squat','Push-ups','Pulldowns','Dumbbell Press','Plank']},
+];
 
 /* ============================== derived stats ============================== */
 function allSetsOf(name,exclActive){
@@ -491,20 +483,23 @@ function rankBadge(tier,extra){
 
 /* ============================== state & render ============================== */
 const state={view:'log', exQuery:'', exCat:'All'};
-const VIEWS={log:'Log', history:'History', exercises:'Exercises', stats:'Stats', more:'More'};
+const NAV=['log','routines','exercises','stats','more'];
+const TITLES={log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', more:'More', settings:'Settings'};
+const showRanks=()=>!(store.settings&&store.settings.showRanks===false);
 const ICONS={
-  log:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M4 9v6M17.5 6.5v11M20 9v6M6.5 12h11"/></svg>',
-  history:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>',
+  log:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>',
+  routines:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M4 9v6M17.5 6.5v11M20 9v6M6.5 12h11"/></svg>',
   exercises:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>',
   stats:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
   more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
 };
 function setView(v){state.view=v;render();window.scrollTo(0,0);}
 function render(){
-  $('vtitle').textContent=VIEWS[state.view];
-  $('tabbar').innerHTML=Object.keys(VIEWS).map(v=>
-    '<button class="tab'+(state.view===v?' on':'')+'" onclick="setView(\''+v+'\')">'+ICONS[v]+'<span>'+VIEWS[v]+'</span></button>').join('');
-  const fn={log:renderLog,history:renderHistory,exercises:renderExercises,stats:renderStats,more:renderMore}[state.view];
+  $('vtitle').textContent=TITLES[state.view]||'';
+  $('gear').classList.toggle('on',state.view==='settings');
+  $('tabbar').innerHTML=NAV.map(v=>
+    '<button class="tab'+(state.view===v?' on':'')+'" onclick="setView(\''+v+'\')">'+ICONS[v]+'<span>'+TITLES[v]+'</span></button>').join('');
+  const fn={log:renderLog,routines:renderRoutines,exercises:renderExercises,stats:renderStats,more:renderMore,settings:renderSettings}[state.view]||renderLog;
   $('main').innerHTML=fn();
   wireInputs();
 }
@@ -520,23 +515,65 @@ function templates(){
   }
   return [...seen.values()].slice(0,8);
 }
+/* LOG = history of past workouts (active workout takes over when in progress) */
 function renderLog(){
   if(store.active)return renderActive();
-  let h='';
-  if(store.demo)h+='<div class="banner">Showing demo data — import your RepCount CSV under <b>More</b> to make Sett yours.</div>';
-  h+='<div class="card hero"><div class="big">Ready to lift?</div>'+
-     '<p class="muted small" style="margin:6px 0 18px">'+weekSummary()+'</p>'+
-     '<button class="btn primary wide" onclick="startWorkout()">Start empty workout</button></div>';
+  let h='<button class="btn primary wide" style="margin:4px 0 6px" onclick="startWorkout()">＋ Start empty workout</button>';
+  if(!store.workouts.length)
+    return h+'<div class="card hero"><div class="big">No workouts yet</div>'+
+      '<p class="muted small" style="margin:6px 0 0">Start one above, pick a routine under <b>Routines</b>, or import a RepCount CSV in <b>Settings</b>.</p></div>';
+  h+='<p class="tiny muted" style="margin:2px 4px 0">'+weekSummary()+'</p>';
+  return h+historyList();
+}
+function historyList(){
+  const perMonth={};
+  for(const w of store.workouts)perMonth[monthKey(w.start)]=(perMonth[monthKey(w.start)]||0)+1;
+  let h='',curMonth='';
+  for(const w of store.workouts){
+    const mk=monthKey(w.start);
+    if(mk!==curMonth){if(curMonth)h+='</div>';curMonth=mk;
+      h+='<div class="row" style="margin:18px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">'+fmtMonth(w.start)+'</h3>'+
+         '<span class="tiny muted">'+perMonth[mk]+' workout'+(perMonth[mk]>1?'s':'')+'</span></div><div class="card" style="padding:4px 14px">';}
+    const nsets=w.entries.reduce((t,e)=>t+e.sets.length,0);
+    const vol=w.entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+setVol(s),0),0);
+    h+='<div class="listrow" onclick="openWorkout(\''+esc(w.id)+'\')">'+dateBadge(w.start)+
+      '<div class="grow"><div style="font-weight:700">'+esc(w.routine||'Workout')+'</div>'+
+      '<div class="tiny muted">'+w.entries.length+' exercises · '+nsets+' sets · '+fmtDur(w.start,w.end)+'</div></div>'+
+      '<div class="right small"><div style="font-weight:700">'+fmtNum(vol)+' kg</div></div></div>';
+  }
+  if(curMonth)h+='</div>';
+  return h;
+}
+/* ROUTINES = start a workout: empty, from your own history, or a popular split */
+function renderRoutines(){
+  let h='<button class="btn primary wide" style="margin:4px 0 6px" onclick="startWorkout()">＋ Start empty workout</button>';
   const tpl=templates();
   if(tpl.length){
-    h+='<div class="card"><h3>Start from a routine</h3>';
+    h+='<div class="row" style="margin:16px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">Your routines</h3>'+
+       '<span class="tiny muted">from your history</span></div><div class="card" style="padding:4px 14px">';
     for(const t of tpl)h+='<div class="listrow" onclick="startFromTemplate(\''+esc(t.id)+'\')">'+
       '<div class="grow"><div style="font-weight:700">'+esc(t.name)+'</div>'+
       '<div class="tiny muted">'+t.count+' exercises · last '+fmtDay(t.last)+'</div></div>'+
       '<div class="muted">›</div></div>';
     h+='</div>';
   }
+  h+='<div class="row" style="margin:16px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">Popular routines</h3>'+
+     '<span class="tiny muted">common splits</span></div><div class="card" style="padding:4px 14px">';
+  POPULAR_ROUTINES.forEach((r,i)=>{
+    h+='<div class="listrow" onclick="startPopular('+i+')">'+
+      '<div class="grow"><div style="font-weight:700">'+esc(r.name)+'</div>'+
+      '<div class="tiny muted">'+r.ex.length+' exercises · '+esc(r.ex.slice(0,3).join(', '))+'…</div></div>'+
+      '<div class="muted">›</div></div>';
+  });
+  h+='</div><p class="tiny muted" style="margin:8px 4px">Starting a routine creates the exercises with empty sets — fill in your weights as you go.</p>';
   return h;
+}
+function startPopular(i){
+  const r=POPULAR_ROUTINES[i];if(!r)return;
+  for(const n of r.ex)ensureEx(n);
+  store.active={start:nowStr(),routine:r.name,bw:latestBW(),
+    entries:r.ex.map(n=>({name:n,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]}))};
+  save();setView('log');toast('Started “'+r.name+'”');
 }
 function weekSummary(){
   const now=new Date();const day=(now.getDay()+6)%7; // Monday start
@@ -544,13 +581,13 @@ function weekSummary(){
   let n=0;for(const w of store.workouts){if(toDate(w.start)>=mon)n++;else break;}
   return n===0?'No workouts yet this week.':n+' workout'+(n>1?'s':'')+' this week.';
 }
-function startWorkout(){store.active={start:nowStr(),routine:'',bw:latestBW(),entries:[]};save();render();}
+function startWorkout(){store.active={start:nowStr(),routine:'',bw:latestBW(),entries:[]};save();setView('log');}
 function startFromTemplate(wid){
   const src=store.workouts.find(w=>w.id===wid);if(!src)return;
   store.active={start:nowStr(),routine:src.routine,bw:latestBW(),
     entries:src.entries.map(e=>({name:e.name,ss:e.ss,note:'',
       sets:e.sets.map(s=>({w:s.w,r:s.r,dur:s.dur,dist:null,note:'',drop:false}))}))};
-  save();render();toast('Loaded “'+src.routine+'” from last time — tweak as you go');
+  save();setView('log');toast('Loaded “'+src.routine+'” from last time — tweak as you go');
 }
 let tick=null;
 function renderActive(){
@@ -639,7 +676,7 @@ function finishWorkout(){
     for(const e of entries)ensureEx(e.name);
     if(idx>=0)store.workouts[idx]=w;else store.workouts.unshift(w);
     store.workouts.sort((x,y)=>x.start<y.start?1:-1);
-    store.active=null;save();toast('Workout updated');setView('history');
+    store.active=null;save();toast('Workout updated');setView('log');
     return;
   }
   // PR check against history before saving
@@ -658,7 +695,7 @@ function finishWorkout(){
   openModal('<h2 style="margin-bottom:4px">Workout saved 💪</h2>'+
     '<p class="muted small">'+fmtDur(w.start,w.end)+' · '+nsets+' sets · '+fmtNum(vol)+' kg volume</p>'+
     (prs.length?'<div class="card"><h3>New records</h3>'+prs.map(p=>'<div class="listrow" style="cursor:default"><div class="grow">'+esc(p.name)+'</div><b style="color:var(--good)">e1RM '+fmtW(p.e1)+' kg</b></div>').join('')+'</div>':'')+
-    '<button class="btn primary wide" onclick="closeModal();setView(\'history\')">Nice</button>');
+    '<button class="btn primary wide" onclick="closeModal();setView(\'log\')">Nice</button>');
   render();
 }
 /* exercise picker */
@@ -700,27 +737,6 @@ function saveNewExercise(){
   save();closeModal();render();
 }
 
-/* ============================== HISTORY view ============================== */
-function renderHistory(){
-  if(!store.workouts.length)return '<div class="card hero"><div class="big">No history yet</div><p class="muted small">Finish a workout or import your RepCount CSV under More.</p></div>';
-  const perMonth={};
-  for(const w of store.workouts)perMonth[monthKey(w.start)]=(perMonth[monthKey(w.start)]||0)+1;
-  let h='',curMonth='';
-  for(const w of store.workouts){
-    const mk=monthKey(w.start);
-    if(mk!==curMonth){if(curMonth)h+='</div>';curMonth=mk;
-      h+='<div class="row" style="margin:18px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">'+fmtMonth(w.start)+'</h3>'+
-         '<span class="tiny muted">'+perMonth[mk]+' workout'+(perMonth[mk]>1?'s':'')+'</span></div><div class="card" style="padding:4px 14px">';}
-    const nsets=w.entries.reduce((t,e)=>t+e.sets.length,0);
-    const vol=w.entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+setVol(s),0),0);
-    h+='<div class="listrow" onclick="openWorkout(\''+esc(w.id)+'\')">'+dateBadge(w.start)+
-      '<div class="grow"><div style="font-weight:700">'+esc(w.routine||'Workout')+'</div>'+
-      '<div class="tiny muted">'+w.entries.length+' exercises · '+nsets+' sets · '+fmtDur(w.start,w.end)+'</div></div>'+
-      '<div class="right small"><div style="font-weight:700">'+fmtNum(vol)+' kg</div></div></div>';
-  }
-  if(curMonth)h+='</div>';
-  return h;
-}
 function openWorkout(id){
   const w=store.workouts.find(x=>x.id===id);if(!w)return;
   const ssColors=['#ff7a3c','#4cc2ff','#7ee081','#ffd166','#c792ea'];
@@ -775,7 +791,7 @@ function renderExercises(){
     if(state.exCat!=='All'&&m.cat!==state.exCat)continue;
     if(state.exQuery&&!n.toLowerCase().includes(state.exQuery.toLowerCase()))continue;
     shown++;
-    const pr=prFor(n);const rk=rankFor(n);
+    const pr=prFor(n);const rk=showRanks()?rankFor(n):null;
     h+='<div class="listrow" data-ex="'+esc(n)+'">'+
       (m.vid?'<img class="thumb" loading="lazy" src="exercises/'+esc(m.vid)+'/0.jpg" alt="">':
         '<span class="thumb" style="background:var(--card2);display:inline-flex;align-items:center;justify-content:center;color:'+(CAT_COLORS[m.cat]||CAT_COLORS.Other)+';font-weight:800">'+esc(n[0])+'</span>')+
@@ -810,7 +826,7 @@ function rankCardHtml(rk){
 }
 function openExercise(name){
   const m=store.ex[name];if(!m)return;
-  const pr=prFor(name);const rk=rankFor(name);
+  const pr=prFor(name);const rk=showRanks()?rankFor(name):null;
   const sessions=exSessions(name);
   const cat=m.vid?CAT_BY_ID[m.vid]:null;
   let h='<h2>'+esc(name)+'</h2><div class="row" style="margin:8px 0 4px">'+catChip(m.cat)+(m.custom?'<span class="chip">custom</span>':'')+'</div>';
@@ -1032,15 +1048,17 @@ function renderStats(){
     for(const e of w.entries)for(const s of e.sets){nsets++;vol+=setVol(s);nreps+=s.r||0;}
   }
   let h='';
-  // overall rank
-  const ov=overallRank();
-  if(ov){
-    const t=TIERS[ov.tier];
-    h+='<div class="card"><div class="row"><div class="grow"><h3 style="margin:0">Overall rank</h3>'+
-      '<div class="tiny muted">across '+ov.count+' ranked lifts</div></div>'+rankBadge(ov.tier)+'</div>'+
-      '<div class="rankbar"><i style="width:'+Math.round(ov.prog*100)+'%;background:'+t.color+'"></i></div></div>';
-  }else if(!latestBW()){
-    h+='<div class="banner">Log your bodyweight in a workout to unlock strength ranks.</div>';
+  // overall rank (only if the rank system is enabled)
+  if(showRanks()){
+    const ov=overallRank();
+    if(ov){
+      const t=TIERS[ov.tier];
+      h+='<div class="card"><div class="row"><div class="grow"><h3 style="margin:0">Overall rank</h3>'+
+        '<div class="tiny muted">across '+ov.count+' ranked lifts</div></div>'+rankBadge(ov.tier)+'</div>'+
+        '<div class="rankbar"><i style="width:'+Math.round(ov.prog*100)+'%;background:'+t.color+'"></i></div></div>';
+    }else if(!latestBW()){
+      h+='<div class="banner">Log your bodyweight in a workout to unlock strength ranks.</div>';
+    }
   }
   h+='<div class="statgrid" style="margin:12px 0">'+
     '<div class="stat"><div class="v">'+nw+'</div><div class="l">workouts</div></div>'+
@@ -1063,8 +1081,8 @@ function renderStats(){
     '<div class="listrow" onclick="openStatChart(\''+k+'\')"><div class="grow" style="font-weight:600">'+l+'</div>'+
     '<span class="small muted">'+v+'</span><span class="muted">›</span></div>').join('')+'</div>';
   // lifts ranks
-  const ranked=Object.keys(STD()).map(n=>({n,r:rankFor(n)})).filter(x=>x.r&&!x.r.locked)
-    .sort((a,b)=>(b.r.tier+b.r.prog)-(a.r.tier+a.r.prog));
+  const ranked=showRanks()?Object.keys(STD()).map(n=>({n,r:rankFor(n)})).filter(x=>x.r&&!x.r.locked)
+    .sort((a,b)=>(b.r.tier+b.r.prog)-(a.r.tier+a.r.prog)):[];
   if(ranked.length){
     h+='<div class="card"><div class="row"><h3 class="grow">Lift ranks</h3>'+
       '<span class="chip">'+SEX_LABEL[(store.settings&&store.settings.sex)||'male']+' standards</span></div>';
@@ -1075,7 +1093,7 @@ function renderStats(){
         '<span class="tiny muted">'+(r.unit==='reps'?r.value+' reps':r.value.toFixed(2)+'× BW')+'</span>'+rankBadge(r.tier)+'</div>'+
         '<div class="rankbar"><i style="width:'+Math.round(r.prog*100)+'%;background:'+t.color+'"></i></div></div>';
     }
-    h+='<p class="tiny muted" style="margin:10px 0 0">Only lifts with published strength standards are ranked — barbell and dumbbell lifts by weight relative to bodyweight, pull-ups/dips/push-ups by reps. Machine and cable exercises stay unranked because weight stacks differ between gym equipment brands. Change the standard (male / female / unisex) under More → Strength standards.</p></div>';
+    h+='<p class="tiny muted" style="margin:10px 0 0">Only lifts with published strength standards are ranked — barbell and dumbbell lifts by weight relative to bodyweight, pull-ups/dips/push-ups by reps. Machine and cable exercises stay unranked because weight stacks differ between gym equipment brands. Change the standard (male / female / unisex) or hide ranks entirely under Settings.</p></div>';
   }
   // categories by sets
   const catCount={};
@@ -1129,24 +1147,14 @@ function openStatChart(key){
       '<div class="stat"><div class="v">'+def.fmt(Math.max(...pts.map(p=>p.y)))+'</div><div class="l">best month</div></div></div>':''));
 }
 
-/* ============================== MORE view ============================== */
-function renderMore(){
-  let h='<div class="card"><h3>Your data</h3>'+
-    '<p class="small muted" style="margin:0 0 12px">Everything lives on this device only — nothing is uploaded anywhere. Export a backup now and then.</p>'+
-    '<label class="btn wide" style="margin-bottom:10px">Import RepCount CSV<input type="file" accept=".csv,text/csv" style="display:none" id="csvfile"></label>'+
-    (window.SETT_LOCAL_CSV?'<button class="btn wide" style="margin-bottom:10px" onclick="importBundled()">Import bundled local CSV</button>':'')+
-    '<button class="btn wide" style="margin-bottom:10px" onclick="exportJson()">Export backup (JSON)</button>'+
-    '<button class="btn wide" style="margin-bottom:10px" onclick="exportCsv()">Export CSV (Excel / RepCount format)</button>'+
-    '<label class="btn wide">Restore backup<input type="file" accept=".json,application/json" style="display:none" id="jsonfile"></label></div>';
-  // strength standards (male / female / unisex)
+/* ============================== SETTINGS view (gear) ============================== */
+function renderSettings(){
   const sex=(store.settings&&store.settings.sex)||'male';
-  h+='<div class="card"><h3>Strength standards</h3>'+
-    '<p class="small muted" style="margin:0 0 10px">Which reference to rank your lifts against. Pick what fits you.</p>'+
-    '<div class="seg" style="margin:0">'+['male','female','neutral'].map(k=>
-      '<button class="'+(sex===k?'on':'')+'" onclick="setSex(\''+k+'\')">'+SEX_LABEL[k]+'</button>').join('')+'</div></div>';
-  // appearance / themes — compact swatch row
   const curTheme=(store.settings&&store.settings.theme)||'ember';
-  h+='<div class="card"><h3>Appearance</h3>'+
+  const ranksOn=showRanks();
+  const autoOn=!(store.settings&&store.settings.autoUpdate===false);
+  // appearance
+  let h='<div class="card"><h3>Appearance</h3>'+
     '<div class="row" style="gap:12px;overflow-x:auto;padding:2px">'+THEME_ORDER.map(id=>{
       const t=THEMES[id];const on=curTheme===id;
       return '<button onclick="setTheme(\''+id+'\')" title="'+t.name+'" style="flex:none;text-align:center">'+
@@ -1155,26 +1163,62 @@ function renderMore(){
         '<span style="display:block;width:16px;height:16px;border-radius:50%;background:'+t.accent+';margin:12px auto"></span></span>'+
         '<span class="tiny '+(on?'':'muted')+'" style="'+(on?'color:var(--accent);font-weight:700':'')+'">'+t.name+'</span></button>';
     }).join('')+'</div></div>';
-  h+='<div class="card"><h3>On iPhone</h3><p class="small muted" style="margin:0">Open this page in Safari, tap Share, then <b>Add to Home Screen</b>. Sett then runs fullscreen, works offline, and keeps your data on the phone. When online it picks up new versions by itself.</p></div>';
-  // changelog — latest shown, older tucked into a details panel so it doesn't flood
+  // strength ranks: on/off + standard
+  h+='<div class="card"><div class="row"><h3 class="grow">Strength ranks</h3>'+
+    '<button class="'+(ranksOn?'toggle on':'toggle')+'" onclick="setRanks('+(!ranksOn)+')"><span class="knob"></span></button></div>'+
+    '<p class="small muted" style="margin:6px 0 0">Liftoff-style tiers for your big lifts. Turn off if you would rather just track the numbers.</p>'+
+    (ranksOn?'<div style="margin-top:12px"><div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Standard</div>'+
+      '<div class="seg" style="margin:0">'+['male','female','neutral'].map(k=>
+        '<button class="'+(sex===k?'on':'')+'" onclick="setSex(\''+k+'\')">'+SEX_LABEL[k]+'</button>').join('')+'</div></div>':'')+
+    '</div>';
+  // data
+  h+='<div class="card"><h3>Your data</h3>'+
+    '<p class="small muted" style="margin:0 0 12px">Everything lives on this device only — nothing is uploaded anywhere. Export a backup now and then.</p>'+
+    '<label class="btn wide" style="margin-bottom:10px">Import RepCount CSV<input type="file" accept=".csv,text/csv" style="display:none" id="csvfile"></label>'+
+    (window.SETT_LOCAL_CSV?'<button class="btn wide" style="margin-bottom:10px" onclick="importBundled()">Import bundled local CSV</button>':'')+
+    '<button class="btn wide" style="margin-bottom:10px" onclick="exportJson()">Export backup (JSON)</button>'+
+    '<button class="btn wide" style="margin-bottom:10px" onclick="exportCsv()">Export CSV (Excel / RepCount format)</button>'+
+    '<label class="btn wide">Restore backup<input type="file" accept=".json,application/json" style="display:none" id="jsonfile"></label></div>';
+  // updates
+  h+='<div class="card"><div class="row"><h3 class="grow">Updates</h3>'+
+    '<button class="'+(autoOn?'toggle on':'toggle')+'" onclick="setAutoUpdate('+(!autoOn)+')"><span class="knob"></span></button></div>'+
+    '<p class="small muted" style="margin:6px 0 12px">'+(autoOn?'Sett updates itself to the newest version when you open it online.':'Auto-update is off — check manually below.')+'</p>'+
+    '<button class="btn wide" onclick="checkForUpdates(true)">Check for updates now</button></div>';
+  // about + changelog (tucked away)
   const clRow=c=>'<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>v'+c.v+'</b> <span class="tiny muted">'+c.date+'</span><div class="small muted">'+esc(c.desc)+'</div></div>';
-  h+='<div class="card"><h3>What’s new <span class="tiny muted">v'+CHANGELOG[0].v+'</span></h3>'+clRow(CHANGELOG[0]);
-  if(CHANGELOG.length>1)h+='<details style="margin-top:6px"><summary class="small muted" style="cursor:pointer;padding:6px 0">Version history ('+(CHANGELOG.length-1)+' older)</summary>'+
-    CHANGELOG.slice(1).map(clRow).join('')+'</details>';
-  h+='</div>';
+  h+='<div class="card"><h3>About</h3>'+
+    '<p class="small muted" style="margin:0 0 4px">Sett v'+APP_VERSION+' · '+(ranksOn?SEX_LABEL[sex]+' strength standards':'ranks off')+'</p>'+
+    '<details><summary class="small muted" style="cursor:pointer;padding:8px 0">Changelog</summary>'+
+      CHANGELOG.map(clRow).join('')+'</details></div>';
+  // danger zone
   h+='<div class="card"><h3>Danger zone</h3><button class="btn danger wide" onclick="wipeAll()">Delete all data on this device</button></div>';
-  h+='<p class="tiny muted" style="text-align:center;margin:20px 0">Sett v'+APP_VERSION+' · '+SEX_LABEL[sex]+' strength standards</p>';
+  return h;
+}
+/* ============================== MORE view (open for future use) ============================== */
+function renderMore(){
+  let h='<div class="card"><h3>Add to your phone</h3><p class="small muted" style="margin:0">Open this page in Safari, tap Share, then <b>Add to Home Screen</b>. Sett then runs fullscreen, works offline, and keeps your data on the phone.</p></div>';
+  h+='<div class="card"><h3>Settings</h3><p class="small muted" style="margin:0 0 12px">Themes, strength ranks, data import/export and updates live in Settings.</p>'+
+    '<button class="btn wide" onclick="setView(\'settings\')">Open Settings</button></div>';
+  h+='<div class="card"><h3>About Sett</h3><p class="small muted" style="margin:0">A simple, private workout log. Your data never leaves the device. '+
+    'Exercise visuals from the public-domain free-exercise-db.</p></div>';
+  h+='<p class="tiny muted" style="text-align:center;margin:20px 0">Sett v'+APP_VERSION+'</p>';
   return h;
 }
 function setSex(k){store.settings=store.settings||{};store.settings.sex=k;save();toast(SEX_LABEL[k]+' standards');render();}
 function setTheme(id){store.settings=store.settings||{};store.settings.theme=id;save();applyTheme(id);render();}
+function setRanks(on){store.settings=store.settings||{};store.settings.showRanks=on;save();toast(on?'Ranks on':'Ranks hidden');render();}
+function setAutoUpdate(on){store.settings=store.settings||{};store.settings.autoUpdate=on;save();render();}
+/* onboarding after first import: offer ranks, then which standard */
 function askSexIfUnset(){
-  if(store.settings&&store.settings.sex)return;
-  openModal('<h2>Whose standards?</h2>'+
-    '<p class="small muted">Strength ranks compare your lifts to a reference. Choose the one that fits — you can change it later in More.</p>'+
-    '<div style="margin-top:14px">'+['male','female','neutral'].map(k=>
-      '<button class="btn wide" style="margin-bottom:10px" onclick="setSex(\''+k+'\');closeModal()">'+SEX_LABEL[k]+'</button>').join('')+'</div>');
+  if(store.settings&&(store.settings.sex||store.settings.showRanks===false||store.settings._onboarded))return;
+  openModal('<h2>Strength ranks</h2>'+
+    '<p class="small muted">Sett can rank your big lifts Liftoff-style (Iron → Master). Want them? You can change this any time in Settings.</p>'+
+    '<div style="margin-top:16px"><div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Yes — rank me against…</div>'+
+    ['male','female','neutral'].map(k=>
+      '<button class="btn wide" style="margin-bottom:10px" onclick="setSex(\''+k+'\');markOnboarded();closeModal()">'+SEX_LABEL[k]+' standards</button>').join('')+
+    '<button class="btn wide ghost" style="margin-top:4px" onclick="setRanks(false);markOnboarded();closeModal()">No thanks, hide ranks</button></div>');
 }
+function markOnboarded(){store.settings=store.settings||{};store.settings._onboarded=true;save();}
 function importBundled(){
   const res=importCsv(window.SETT_LOCAL_CSV);
   toast(res.msg);render();if(res.ok&&res.added)askSexIfUnset();
@@ -1248,7 +1292,6 @@ function wireInputs(){
 /* ============================== init ============================== */
 if(firstRun){
   if(window.SETT_LOCAL_CSV){const r=importCsv(window.SETT_LOCAL_CSV);console.log('[sett] auto-import:',r.msg);}
-  else seedDemo();
   save();
 }
 migrateVisuals();
@@ -1256,13 +1299,40 @@ applyTheme((store.settings&&store.settings.theme)||'ember');
 if(store.active)state.view='log';
 render();
 
-/* service worker: offline + auto-update */
+/* service worker: offline + auto-update on entering, plus a manual check */
+let swReg=null, swRefreshing=false, swManualCheck=false;
+function autoUpdateOn(){return !(store.settings&&store.settings.autoUpdate===false);}
+function checkForUpdates(manual){
+  if(!swReg){if(manual)toast('Updates need the installed app (add to Home Screen).');return;}
+  if(manual)swManualCheck=true;
+  swReg.update().then(()=>{
+    // if a new worker is already waiting, activate it now
+    if(swReg.waiting){swReg.waiting.postMessage('skipWaiting');}
+    else if(manual&&!swReg.installing){toast('You’re on the latest version');swManualCheck=false;}
+  }).catch(()=>{if(manual)toast('Could not check — are you online?');});
+}
 if('serviceWorker' in navigator&&location.protocol!=='file:'){
-  navigator.serviceWorker.register('sw.js').catch(e=>console.warn('sw failed',e));
-  let hadCtrl=!!navigator.serviceWorker.controller;
+  const hadCtrl=!!navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(hadCtrl)toast('Sett updated to the newest version');hadCtrl=true;
+    if(swRefreshing)return;
+    // a new version took over: reload if auto-update (or a manual check) asked for it
+    if(hadCtrl&&(autoUpdateOn()||swManualCheck)){swRefreshing=true;location.reload();}
+    else if(hadCtrl){toast('Update ready — reopen Sett to apply');}
   });
+  navigator.serviceWorker.register('sw.js').then(reg=>{
+    swReg=reg;
+    reg.addEventListener('updatefound',()=>{
+      const nw=reg.installing;if(!nw)return;
+      nw.addEventListener('statechange',()=>{
+        if(nw.state==='installed'&&navigator.serviceWorker.controller){
+          // new version downloaded; skipWaiting -> activate -> controllerchange (handled above)
+          if(autoUpdateOn()||swManualCheck)reg.waiting&&reg.waiting.postMessage('skipWaiting');
+          else toast('Update ready — reopen Sett to apply');
+        }
+      });
+    });
+    if(autoUpdateOn())reg.update();      // auto-check on every entry
+  }).catch(e=>console.warn('sw failed',e));
 }
 </script>
 </body>
