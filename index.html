@@ -238,8 +238,7 @@
   .setcell{display:flex; flex-direction:column; gap:1px;}
   .setcell label{font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--faint);}
   .setcell input{width:58px; text-align:left; padding:1px 0; font-size:18px; font-weight:800;
-    background:transparent; border:none; border-bottom:1.5px solid transparent; border-radius:0;}
-  .setcell input:focus{border-bottom-color:var(--accent);}
+    background:transparent; border:none; border-radius:0;}
   .setrow2 .sp{flex:1;}
   .setmenu{width:30px; height:30px; font-size:16px;}
   .exfoot{margin-top:12px; gap:2px;}
@@ -254,17 +253,23 @@
   .hbtn:active{background:var(--line); color:var(--accent);}
   .hbtn .ico{width:19px; height:19px;}
 
-  /* #5 swipe-to-reveal: RepCount-style coloured action panel behind the row */
-  .swipe{position:relative; overflow:hidden; border-radius:12px;}
+  /* #5 swipe-to-reveal — OWNER SPEC, verbatim (2026-07-05): "when you swipe
+     left, show the delete button on RIGHT SIDE, when you swipe right, show
+     copy on the LEFT SIDE" — the row STOPS open and the button is TAPPED.
+     Nothing ever fires from the swipe itself. */
+  .swipe{position:relative; overflow:hidden;}
   .swipe .swipe-fg{position:relative; z-index:1; background:var(--card);
-    transition:transform .18s cubic-bezier(.22,.61,.36,1);}
+    transition:transform .2s cubic-bezier(.22,.61,.36,1);}
   .swipe.swiping .swipe-fg{transition:none;}
-  .swipe .swipe-act{position:absolute; top:0; bottom:0; display:flex; align-items:center; gap:8px;
-    padding:0 22px; font-weight:800; font-size:13px;}
-  .swipe .swipe-act.right{right:0; justify-content:flex-end; background:var(--accent); color:#18100a;
-    border-radius:0 12px 12px 0;}
-  .swipe .swipe-act.left{left:0; background:var(--bad); color:#fff; border-radius:12px 0 0 12px;}
+  .swipe.open-l .swipe-fg{transform:translateX(92px);}   /* swiped right → Copy shows left */
+  .swipe.open-r .swipe-fg{transform:translateX(-92px);}  /* swiped left → Delete shows right */
+  .swipe .swipe-act{position:absolute; top:0; bottom:0; width:92px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    border:none; border-radius:10px; font-weight:800; font-size:12px; letter-spacing:.02em;}
+  .swipe .swipe-act.copy{left:0; background:var(--accent); color:#18100a;}
+  .swipe .swipe-act.del{right:0; background:var(--bad); color:#fff;}
   .swipe .swipe-act .ico{width:20px; height:20px;}
+  .swipe:last-child .listrow{border-bottom:none;}
 
   @media(prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important;}}
 </style>
@@ -288,8 +293,9 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.0';
+const APP_VERSION='0.9.1';
 const CHANGELOG=[
+  {v:'0.9.1', date:'2026-07-05', desc:'Swipe now works the way it was always meant to. Swipe a row to the LEFT and it stops with a red Remove or Delete button on the right side; swipe a set to the RIGHT and it stops with an orange Copy button on the left side. Nothing happens from the swipe itself — you tap the button. Works on sets and exercises during a workout, and on past workouts in the Log. Also removed the long underline that appeared under the weight and reps boxes while typing.'},
   {v:'0.9.0', date:'2026-07-05', desc:'Safety fixes from a full bug hunt, before new features land. Starting a new workout while another is in progress now warns you instead of silently wiping it. Workouts logged in the same minute no longer get tangled behind the scenes (deleting one could delete both). Exercises with an apostrophe in their name, like Farmer\'s Walk, had buttons that did nothing on their detail page — fixed. Restoring an incomplete backup could break the Exercises tab; the app now repairs missing pieces automatically. And under the hood, Sett now has an automated test suite that runs before every release.'},
   {v:'0.8.1', date:'2026-07-05', desc:'The workout screen now really looks like RepCount. Each set is a compact row — a circled set number, then Kg and Reps sitting neatly to the left with small labels, instead of two big boxes that stretched across the whole width. Because the rows are tighter, the exercise\'s History, Charts and Personal-records buttons are back on the card itself (bottom-right), not hidden in the ⋯ menu. Swiping now shows a proper coloured button: swipe a set right for an orange Copy, swipe an exercise left for a red Remove, each with an icon.'},
   {v:'0.8.0', date:'2026-07-05', desc:'A big polish pass from real gym testing. The little emoji in menus and buttons are gone, replaced with clean line icons that match the rest of the app. Routines are truly your own now — the confusing history list has left the Routines screen. To do a past workout again, open it under Log and tap Repeat: last time\'s weights and reps show as faint hints you type over, instead of being pre-filled for you to delete. You can also turn any past workout into a proper saved routine with Save as routine. Every workout now shows its start and end time. While logging you can swipe a set sideways to copy it, or swipe an exercise to remove it (both are also in the ⋯ menus). The rest timer is now a button in the top corner of the workout rather than under each exercise, and the set rows are leaner so more fits on screen.'},
@@ -665,10 +671,12 @@ function historyList(){
          '<span class="tiny muted">'+perMonth[mk]+' workout'+(perMonth[mk]>1?'s':'')+'</span></div><div class="card" style="padding:4px 14px">';}
     const nsets=w.entries.reduce((t,e)=>t+e.sets.length,0);
     const vol=w.entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+setVol(s),0),0);
-    h+='<div class="listrow" onclick="openWorkout(\''+esc(w.id)+'\')">'+dateBadge(w.start)+
+    h+='<div class="swipe" data-swipe="wk">'+
+      '<button class="swipe-act del" data-id="'+esc(w.id)+'" onclick="swipeDeleteWorkout(this.dataset.id)">'+ico('trash')+'Delete</button>'+
+      '<div class="swipe-fg listrow" onclick="openWorkout(\''+esc(w.id)+'\')">'+dateBadge(w.start)+
       '<div class="grow"><div style="font-weight:700">'+esc(w.routine||'Workout')+'</div>'+
       '<div class="tiny muted">'+w.entries.length+' exercises · '+nsets+' sets · '+fmtDur(w.start,w.end)+'</div></div>'+
-      '<div class="right small"><div style="font-weight:700">'+fmtNum(vol)+' kg</div></div></div>';
+      '<div class="right small"><div style="font-weight:700">'+fmtNum(vol)+' kg</div></div></div></div>';
   }
   if(curMonth)h+='</div>';
   return h;
@@ -840,7 +848,7 @@ function renderActive(){
     const linked=e.ss!=null;
     h+='<div class="card excard" data-ei="'+ei+'">'+
       '<div class="swipe" data-swipe="ex" data-ei="'+ei+'">'+
-      '<div class="swipe-act left">'+ico('trash')+'Remove</div>'+
+      '<button class="swipe-act del" onclick="swipeRemoveEx('+ei+')">'+ico('trash')+'Remove</button>'+
       '<div class="swipe-fg"><div class="row">'+
       (a.entries.length>1?'<span class="draghandle" data-drag="'+ei+'" title="Drag to reorder">⠿</span>':'')+
       '<div class="grow"><span style="font-weight:800">'+esc(e.name)+'</span> '+
@@ -853,7 +861,8 @@ function renderActive(){
       const twPh=s.tgt&&s.tgt.tw!=null?' placeholder="'+s.tgt.tw+'"':' placeholder="—"';
       const rPh=s.tgt&&repRange(s.tgt)?' placeholder="'+repRange(s.tgt)+'"':' placeholder="—"';
       h+='<div class="swipe" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
-        '<div class="swipe-act right">'+ico('copy')+'Copy</div>'+
+        '<button class="swipe-act copy" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'Copy</button>'+
+        '<button class="swipe-act del" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'Remove</button>'+
         '<div class="swipe-fg setrow2">'+
         '<span class="setnum'+(s.drop?' drop':'')+'" title="'+(s.drop?'Drop set':'')+'">'+(s.drop?'D':si+1)+'</span>'+
         '<div class="setcell"><label>Kg</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
@@ -1720,13 +1729,31 @@ function wireInputs(){
   };
 }
 
-/* #5 swipe-to-reveal: set rows → copy, exercise header → remove */
-let _sw=null;
+/* #5 swipe-to-reveal — OWNER SPEC, verbatim: "when you swipe left, show the
+   delete button on RIGHT SIDE, when you swipe right, show copy on the LEFT
+   SIDE." The row latches open past halfway and the button is TAPPED; nothing
+   fires from the swipe itself. One row open at a time; tapping elsewhere
+   closes it. Sets: Copy (right-swipe) + Remove (left-swipe). Exercises and
+   workouts: left-swipe → Remove/Delete only. */
+const SWW=92;
+const SWDIRS={set:{l:1,r:1}, ex:{l:1}, wk:{l:1}};   // l = left-swipe allowed (del), r = right-swipe (copy)
+let _sw=null, _swOpen=null, _swMoved=false, _swClosedTap=false;
+function closeSwipe(){if(_swOpen){_swOpen.classList.remove('open-l','open-r');_swOpen=null;}}
+function swipeCopy(ei,si){closeSwipe();copySet(ei,si);toast('Set copied');}
+function swipeRemoveSet(ei,si){closeSwipe();removeSet(ei,si);}
+function swipeRemoveEx(ei){closeSwipe();removeEntry(ei);}
+function swipeDeleteWorkout(id){closeSwipe();deleteWorkout(id);}
 function swipeStart(ev){
+  _swMoved=false;_swClosedTap=false;
   if(ev.touches.length!==1){_sw=null;return;}
-  const el=ev.target.closest('.swipe');if(!el)return;
-  if(ev.target.closest('[data-drag],button,input,textarea,select,a'))return;
-  _sw={el,fg:el.querySelector('.swipe-fg'),x0:ev.touches[0].clientX,y0:ev.touches[0].clientY,dx:0,axis:0};
+  const el=ev.target.closest('.swipe');
+  if(_swOpen&&_swOpen!==el){closeSwipe();_swClosedTap=true;}
+  if(!el||!el.dataset.swipe){_sw=null;return;}
+  if(ev.target.closest('[data-drag],button,input,textarea,select,a')){_sw=null;return;}
+  const dirs=SWDIRS[el.dataset.swipe]||{};
+  _sw={el,fg:el.querySelector('.swipe-fg'),x0:ev.touches[0].clientX,y0:ev.touches[0].clientY,
+    dx:0,axis:0,dirs,
+    base:el.classList.contains('open-r')?-SWW:el.classList.contains('open-l')?SWW:0};
 }
 function swipeMove(ev){
   if(!_sw)return;
@@ -1734,21 +1761,26 @@ function swipeMove(ev){
   if(!_sw.axis){
     if(Math.abs(dx)<8&&Math.abs(dy)<8)return;
     _sw.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
-    if(_sw.axis==='x')_sw.el.classList.add('swiping');
+    if(_sw.axis==='x'){_sw.el.classList.add('swiping');_sw.el.classList.remove('open-l','open-r');}
     else{_sw=null;return;}
   }
   ev.preventDefault();
-  const isSet=_sw.el.dataset.swipe==='set';
-  const d=isSet?Math.max(0,Math.min(dx,110)):Math.min(0,Math.max(dx,-110));
-  _sw.dx=d;_sw.fg.style.transform='translateX('+d+'px)';
+  const min=_sw.dirs.l?-SWW:0, max=_sw.dirs.r?SWW:0;   // left drag → del (right side), right drag → copy (left side)
+  const d=Math.max(min,Math.min(max,_sw.base+dx));
+  _sw.dx=d;_swMoved=true;_sw.fg.style.transform='translateX('+d+'px)';
 }
 function swipeEnd(){
   if(!_sw)return;
-  const s=_sw;_sw=null;s.el.classList.remove('swiping');if(s.fg)s.fg.style.transform='';
-  if(s.axis!=='x'||Math.abs(s.dx)<64)return;
-  const ei=+s.el.dataset.ei;
-  if(s.el.dataset.swipe==='set'){copySet(ei,+s.el.dataset.si);toast('Set copied');}
-  else if(confirm('Remove this exercise?'))removeEntry(ei);
+  const s=_sw;_sw=null;s.el.classList.remove('swiping');s.fg.style.transform='';
+  if(s.axis!=='x')return;
+  if(s.dx<=-SWW/2){s.el.classList.add('open-r');_swOpen=s.el;}      // latched: Delete/Remove visible on the right
+  else if(s.dx>=SWW/2){s.el.classList.add('open-l');_swOpen=s.el;}  // latched: Copy visible on the left
+  else if(_swOpen===s.el)_swOpen=null;
+}
+/* after a swipe (or an outside-tap that closed an open row), swallow the
+   click the browser synthesises so it can't open the workout / focus an input */
+function swipeClickGuard(ev){
+  if(_swMoved||_swClosedTap){_swMoved=false;_swClosedTap=false;ev.stopPropagation();ev.preventDefault();}
 }
 function wireSwipe(){
   const m=$('main');if(!m||m._swWired)return;m._swWired=true;
@@ -1756,6 +1788,9 @@ function wireSwipe(){
   m.addEventListener('touchmove',swipeMove,{passive:false});
   m.addEventListener('touchend',swipeEnd);
   m.addEventListener('touchcancel',swipeEnd);
+  m.addEventListener('click',swipeClickGuard,true);
+  // touching anywhere outside the open row (header, tab bar, other cards) closes it
+  document.addEventListener('touchstart',e=>{if(_swOpen&&!_swOpen.contains(e.target))closeSwipe();},{passive:true});
 }
 
 /* ============================== init ============================== */
