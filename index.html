@@ -227,16 +227,26 @@
   .exctrl button .ico{width:15px; height:15px;}
   .btn .ico{width:17px; height:17px;}
 
-  /* #1 denser logger: leaner set rows, less boxy, more on screen */
-  .excard{padding:13px 14px;}
-  .setcols{display:grid; grid-template-columns:22px 1fr 1fr 30px; gap:6px; align-items:center;}
-  .sethdr{margin:8px 2px 0;}
-  .setrow{padding:2px 0;}
-  .setcols input{text-align:center; padding:6px 4px; font-weight:700; font-size:15px;
-    background:transparent; border:1px solid transparent; border-bottom:1.5px solid var(--line); border-radius:0;}
-  .setcols input:focus{border-bottom-color:var(--accent); background:var(--card2);}
-  .sethdr .sethead{font-size:9px;}
+  /* #1 RepCount-style set rows: circled number + compact left-packed Kg/Reps,
+     values hug the left so the row no longer fills the whole bar */
+  .excard{padding:14px 16px;}
+  .setrow2{display:flex; align-items:center; gap:20px; padding:8px 0;
+    border-bottom:1px solid var(--line);}
+  .setnum{width:26px; height:26px; flex:none; border:1.6px solid var(--line); border-radius:50%;
+    display:grid; place-items:center; font-size:13px; font-weight:700; color:var(--muted);}
+  .setnum.drop{border-color:var(--accent); color:var(--accent);}
+  .setcell{display:flex; flex-direction:column; gap:1px;}
+  .setcell label{font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--faint);}
+  .setcell input{width:58px; text-align:left; padding:1px 0; font-size:18px; font-weight:800;
+    background:transparent; border:none; border-bottom:1.5px solid transparent; border-radius:0;}
+  .setcell input:focus{border-bottom-color:var(--accent);}
+  .setrow2 .sp{flex:1;}
   .setmenu{width:30px; height:30px; font-size:16px;}
+  .exfoot{margin-top:12px; gap:2px;}
+  .exi{width:40px; height:36px; flex:none; display:inline-flex; align-items:center; justify-content:center;
+    border-radius:10px; color:var(--accent);}
+  .exi:active{background:var(--card2);}
+  .exi .ico{width:21px; height:21px;}
 
   /* #3 rest button in the workout header corner */
   .hbtn{width:36px; height:36px; flex:none; display:inline-flex; align-items:center; justify-content:center;
@@ -244,16 +254,17 @@
   .hbtn:active{background:var(--line); color:var(--accent);}
   .hbtn .ico{width:19px; height:19px;}
 
-  /* #5 swipe-to-reveal actions behind set rows / exercise cards */
-  .swipe{position:relative; overflow:hidden;}
-  .swipe .swipe-fg{position:relative; z-index:1; background:var(--card); transition:transform .18s cubic-bezier(.22,.61,.36,1);}
-  .excard .swipe .swipe-fg{background:var(--card);}
-  .swipe .swipe-act{position:absolute; top:0; bottom:0; display:flex; align-items:center; gap:14px;
-    padding:0 18px; font-weight:700; font-size:13px;}
-  .swipe .swipe-act.right{right:0; justify-content:flex-end; color:var(--accent);}
-  .swipe .swipe-act.left{left:0; color:var(--bad);}
-  .swipe .swipe-act .ico{width:20px; height:20px;}
+  /* #5 swipe-to-reveal: RepCount-style coloured action panel behind the row */
+  .swipe{position:relative; overflow:hidden; border-radius:12px;}
+  .swipe .swipe-fg{position:relative; z-index:1; background:var(--card);
+    transition:transform .18s cubic-bezier(.22,.61,.36,1);}
   .swipe.swiping .swipe-fg{transition:none;}
+  .swipe .swipe-act{position:absolute; top:0; bottom:0; display:flex; align-items:center; gap:8px;
+    padding:0 22px; font-weight:800; font-size:13px;}
+  .swipe .swipe-act.right{right:0; justify-content:flex-end; background:var(--accent); color:#18100a;
+    border-radius:0 12px 12px 0;}
+  .swipe .swipe-act.left{left:0; background:var(--bad); color:#fff; border-radius:12px 0 0 12px;}
+  .swipe .swipe-act .ico{width:20px; height:20px;}
 
   @media(prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important;}}
 </style>
@@ -277,8 +288,9 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.8.0';
+const APP_VERSION='0.8.1';
 const CHANGELOG=[
+  {v:'0.8.1', date:'2026-07-05', desc:'The workout screen now really looks like RepCount. Each set is a compact row — a circled set number, then Kg and Reps sitting neatly to the left with small labels, instead of two big boxes that stretched across the whole width. Because the rows are tighter, the exercise\'s History, Charts and Personal-records buttons are back on the card itself (bottom-right), not hidden in the ⋯ menu. Swiping now shows a proper coloured button: swipe a set right for an orange Copy, swipe an exercise left for a red Remove, each with an icon.'},
   {v:'0.8.0', date:'2026-07-05', desc:'A big polish pass from real gym testing. The little emoji in menus and buttons are gone, replaced with clean line icons that match the rest of the app. Routines are truly your own now — the confusing history list has left the Routines screen. To do a past workout again, open it under Log and tap Repeat: last time\'s weights and reps show as faint hints you type over, instead of being pre-filled for you to delete. You can also turn any past workout into a proper saved routine with Save as routine. Every workout now shows its start and end time. While logging you can swipe a set sideways to copy it, or swipe an exercise to remove it (both are also in the ⋯ menus). The rest timer is now a button in the top corner of the workout rather than under each exercise, and the set rows are leaner so more fits on screen.'},
   {v:'0.7.0', date:'2026-07-05', desc:'A calmer workout screen. Each exercise is now much cleaner — the row of buttons is gone, tucked into a ⋯ menu (notes, superset, move, history, charts, records, remove), and each set has its own ⋯ for drop-set and remove. Weight and reps inputs are more compact, so you see more at a glance without losing anything. Page transitions are a touch slower and smoother, dragging an exercise now opens a gap so you can see where it will land, and the rest-timer bar no longer sits too low behind the tab bar. The statistics you tap into now make sense per measure — bodyweight shows its range and net change instead of a meaningless "biggest" number. Also fixed a layout jump on the More tab.'},
   {v:'0.6.0', date:'2026-07-05', desc:'Saved routines with targets. Build a routine under Routines → New routine: add exercises and set a target weight and rep range (or an exact rep count) for each set. Starting a saved routine shows those targets as faint placeholders in the logger, so you always know what to aim for — type your actual numbers over them. You can also pair exercises as supersets inside a routine, turn any workout in progress into a routine with the new "Save as routine" button, and edit or delete routines anytime. Your history-based suggestions and popular splits are still there, now under "From your history" and "Popular routines". Plus a smoother feel throughout: pages now slide as you move between tabs, first-time users get a friendly welcome that helps them import a CSV or start fresh and choose their rank settings, the Browse catalog and New exercise buttons sit at the top of Exercises so you no longer scroll past your whole list, and discarding a workout drops you back on Routines to quickly pick another. There is now a rest timer between sets — it starts automatically when you add a set (turn that off or change the default time in Settings), with quick −15/+15 and skip controls and a chime when time is up. And while logging you can drag exercises by the ⠿ handle to reorder them, in addition to the up/down buttons.'},
@@ -823,20 +835,24 @@ function renderActive(){
       '<button class="setmenu" title="Exercise options" onclick="exMenu('+ei+')">⋯</button>'+
       '</div></div></div>';
     if(e.note)h+='<div class="tiny muted" style="margin-top:6px">'+ico('note')+' '+esc(e.note)+'</div>';
-    h+='<div class="setcols sethdr"><span class="sethead">Set</span><span class="sethead">kg</span><span class="sethead">reps</span><span></span></div>';
     e.sets.forEach((s,si)=>{
-      const twPh=s.tgt&&s.tgt.tw!=null?' placeholder="'+s.tgt.tw+'"':'';
-      const rPh=s.tgt&&repRange(s.tgt)?' placeholder="'+repRange(s.tgt)+'"':'';
+      const twPh=s.tgt&&s.tgt.tw!=null?' placeholder="'+s.tgt.tw+'"':' placeholder="—"';
+      const rPh=s.tgt&&repRange(s.tgt)?' placeholder="'+repRange(s.tgt)+'"':' placeholder="—"';
       h+='<div class="swipe" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
         '<div class="swipe-act right">'+ico('copy')+'Copy</div>'+
-        '<div class="swipe-fg setcols setrow">'+
-        '<span class="setidx'+(s.drop?' drop':'')+'" title="'+(s.drop?'Drop set':'')+'">'+(s.drop?'D':si+1)+'</span>'+
-        '<input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'>'+
-        '<input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'>'+
+        '<div class="swipe-fg setrow2">'+
+        '<span class="setnum'+(s.drop?' drop':'')+'" title="'+(s.drop?'Drop set':'')+'">'+(s.drop?'D':si+1)+'</span>'+
+        '<div class="setcell"><label>Kg</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
+        '<div class="setcell"><label>Reps</label><input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'></div>'+
+        '<span class="sp"></span>'+
         '<button class="setmenu" title="Set options" onclick="setMenu('+ei+','+si+')">⋯</button>'+
         '</div></div>';
     });
-    h+='<div class="row" style="margin-top:10px"><button class="btn ghost small grow" onclick="addSet('+ei+')">＋ Add set</button></div>'+
+    h+='<div class="row exfoot"><button class="btn ghost small grow" onclick="addSet('+ei+')">＋ Add set</button>'+
+      '<button class="exi" title="History" aria-label="History" onclick="openExHistory(store.active.entries['+ei+'].name)">'+ico('clock')+'</button>'+
+      '<button class="exi" title="Charts" aria-label="Charts" onclick="openExCharts(store.active.entries['+ei+'].name)">'+ico('bars')+'</button>'+
+      '<button class="exi" title="Personal records" aria-label="Personal records" onclick="openExPRs(store.active.entries['+ei+'].name)">'+ico('star')+'</button>'+
+      '</div>'+
       '</div>';
   });
   h+='<button class="btn wide" onclick="openPicker()">＋ Add exercise</button>'+
@@ -904,9 +920,6 @@ function exMenu(ei){
     (ei>0?'<button onclick="toggleSS('+ei+');closeModal()">'+ico('link')+(e.ss!=null?'Unlink from superset':'Superset with exercise above')+'</button>':'')+
     (ei>0?'<button onclick="moveEntry('+ei+',-1);closeModal()">'+ico('up')+'Move up</button>':'')+
     (ei<a.entries.length-1?'<button onclick="moveEntry('+ei+',1);closeModal()">'+ico('down')+'Move down</button>':'')+
-    '<button onclick="closeModal();openExHistory(store.active.entries['+ei+'].name)">'+ico('clock')+'History</button>'+
-    '<button onclick="closeModal();openExCharts(store.active.entries['+ei+'].name)">'+ico('bars')+'Charts</button>'+
-    '<button onclick="closeModal();openExPRs(store.active.entries['+ei+'].name)">'+ico('star')+'Personal records</button>'+
     '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+'Remove exercise</button>'+
     '</div>');
 }
