@@ -108,6 +108,12 @@
 
   .hero{padding:26px 18px; text-align:center;}
   .hero .big{font-size:26px; font-weight:800; letter-spacing:-.03em;}
+  /* F42: badger empty-state block — the mono badger over house copy, centered */
+  .empty{text-align:center; padding:22px 18px;}
+  .empty .badger{display:block; margin:0 auto 10px; opacity:.9;}
+  .empty .big{font-size:20px; font-weight:800; letter-spacing:-.02em;}
+  .empty p{margin:6px auto 0; max-width:32ch;}
+  .badger{display:inline-block; vertical-align:middle;}
 
   .statgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
   .statgrid.two{grid-template-columns:1fr 1fr;}
@@ -120,8 +126,6 @@
   .listrow:last-child{border-bottom:none;}
 
   /* logger */
-  .setgrid{display:grid; grid-template-columns:26px 1fr 1fr 34px; gap:7px; align-items:center; margin-top:4px;}
-  .setgrid input{text-align:center; padding:8px 6px; font-weight:700; font-size:16px;}
   .setmenu{width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center;
     color:var(--faint); font-size:18px; border-radius:9px;}
   .setmenu:active{background:var(--card2);}
@@ -152,10 +156,6 @@
     border-radius:99px; background:var(--accent-soft); color:var(--accent);}
   .elapsed{font-variant-numeric:tabular-nums; font-weight:800; color:var(--accent);}
   /* drop-set toggle per row: labelled, obvious, tap again to undo */
-  .droptog{display:flex; align-items:center; justify-content:center; height:38px; border-radius:10px;
-    border:1px solid var(--line); background:var(--card2); color:var(--muted);
-    font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;}
-  .droptog.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
   /* exercise control row (reorder / superset / delete) — labelled, own line */
   .exctrl{display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;}
   .exctrl button{display:flex; align-items:center; gap:5px; padding:7px 11px; border-radius:10px;
@@ -163,7 +163,6 @@
   .exctrl button.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
   .exctrl button.del{color:var(--bad); border-color:color-mix(in srgb, var(--bad) 35%, var(--line));}
   .exctrl .sp{flex:1;}
-  .noteline{width:100%; margin-top:10px;}
   .legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:6px; font-size:11px; color:var(--faint);}
   .legend b{color:var(--accent);}
 
@@ -174,15 +173,11 @@
   .rankbar i{display:block; height:100%; border-radius:99px;}
 
   .spark{width:100%; height:56px;}
-  .barchart{width:100%; height:120px;}
   .bigchart{width:100%; height:190px;}
   .datebadge{width:48px; flex:none; text-align:center; background:var(--card2);
     border-radius:10px; padding:5px 0 6px;}
   .datebadge .dow{font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
   .datebadge .d{font-size:18px; font-weight:800; line-height:1.15;}
-  .exicons{display:flex; gap:0; margin-left:auto;}
-  .exicons .iconbtn{color:var(--accent); width:34px;}
-  .exicons .iconbtn svg{width:19px; height:19px;}
   .seg{display:flex; gap:6px; flex-wrap:wrap; margin:10px 0;}
   .seg button{padding:7px 13px; border-radius:99px; background:var(--card2); border:1px solid var(--line);
     font-size:13px; font-weight:700; color:var(--muted);}
@@ -263,8 +258,6 @@
     padding:2px 8px 2px 0; margin-right:2px; align-self:center; user-select:none;}
   .draghandle:active{cursor:grabbing; color:var(--accent);}
   .excard.dragging{opacity:.92; box-shadow:0 14px 34px rgba(0,0,0,.55);}
-  .excard.drop-before{box-shadow:inset 0 3px 0 var(--accent);}
-  .excard.drop-after{box-shadow:inset 0 -3px 0 var(--accent);}
   /* inline icons */
   .ico{width:18px; height:18px; flex:none; vertical-align:-3px;}
   .menu button .ico{width:20px; height:20px; color:var(--muted);}
@@ -304,6 +297,27 @@
   .cardstats{margin-top:8px; font-size:11.5px; color:var(--faint); font-weight:600;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .cardstats b{color:var(--accent); font-weight:800;}
+  /* F36 (2026-07-06): a live set that beats the pre-workout record lights up —
+     same accent-soft glow + border as the latched swipe state. Petite PR chip
+     sits in the row; one accent line ("New e1RM record…") sits under the card. */
+  .swipe.pr .swipe-fg{background:var(--accent-soft);}
+  .swipe.pr{border-radius:12px; box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);}
+  /* F36/F37: PR chip + beat-last-time hint share a micro-line under the set
+     inputs (aligned left with the set number), so the input row never widens. */
+  .setextra{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 4px 46px;}
+  .prchip{display:inline-flex; align-items:center; padding:1px 7px; border-radius:99px;
+    background:var(--accent); color:#18100a; font-size:10px; font-weight:800; letter-spacing:.04em;}
+  .prline{margin-top:6px; font-size:11.5px; font-weight:700; color:var(--accent);
+    white-space:normal; overflow-wrap:anywhere;}
+  /* F37: petite beat-last-time suggestion chip — display-only */
+  .hintchip{display:inline-flex; align-items:center; padding:1px 7px; border-radius:99px;
+    background:var(--card2); color:var(--muted); font-size:10.5px; font-weight:700; white-space:nowrap;}
+  /* F38: superset flow chip — "Next: <partner>" (accent-soft, chevron), taps to scroll */
+  .ssflow{display:inline-flex; align-items:center; gap:4px; margin-top:8px; max-width:100%;
+    padding:5px 10px; border-radius:99px; background:var(--accent-soft);
+    border:1px solid color-mix(in srgb, var(--accent) 40%, transparent); color:var(--accent);
+    font-size:11.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .ssflow .ico{width:14px; height:14px; flex:none;}
 
   /* #3 rest button in the workout header corner */
   .hbtn{width:36px; height:36px; flex:none; display:inline-flex; align-items:center; justify-content:center;
@@ -354,25 +368,150 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.7';
+const APP_VERSION='0.9.8';
 const CHANGELOG=[
-  {v:'0.9.7', date:'2026-07-06', desc:'Sett has a new face: a badger peeking out of its sett — that\'s what the name means. Also new: starting a routine or repeating a past workout now asks before it starts (no more accidental workouts), reordering exercises slides the others smoothly out of the way as you drag, lists stretch and bounce back when you scroll past the end, Stats moved next to Routines in the bottom bar, and a workout started from a routine no longer offers "Save as routine" — it already is one.'},
-  {v:'0.9.6', date:'2026-07-06', desc:'Stats now update live while you train — the numbers under each exercise, History, Charts and Personal records all include the workout you\'re doing right now. Each exercise card shows a compact line with today\'s volume, your best set and your record to beat. New: warmup sets — tap the little W next to a set to mark it; warmups don\'t count toward your stats or records unless you turn that on in settings. A new set no longer copies the one above it; it shows last session\'s numbers as faint hints instead. Also fixed: the icon buttons wrapping under the pills, the nav bar popping up while scrolling with the keyboard open, the page bouncing near the bottom, text getting highlighted while reordering, and menus letting the page behind them scroll.'},
-  {v:'0.9.5', date:'2026-07-06', desc:'Housekeeping only: cleared out leftover code from the old up/down reorder arrows, which press-and-hold reordering replaced in 0.9.4. Nothing looks or works differently.'},
-  {v:'0.9.4', date:'2026-07-06', desc:'Polish for the swipe and menu changes. The page no longer scrolls sideways when you swipe, and nothing spills outside the menus anymore. Closing a menu by swiping right is now instant and no longer asks — even for menus with a delete button (deleting still asks on its own). You can swipe right to leave the screen when you\'re editing a past workout, just like the menus. To reorder exercises, press and hold a row and drag it — the up/down arrows are gone. Turning a superset off now fully clears it, so the SUPERSET tag no longer sticks around. The exercise ⋯ menu has a small ⓘ that explains what supersets and drop sets are. When the keyboard opens, the bottom tab bar tucks away instead of floating over it. And every menu now slides closed smoothly, however you close it.'},
-  {v:'0.9.3', date:'2026-07-06', desc:'Swiping is calmer and smarter: swiping back from an open Delete or Copy now stops at the middle instead of flying through, and short accidental swipes no longer trigger anything. The revealed buttons are now small round icons that match the rest of the app instead of big colour blocks. You can swipe RIGHT to close menus (menus with a delete option ask first, so a stray swipe can\'t lose anything) — pulling down from the top edge still works too. Menu rows are slimmer. Supersets and drop sets are finally visible: every exercise card in a workout has small Set, Drop set and Superset buttons right under the sets. Reordering got its own menu — tap Reorder next to Add exercise (or in an exercise\'s ⋯ menu) for a full list you can drag or nudge with arrows. The ⋯ menu also gained Replace exercise, which swaps the exercise but keeps everything you\'ve logged. And when the keyboard is open, lists now scroll all the way — the last entries are no longer stuck underneath it.'},
-  {v:'0.9.2', date:'2026-07-06', desc:'Sett now opens on a new Home tab: a start button, your routines ready for a one-tap start, and your last workout — and the app never drops you straight back into an old workout again. A workout you forget to finish stops itself an hour after you last touched it and is saved with an honest end time (one with nothing logged is quietly discarded). Swiping rows was rebuilt: a quick flick now works, swipes no longer grab the screen while you scroll, and tapping anywhere closes an open row. Menus can be pulled down by their top edge to close. The exercise History list shows month headings, personal records got their own look — your best lift up top and a rep ladder underneath — Scrolling on the More tab no longer sticks at the edge, and the thin line under each set’s weight and reps boxes is gone.'},
-  {v:'0.9.1', date:'2026-07-05', desc:'Swipe now works the way it was always meant to. Swipe a row to the LEFT and it stops with a red Remove or Delete button on the right side; swipe a set to the RIGHT and it stops with an orange Copy button on the left side. Nothing happens from the swipe itself — you tap the button. Works on sets and exercises during a workout, and on past workouts in the Log. Also removed the long underline that appeared under the weight and reps boxes while typing.'},
-  {v:'0.9.0', date:'2026-07-05', desc:'Safety fixes from a full bug hunt, before new features land. Starting a new workout while another is in progress now warns you instead of silently wiping it. Workouts logged in the same minute no longer get tangled behind the scenes (deleting one could delete both). Exercises with an apostrophe in their name, like Farmer\'s Walk, had buttons that did nothing on their detail page — fixed. Restoring an incomplete backup could break the Exercises tab; the app now repairs missing pieces automatically. And under the hood, Sett now has an automated test suite that runs before every release.'},
-  {v:'0.8.1', date:'2026-07-05', desc:'The workout screen now really looks like RepCount. Each set is a compact row — a circled set number, then Kg and Reps sitting neatly to the left with small labels, instead of two big boxes that stretched across the whole width. Because the rows are tighter, the exercise\'s History, Charts and Personal-records buttons are back on the card itself (bottom-right), not hidden in the ⋯ menu. Swiping now shows a proper coloured button: swipe a set right for an orange Copy, swipe an exercise left for a red Remove, each with an icon.'},
-  {v:'0.8.0', date:'2026-07-05', desc:'A big polish pass from real gym testing. The little emoji in menus and buttons are gone, replaced with clean line icons that match the rest of the app. Routines are truly your own now — the confusing history list has left the Routines screen. To do a past workout again, open it under Log and tap Repeat: last time\'s weights and reps show as faint hints you type over, instead of being pre-filled for you to delete. You can also turn any past workout into a proper saved routine with Save as routine. Every workout now shows its start and end time. While logging you can swipe a set sideways to copy it, or swipe an exercise to remove it (both are also in the ⋯ menus). The rest timer is now a button in the top corner of the workout rather than under each exercise, and the set rows are leaner so more fits on screen.'},
-  {v:'0.7.0', date:'2026-07-05', desc:'A calmer workout screen. Each exercise is now much cleaner — the row of buttons is gone, tucked into a ⋯ menu (notes, superset, move, history, charts, records, remove), and each set has its own ⋯ for drop-set and remove. Weight and reps inputs are more compact, so you see more at a glance without losing anything. Page transitions are a touch slower and smoother, dragging an exercise now opens a gap so you can see where it will land, and the rest-timer bar no longer sits too low behind the tab bar. The statistics you tap into now make sense per measure — bodyweight shows its range and net change instead of a meaningless "biggest" number. Also fixed a layout jump on the More tab.'},
-  {v:'0.6.0', date:'2026-07-05', desc:'Saved routines with targets. Build a routine under Routines → New routine: add exercises and set a target weight and rep range (or an exact rep count) for each set. Starting a saved routine shows those targets as faint placeholders in the logger, so you always know what to aim for — type your actual numbers over them. You can also pair exercises as supersets inside a routine, turn any workout in progress into a routine with the new "Save as routine" button, and edit or delete routines anytime. Your history-based suggestions and popular splits are still there, now under "From your history" and "Popular routines". Plus a smoother feel throughout: pages now slide as you move between tabs, first-time users get a friendly welcome that helps them import a CSV or start fresh and choose their rank settings, the Browse catalog and New exercise buttons sit at the top of Exercises so you no longer scroll past your whole list, and discarding a workout drops you back on Routines to quickly pick another. There is now a rest timer between sets — it starts automatically when you add a set (turn that off or change the default time in Settings), with quick −15/+15 and skip controls and a chime when time is up. And while logging you can drag exercises by the ⠿ handle to reorder them, in addition to the up/down buttons.'},
-  {v:'0.5.0', date:'2026-07-05', desc:'Reorganised: Log is now your workout history, and Routines is its own tab with your own routines plus popular splits like Push/Pull/Legs, Upper/Lower and Full Body. A new Settings screen (gear, top right) holds themes, strength ranks, data import/export and updates. Strength ranks can be turned off entirely (asked once after your first import). The app now updates itself when you open it, with a manual "Check for updates" button too. Fresh installs start empty — no demo data to clear.'},
-  {v:'0.4.0', date:'2026-07-05', desc:'Easier to use: sheets now have a clear close button, the drop-set and superset controls are labelled and obvious (and tap again to undo a misclick), and the notes field sits on its own line so nothing is cut off. New colour themes live under Appearance in More. Strength ranks can now use male, female or unisex standards — pick yours in More or right after importing a CSV — so the app works for more than one person. The changelog is tucked away so it no longer fills the screen.'},
-  {v:'0.3.0', date:'2026-07-05', desc:'Statistics reworked RepCount-style: tap any overall stat (duration, volume, sets, reps, reps per set, bodyweight, workouts) to see its trend over time. Every exercise gained quick buttons for History, Charts (pick a metric and time range) and Personal Records including rep-max records. Past workouts can now be edited — sets, exercises, and start/end times. History shows calendar-style date badges, and narrow-screen layout issues on the log view were fixed.'},
-  {v:'0.2.0', date:'2026-07-05', desc:'Every exercise now has an animated visual showing how it is performed, with primary and secondary muscles, equipment and step-by-step instructions — including a browsable catalog of 873 exercises to add from. You can link any visual to your own custom exercises. More lifts are ranked (dumbbell lifts by weight, pull-ups/dips/push-ups by reps), stats gained total reps, reps per set and average duration, workouts can be reordered while logging, and your data can be exported as a RepCount-style CSV for Excel.'},
-  {v:'0.1.0', date:'2026-07-05', desc:'First version. Log workouts with supersets and drop sets, browse your full history, exercise library with editable form notes, records and estimated 1RM per exercise, Liftoff-style strength ranks, stats, and import of RepCount CSV exports. Installable on iPhone as a home-screen app that works offline.'},
+  {v:'0.9.8', date:'2026-07-06', items:[
+    'A set that beats your record lights up with a PR badge and shows the new best.',
+    'The first empty set of an exercise suggests a small step up from last session ("▲ try 102.5").',
+    'Supersets show a "Next" chip that jumps you to the partner exercise.',
+    'Sets by muscle group can be filtered: this week, this month, 3 months, a year, or all time.',
+    'Every ranked lift now shows how much is left to reach the next tier.',
+    'Home: a "Closest to rank-up" card.',
+    'Home: a recap of last month — sessions, tonnes lifted, records, top lift.',
+    'The badger moved in: empty screens, the welcome and the workout-saved moment. The last emoji are gone.',
+    'Fixed: typing a set no longer writes a stray junk field into your saved data.',
+    'Fixed: a distance-only cardio workout from a CSV import can now be edited and saved.',
+    'A full bug sweep behind the scenes: leftover code and styles from older designs removed.',
+  ]},
+  {v:'0.9.7', date:'2026-07-06', items:[
+    'New app icon: a badger peeking out of its sett — that\'s what the name means.',
+    'Starting a routine or repeating a past workout asks first — no more accidental workouts.',
+    'Reordering slides the other exercises smoothly out of the way as you drag.',
+    'Lists stretch and bounce back when you scroll past the end.',
+    'Stats moved next to Routines in the bottom bar.',
+    'A workout started from a routine no longer offers "Save as routine" — it already is one.',
+  ]},
+  {v:'0.9.6', date:'2026-07-06', items:[
+    'Stats update live while you train — History, Charts and Personal records include the current workout.',
+    'Each exercise card shows today\'s volume, your best set and the record to beat.',
+    'Warmup sets: tap the little W next to a set. Warmups don\'t count toward stats unless you turn that on.',
+    'A new set no longer copies the one above — last session\'s numbers show as faint hints instead.',
+    'Fixed: buttons wrapping under the pills, the nav bar popping up over the keyboard, page bounce near the bottom, text getting highlighted while reordering, and menus letting the page behind them scroll.',
+  ]},
+  {v:'0.9.5', date:'2026-07-06', items:[
+    'Housekeeping only: cleared out leftover code from the old reorder arrows. Nothing looks or works differently.',
+  ]},
+  {v:'0.9.4', date:'2026-07-06', items:[
+    'The page no longer scrolls sideways when you swipe.',
+    'Nothing spills outside the menus anymore.',
+    'Swipe-right closes menus instantly, without asking — deleting still asks on its own.',
+    'Swipe right to leave the screen when editing a past workout.',
+    'Reorder by pressing and holding a row — the up/down arrows are gone.',
+    'Turning a superset off now fully clears it.',
+    'A small ⓘ in the exercise menu explains supersets and drop sets.',
+    'The tab bar tucks away when the keyboard opens.',
+    'Every menu slides closed smoothly, however you close it.',
+  ]},
+  {v:'0.9.3', date:'2026-07-06', items:[
+    'Swiping back from an open Delete or Copy stops at the middle.',
+    'Short accidental swipes no longer trigger anything.',
+    'The revealed buttons are small round icons that match the app.',
+    'Swipe RIGHT to close menus — pulling down from the top still works.',
+    'Set, Drop set and Superset buttons sit right on the exercise card.',
+    'Reordering got its own menu — drag or nudge the full list.',
+    'Replace exercise swaps the exercise but keeps everything you logged.',
+    'Lists scroll all the way past the keyboard.',
+    'Menu rows are slimmer.',
+  ]},
+  {v:'0.9.2', date:'2026-07-06', items:[
+    'New Home tab: a start button, your routines, and your last workout.',
+    'The app never drops you straight back into an old workout.',
+    'A forgotten workout stops itself an hour after the last touch — an empty one is quietly discarded.',
+    'Swiping rebuilt: quick flicks work, scrolling isn\'t grabbed, tapping anywhere closes an open row.',
+    'Menus can be pulled down by their top edge to close.',
+    'Month headings in the exercise History list.',
+    'Personal records got their own look — best lift up top, rep ladder underneath.',
+    'More-tab scrolling no longer sticks; the line under weight and reps boxes is gone.',
+  ]},
+  {v:'0.9.1', date:'2026-07-05', items:[
+    'Swipe LEFT: the row stops with a red Remove/Delete on the right.',
+    'Swipe a set RIGHT: it stops with an orange Copy on the left.',
+    'Nothing happens from the swipe itself — you tap the button.',
+    'Removed the long underline under the weight and reps boxes.',
+  ]},
+  {v:'0.9.0', date:'2026-07-05', items:[
+    'Safety fixes from a full bug hunt, before new features land.',
+    'Starting a new workout over one in progress warns instead of wiping it.',
+    'Workouts logged in the same minute no longer tangle — deleting one could delete both.',
+    'Fixed dead buttons on exercises with apostrophes, like Farmer\'s Walk.',
+    'Broken backups are repaired automatically on restore.',
+    'Sett now has an automated test suite that runs before every release.',
+  ]},
+  {v:'0.8.1', date:'2026-07-05', items:[
+    'The workout screen really looks like RepCount now — compact set rows, numbers sitting to the left.',
+    'History, Charts and Personal-records buttons are back on the exercise card.',
+    'Swiping shows a proper coloured button: orange Copy, red Remove.',
+  ]},
+  {v:'0.8.0', date:'2026-07-05', items:[
+    'Emoji in menus and buttons replaced with clean line icons.',
+    'The Routines screen shows only real routines — the history list left.',
+    'Repeat a past workout from Log — last time\'s numbers show as faint hints you type over.',
+    '"Save as routine" turns any past workout into a proper routine.',
+    'Workouts show their start and end times.',
+    'Swipe a set to copy it, an exercise to remove it.',
+    'The rest timer moved to the top corner.',
+    'Leaner set rows — more fits on screen.',
+  ]},
+  {v:'0.7.0', date:'2026-07-05', items:[
+    'A calmer workout screen — actions tucked into ⋯ menus.',
+    'More compact weight and reps inputs.',
+    'Smoother transitions; dragging opens a gap where the exercise will land.',
+    'Per-measure statistics that make sense — bodyweight shows range and change.',
+    'Fixed the rest-timer bar sitting too low and a More-tab layout jump.',
+  ]},
+  {v:'0.6.0', date:'2026-07-05', items:[
+    'Saved routines with target weights and rep ranges per set.',
+    'Targets show as faint placeholders while logging — type your numbers over them.',
+    'Supersets inside routines; "Save as routine" from a live workout.',
+    'A rest timer between sets — auto-starts, −15/+15, chime.',
+    'Drag exercises by the ⠿ handle to reorder.',
+    'A friendly first-time welcome: import a CSV or start fresh.',
+    'Pages slide as you move between tabs.',
+  ]},
+  {v:'0.5.0', date:'2026-07-05', items:[
+    'Log is your workout history; Routines is its own tab with popular splits.',
+    'New Settings screen: themes, strength ranks, your data, updates.',
+    'Strength ranks can be turned off entirely.',
+    'The app updates itself when you open it.',
+    'Fresh installs start empty — no demo data.',
+  ]},
+  {v:'0.4.0', date:'2026-07-05', items:[
+    'Sheets have a clear close button.',
+    'Labelled drop-set and superset controls — tap again to undo.',
+    'Notes sit on their own line, nothing is cut off.',
+    'New colour themes under Appearance.',
+    'Male, female or unisex strength standards.',
+    'The changelog is tucked away.',
+  ]},
+  {v:'0.3.0', date:'2026-07-05', items:[
+    'Tap any overall stat to see its trend over time.',
+    'History, Charts and Personal Records for every exercise.',
+    'Past workouts can be edited, including start and end times.',
+    'Calendar-style date badges in History.',
+  ]},
+  {v:'0.2.0', date:'2026-07-05', items:[
+    'Animated visuals for every exercise — muscles, equipment, instructions.',
+    'A browsable catalog of 873 exercises.',
+    'More lifts ranked; richer stats.',
+    'Reorder exercises while logging; CSV export.',
+  ]},
+  {v:'0.1.0', date:'2026-07-05', items:[
+    'First version: log workouts with supersets and drop sets.',
+    'Full history, exercise library with form notes, records and estimated 1RM.',
+    'Liftoff-style strength ranks and stats.',
+    'Imports RepCount CSV exports.',
+    'Installs on iPhone as a home-screen app that works offline.',
+  ]},
 ];
 const KEY='sett:store';
 /* Colour themes — all dark (gym-friendly), only accent + surface shades vary,
@@ -506,7 +645,7 @@ function toast(msg,ms){const t=$('toast');t.textContent=msg;t.style.display='blo
 const newWid=()=>'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 /* ============================== store ============================== */
-function freshStore(){return {schema:1, demo:false, workouts:[], ex:{}, settings:{}, routines:[]};}
+function freshStore(){return {schema:1, workouts:[], ex:{}, settings:{}, routines:[]};}
 function normalizeStore(){
   if(!Array.isArray(store.workouts))store.workouts=[];
   if(!store.ex||typeof store.ex!=='object'||Array.isArray(store.ex))store.ex={};
@@ -516,7 +655,15 @@ function normalizeStore(){
   store.workouts.sort((a,b)=>a.start<b.start?1:-1);
   /* one-time re-id: old 'w'+digits ids collide for same-minute starts */
   let changed=false;const seen=new Set();
-  for(const w of store.workouts){if(!w.id||seen.has(w.id)){w.id=newWid();changed=true;}seen.add(w.id);}
+  for(const w of store.workouts){if(!w.id||seen.has(w.id)){w.id=newWid();changed=true;}seen.add(w.id);
+    /* B4 (sweep 2026-07-06): a hand-edited backup can lack entries/sets arrays —
+       renderLog/renderStats then throw. Coerce like S4 did for top-level fields. */
+    if(!Array.isArray(w.entries)){w.entries=[];changed=true;}
+    for(const e of w.entries)if(!Array.isArray(e.sets)){e.sets=[];changed=true;}}
+  /* strip the junk 'undefined' set key the v0.9.6–0.9.7 wireInputs bug wrote */
+  const scrub=es=>{for(const e of es||[])for(const s of e.sets||[])if('undefined' in s){delete s.undefined;changed=true;}};
+  for(const w of store.workouts)scrub(w.entries);
+  if(store.active)scrub(store.active.entries);
   if(changed)save();
 }
 let store=null, firstRun=false;
@@ -681,9 +828,41 @@ function rankBadge(tier,extra){
   const t=TIERS[tier];
   return '<span class="rankbadge" style="color:'+t.color+';border-color:'+t.color+'55;background:'+t.color+'14">'+t.name+(extra||'')+'</span>';
 }
+/* F40 (2026-07-06): what's left to rank up, from a rankFor() result. Weighted
+   lifts → kg of e1RM to the next tier (next ratio × bodyweight − best e1RM,
+   rounded to 0.5 kg); rep-based → reps to the next tier. Top tier (next==null)
+   → a "Top tier" note with no gap. Returns {text, gap, frac, top} or null for a
+   locked/absent rank. `frac` = progress fraction toward the next threshold, used
+   by the Home "Closest to rank-up" card. */
+function rankGap(rk){
+  if(!rk||rk.locked)return null;
+  const nextName=rk.tier<TIERS.length-1?TIERS[rk.tier+1].name:null;
+  if(rk.next==null||!nextName)return {text:'Top tier',gap:0,frac:1,top:true};
+  if(rk.unit==='reps'){
+    const gap=Math.max(0,rk.next-rk.value);
+    return {text:gap+' rep'+(gap===1?'':'s')+' to '+nextName,gap,frac:rk.prog,top:false};
+  }
+  // weighted: kg of e1RM to the next ratio at the current bodyweight
+  const targetKg=rk.next*rk.bw;
+  const gap=Math.max(0,Math.round((targetKg-rk.e1)*2)/2);
+  return {text:fmtW(gap)+' kg of e1RM to '+nextName,gap,frac:rk.prog,top:false};
+}
+/* F40(b) (2026-07-06): the ranked lift closest to ranking up — highest progress
+   fraction toward its next threshold, excluding top-tier lifts. Returns
+   {name, rk, gap} or null (no ranked lifts, or all at top tier). Gated by the
+   caller on showRanks(). */
+function closestRankUp(){
+  let best=null;
+  for(const n of Object.keys(STD())){
+    const rk=rankFor(n);if(!rk||rk.locked)continue;
+    const gap=rankGap(rk);if(!gap||gap.top)continue;   // skip top-tier
+    if(best==null||gap.frac>best.gap.frac)best={name:n,rk,gap};
+  }
+  return best;
+}
 
 /* ============================== state & render ============================== */
-const state={view:'home', exQuery:'', exCat:'All', editRoutine:null, pickTarget:'active'};
+const state={view:'home', exQuery:'', exCat:'All', editRoutine:null, pickTarget:'active', mgFrame:'week'};   /* F39: muscle-group timeframe, transient (not persisted) */
 const NAV=['home','log','routines','stats','exercises','more'];   /* F35: Stats before Exercises */
 const TITLES={home:'Home', log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', more:'More', settings:'Settings'};
 const showRanks=()=>!(store.settings&&store.settings.showRanks===false);
@@ -715,6 +894,40 @@ const ICO={
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5v.01"/>',
 };
 function ico(name,sz){return '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(sz?' style="width:'+sz+'px;height:'+sz+'px"':'')+'>'+(ICO[name]||'')+'</svg>';}
+/* F42 (2026-07-06): the mono badger peeking out of its sett burrow — appears in
+   empty states and replaces the last two emoji (app goes zero-emoji). Drawn on
+   theme vars so it works across every theme: --card2 = the earth mound, --text
+   = the light head/muzzle/ears, --bg = the dark eye stripes + nose. Purely
+   decorative (aria-hidden). sz = pixel size (default 80). */
+function badgerSVG(sz){
+  sz=sz||80;
+  return '<svg class="badger" aria-hidden="true" viewBox="0 0 120 96" width="'+sz+'" height="'+Math.round(sz*0.8)+'" fill="none" xmlns="http://www.w3.org/2000/svg">'+
+    /* earth mound of the sett */
+    '<path d="M4 92 C10 60 40 46 60 46 C80 46 110 60 116 92 Z" fill="var(--card2)"/>'+
+    /* burrow shadow behind the head */
+    '<ellipse cx="60" cy="70" rx="30" ry="20" fill="var(--bg)" opacity="0.55"/>'+
+    /* ears */
+    '<circle cx="40" cy="34" r="9" fill="var(--text)"/><circle cx="80" cy="34" r="9" fill="var(--text)"/>'+
+    '<circle cx="40" cy="34" r="4" fill="var(--card2)"/><circle cx="80" cy="34" r="4" fill="var(--card2)"/>'+
+    /* head */
+    '<path d="M34 44 C34 26 46 16 60 16 C74 16 86 26 86 44 C86 62 74 72 60 72 C46 72 34 62 34 44 Z" fill="var(--text)"/>'+
+    /* two dark eye stripes running down the face */
+    '<path d="M50 20 C46 34 46 46 49 60 L44 60 C41 46 41 32 45 19 Z" fill="var(--bg)"/>'+
+    '<path d="M70 20 C74 34 74 46 71 60 L76 60 C79 46 79 32 75 19 Z" fill="var(--bg)"/>'+
+    /* light muzzle */
+    '<ellipse cx="60" cy="56" rx="12" ry="10" fill="var(--text)"/>'+
+    /* dark nose */
+    '<ellipse cx="60" cy="52" rx="5" ry="4" fill="var(--bg)"/>'+
+    /* eyes (dark dots on the light between the stripes) */
+    '<circle cx="53" cy="40" r="2.6" fill="var(--bg)"/><circle cx="67" cy="40" r="2.6" fill="var(--bg)"/>'+
+    '</svg>';
+}
+/* F42: a centered empty-state block — the badger over house copy */
+function emptyState(title,sub,sz){
+  return '<div class="empty">'+badgerSVG(sz)+
+    '<div class="big">'+esc(title)+'</div>'+
+    (sub?'<p class="muted small">'+sub+'</p>':'')+'</div>';
+}
 function setView(v){
   const oldIdx=NAV.indexOf(state.view), newIdx=NAV.indexOf(v);
   state.view=v;render();
@@ -739,6 +952,90 @@ function render(){
 function catChip(cat){const c=CAT_COLORS[cat]||CAT_COLORS.Other;
   return '<span class="chip"><span class="dot" style="background:'+c+'"></span>'+esc(cat)+'</span>';}
 
+/* F41 (2026-07-06): monthly recap. On Home, during any month where the PREVIOUS
+   calendar month logged ≥1 workout and the recap for that month hasn't been
+   dismissed, show a dismissable "Your <Month>" card. All figures come from
+   store.workouts (finished history — the previous month is complete, so it
+   never fluctuates with a live workout). Fork SETTLED: volume in tonnes.
+   records = sets that month whose e1RM beat ALL prior history for that exercise
+   (running PRs); top lift = exercise in the most sessions that month; delta =
+   volume vs the month before. Warmups follow statSet (F26). */
+function prevMonthKey(offset){
+  const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-(offset||1));
+  return d.getFullYear()+'-'+pad2(d.getMonth()+1);
+}
+function monthAgg(mk){
+  let sessions=0,vol=0;const topCount={};
+  for(const w of store.workouts){
+    if(monthKey(w.start)!==mk)continue;
+    sessions++;
+    const seen=new Set();
+    for(const e of w.entries){
+      if(!seen.has(e.name)){seen.add(e.name);topCount[e.name]=(topCount[e.name]||0)+1;}
+      for(const s of e.sets)if(statSet(s))vol+=setVol(s);
+    }
+  }
+  return {sessions,vol,topCount};
+}
+function monthRecords(mk){
+  /* running PRs: a set counts if its e1RM beats every prior e1RM for that
+     exercise across ALL history up to (and excluding) that set. Iterate oldest
+     → newest so "prior" is well-defined. */
+  const asc=[...store.workouts].sort((a,b)=>a.start<b.start?-1:1);
+  const bestSoFar={};let records=0;
+  for(const w of asc){
+    const inMonth=monthKey(w.start)===mk;
+    for(const e of w.entries)for(const s of e.sets){
+      if(!statSet(s))continue;
+      const e1=epley(s.w,s.r);if(e1==null||e1<=0)continue;
+      const prev=bestSoFar[e.name];
+      if(prev==null||e1>prev){if(inMonth)records++;bestSoFar[e.name]=e1;}
+    }
+  }
+  return records;
+}
+function monthlyRecap(){
+  const mk=prevMonthKey(1);
+  if(store.settings&&store.settings.recapDismissed===mk)return null;   // dismissed
+  const a=monthAgg(mk);
+  if(!a.sessions)return null;                                          // no prior-month workouts
+  const prev=monthAgg(prevMonthKey(2));
+  const top=Object.entries(a.topCount).sort((x,y)=>y[1]-x[1])[0]||null;
+  const records=monthRecords(mk);
+  // delta vs the month before (volume)
+  let delta=null;
+  if(prev.vol>0){
+    const pct=Math.round((a.vol-prev.vol)/prev.vol*100);
+    const prevName=MONTHS[+prevMonthKey(2).slice(5)-1];
+    delta={pct,up:pct>0,prevName};
+  }
+  return {mk,monthName:MONTHS[+mk.slice(5)-1],sessions:a.sessions,vol:a.vol,records,top,delta};
+}
+function recapCardHtml(){
+  const r=monthlyRecap();if(!r)return '';
+  const tonnes=(r.vol/1000).toFixed(1)+' t';
+  let deltaHtml='';
+  if(r.delta){
+    const word=r.delta.pct>0?'up':r.delta.pct<0?'down':'flat';
+    const col=r.delta.up?'var(--good)':'var(--muted)';
+    deltaHtml='<div class="tiny" style="color:'+col+';margin-top:8px;font-weight:700">Volume '+word+
+      (r.delta.pct!==0?' '+Math.abs(r.delta.pct)+'%':'')+' vs '+esc(r.delta.prevName)+'</div>';
+  }
+  return '<div class="card" style="background:var(--accent-soft);border-color:color-mix(in srgb, var(--accent) 35%, var(--line))">'+
+    '<div class="row" style="align-items:flex-start"><h3 class="grow" style="margin:0">Your '+esc(r.monthName)+'</h3>'+
+    '<button class="iconbtn" title="Dismiss" aria-label="Dismiss recap" data-mk="'+esc(r.mk)+'" onclick="dismissRecap(this.dataset.mk)" style="width:28px;height:28px;margin:-4px -4px 0 0">✕</button></div>'+
+    '<div class="statgrid" style="margin-top:10px">'+
+      '<div class="stat"><div class="v">'+r.sessions+'</div><div class="l">sessions</div></div>'+
+      '<div class="stat"><div class="v">'+tonnes+'</div><div class="l">volume</div></div>'+
+      '<div class="stat"><div class="v">'+r.records+'</div><div class="l">record'+(r.records===1?'':'s')+'</div></div>'+
+    '</div>'+
+    (r.top?'<div class="tiny muted" style="margin-top:10px">Top lift · <b style="color:var(--text)">'+esc(r.top[0])+'</b> ×'+r.top[1]+'</div>':'')+
+    deltaHtml+
+    '</div>';
+}
+function dismissRecap(mk){
+  store.settings=store.settings||{};store.settings.recapDismissed=mk;save();render();
+}
 /* ============================== HOME view ============================== */
 /* F3 landing page (owner picked sketch A "Quick start", 2026-07-06).
    F2 OWNER SPEC, verbatim: "Workouts should have an auto stop and also not
@@ -758,6 +1055,7 @@ function renderHome(){
     h+='<button class="btn primary wide" style="margin:4px 0 6px" onclick="startWorkout()">＋ Start workout</button>';
   }
   h+='<p class="tiny muted" style="margin:2px 4px 8px">'+weekSummary()+'</p>';
+  h+=recapCardHtml();   /* F41: monthly recap (empty until the prior month has data & isn't dismissed) */
   h+='<div class="card"><h3>Routines</h3>';
   if(store.routines.length){
     for(const r of store.routines.slice(0,3))
@@ -776,6 +1074,16 @@ function renderHome(){
       '<div class="grow"><div class="small" style="font-weight:600">'+(w.routine?esc(w.routine):'Workout')+'</div>'+
       '<div class="tiny muted">'+w.entries.length+' exercises · '+nsets+' sets · '+fmtDur(w.start,w.end)+'</div></div></div></div>';
   }
+  /* F40(b): the lift nearest to ranking up (only when ranks are on and one exists) */
+  if(showRanks()){
+    const cru=closestRankUp();
+    if(cru)
+      h+='<div class="card"><div class="row"><div class="grow"><h3 style="margin:0">Closest to rank-up</h3>'+
+        '<div class="tiny muted" style="margin-top:2px">'+esc(cru.name)+' — '+cru.gap.text+'</div></div>'+
+        rankBadge(cru.rk.tier)+'</div>'+
+        '<div class="rankbar" style="margin-top:8px"><i style="width:'+Math.round(cru.rk.prog*100)+'%;background:'+TIERS[cru.rk.tier].color+'"></i></div>'+
+        '<button class="btn ghost small wide" style="margin-top:10px" data-n="'+esc(cru.name)+'" onclick="openExercise(this.dataset.n)">View '+esc(cru.name)+'</button></div>';
+  }
   return h;
 }
 
@@ -785,8 +1093,8 @@ function renderLog(){
   if(store.active)return renderActive();
   let h='<button class="btn primary wide" style="margin:4px 0 6px" onclick="startWorkout()">＋ Start empty workout</button>';
   if(!store.workouts.length)
-    return h+'<div class="card hero"><div class="big">No workouts yet</div>'+
-      '<p class="muted small" style="margin:6px 0 0">Start one above, pick a routine under <b>Routines</b>, or import a RepCount CSV in <b>Settings</b>.</p></div>';
+    return h+'<div class="card">'+emptyState('No workouts yet',
+      'The sett is empty. Time to lift. Start one above, pick a routine under <b>Routines</b>, or import a RepCount CSV in <b>Settings</b>.')+'</div>';
   h+='<p class="tiny muted" style="margin:2px 4px 0">'+weekSummary()+'</p>';
   return h+historyList();
 }
@@ -827,6 +1135,10 @@ function renderRoutines(){
         '<button class="iconbtn" title="Delete routine" onclick="deleteRoutine(\''+esc(r.id)+'\')">'+ico('trash')+'</button></div>';
     }
     h+='</div>';
+  }else{
+    /* F42: empty own-routines area gets the badger */
+    h+='<div class="card">'+emptyState('No routines yet',
+      'Build one with <b>＋ New routine</b> and it lands here, ready for a one-tap start.',64)+'</div>';
   }
   h+='<div class="row" style="margin:16px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">Popular routines</h3>'+
      '<span class="tiny muted">common splits</span></div><div class="card" style="padding:4px 14px">';
@@ -949,9 +1261,15 @@ function doConfirmedStart(kind,arg){
   else if(kind==='popular')startPopular(+arg);
   else if(kind==='repeat')repeatWorkout(arg);
 }
-function weekSummary(){
+/* Monday-start boundary of the current week — the app's single week definition,
+   reused by weekSummary and the F39 muscle-group "This week" timeframe. */
+function weekStart(){
   const now=new Date();const day=(now.getDay()+6)%7; // Monday start
   const mon=new Date(now);mon.setHours(0,0,0,0);mon.setDate(now.getDate()-day);
+  return mon;
+}
+function weekSummary(){
+  const mon=weekStart();
   let n=0;for(const w of statWorkouts()){if(toDate(w.start)>=mon)n++;else break;}   // F24: count the live workout too
   return n===0?'No workouts yet this week.':n+' workout'+(n>1?'s':'')+' this week.';
 }
@@ -1015,13 +1333,18 @@ function renderActive(){
       '<button class="setmenu" title="Exercise options" onclick="exMenu('+ei+')">⋯</button>'+
       '</div></div></div>';
     if(e.note)h+='<div class="tiny muted" style="margin-top:6px">'+ico('note')+' '+esc(e.note)+'</div>';
+    const prm=a.editing?null:prMoment(ei);        // F36: PR-beating set (never while editing)
+    const hintSi=a.editing?-1:firstUntouchedSet(e);// F37: first untouched set index (live only)
     e.sets.forEach((s,si)=>{
       const twPh=s.tgt&&s.tgt.tw!=null?' placeholder="'+s.tgt.tw+'"':' placeholder="—"';
       const rPh=s.tgt&&repRange(s.tgt)?' placeholder="'+repRange(s.tgt)+'"':' placeholder="—"';
-      h+='<div class="swipe" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
+      const isPr=prm&&prm.si===si;                 // F36
+      const hint=si===hintSi?beatLastHint(e.name,si):'';   // F37
+      h+='<div class="swipe'+(isPr?' pr':'')+'" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
         '<button class="swipe-act copy" aria-label="Copy set" title="Copy" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'</button>'+
         '<button class="swipe-act del" aria-label="Remove set" title="Remove" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'</button>'+
-        '<div class="swipe-fg setrow2">'+
+        '<div class="swipe-fg">'+
+        '<div class="setrow2">'+
         /* F26: warmup circle shows W (distinct from drop's D) */
         '<span class="setnum'+(s.warmup?' warm':s.drop?' drop':'')+'" title="'+(s.warmup?'Warmup set':s.drop?'Drop set':'')+'">'+(s.warmup?'W':s.drop?'D':si+1)+'</span>'+
         '<div class="setcell"><label>Kg</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
@@ -1030,6 +1353,13 @@ function renderActive(){
         /* F26: petite, non-invading W toggle beside the ⋯ menu */
         '<button class="wtog'+(s.warmup?' on':'')+'" title="'+(s.warmup?'Warmup — tap to unmark':'Mark as warmup')+'" aria-pressed="'+(!!s.warmup)+'" onclick="toggleWarmup('+ei+','+si+')">W</button>'+
         '<button class="setmenu" title="Set options" onclick="setMenu('+ei+','+si+')">⋯</button>'+
+        '</div>'+
+        /* F36 PR chip + F37 hint on a micro-line under the inputs — keeps the set
+           row itself from ever overflowing at 375px (they're mutually exclusive:
+           a PR needs values, a hint only shows on an untouched empty row). */
+        ((isPr||hint)?'<div class="setextra">'+
+          (isPr?'<span class="prchip">PR</span>':'')+
+          (hint?'<span class="hintchip">'+hint+'</span>':'')+'</div>':'')+
         '</div></div>';
     });
     /* F15 (2026-07-06): superset/drop set visible on the card, not buried in ⋯ */
@@ -1044,6 +1374,10 @@ function renderActive(){
       '</div>'+
       /* F25: one dense muted line under the footer — live volume · best set · PR e1RM */
       '<div class="cardstats" id="cs'+ei+'">'+cardStatsLine(ei)+'</div>'+
+      /* F36: accent record line (empty until a live set beats the pre-workout PR) */
+      '<div id="prl'+ei+'">'+(a.editing?'':prLineHtml(ei))+'</div>'+
+      /* F38: superset flow chip — "Next: <partner>" after a set on a linked entry is filled */
+      '<div id="ssf'+ei+'">'+(a.editing?'':ssFlowHtml(ei))+'</div>'+
       '</div>';
   });
   h+='<div class="row"><button class="btn grow" onclick="openPicker()">＋ Add exercise</button>'+
@@ -1096,6 +1430,131 @@ function cardStatsLine(ei){
   if(bestS)parts.push('Best '+fmtW(bestS.w)+'×'+(bestS.r||0));
   parts.push('<b>PR e1RM '+(pr!=null?fmtW(pr)+' kg':'—')+'</b>');
   return parts.join(' · ');
+}
+/* F36 (2026-07-06): the PR moment. A live set that beats the PRE-WORKOUT record
+   lights up as it's typed. Baseline records EXCLUDE store.active (records as of
+   workout start), so the comparison is honest. Weighted lifts → e1RM record;
+   rep-based lifts (bodyweight sets, w null/0) → best-reps record. Never while
+   editing; warmups only trigger when the F26 setting counts them (statSet).
+   Returns {si, kind:'e1'|'reps', val, prev} for the single best PR-beating set,
+   or null. Pure/side-effect-free so it's safe on every keystroke. */
+function histBestReps(name){
+  let best=null;
+  for(const {s} of allSetsOf(name,true))   // exclActive → history only
+    if((s.w==null||s.w===0)&&s.r&&(best==null||s.r>best))best=s.r;
+  return best;
+}
+function prMoment(ei){
+  const a=store.active;if(!a||a.editing)return null;
+  const e=a.entries[ei];if(!e)return null;
+  const prevE1=prFor(e.name,true).bestE1;         // history-only standing e1RM
+  const prevReps=histBestReps(e.name);            // history-only best bodyweight reps
+  let bestE1=null,bestE1Si=-1,bestReps=null,bestRepsSi=-1;
+  e.sets.forEach((s,si)=>{
+    if(!statSet(s))return;                        // warmups excluded unless the setting counts them
+    if(s.w!=null&&s.w>0){
+      const v=epley(s.w,s.r);
+      if(v!=null&&(bestE1==null||v>bestE1)){bestE1=v;bestE1Si=si;}
+    }else if(s.r){                                // bodyweight/rep-based set
+      if(bestReps==null||s.r>bestReps){bestReps=s.r;bestRepsSi=si;}
+    }
+  });
+  /* weighted e1RM PR takes precedence when present; else a rep-based PR */
+  if(bestE1!=null&&bestE1>0&&(prevE1==null||bestE1>prevE1))
+    return {si:bestE1Si,kind:'e1',val:bestE1,prev:prevE1};
+  if(bestReps!=null&&(prevReps==null||bestReps>prevReps))
+    return {si:bestRepsSi,kind:'reps',val:bestReps,prev:prevReps};
+  return null;
+}
+/* F36: the accent line naming the record, under the card (empty when no PR) */
+function prLineHtml(ei){
+  const m=prMoment(ei);if(!m)return '';
+  if(m.kind==='e1')
+    return '<div class="prline">New e1RM record — '+fmtW(m.val)+' kg'+(m.prev!=null?', was '+fmtW(m.prev):'')+'</div>';
+  return '<div class="prline">New reps record — '+m.val+' reps'+(m.prev!=null?', was '+m.prev:'')+'</div>';
+}
+/* F37 (2026-07-06): beat-last-time hint. On the FIRST untouched set row of an
+   exercise in a LIVE workout, if the previous session's same-index set exists
+   and is complete, suggest a small step up: weighted lifts → prev w + 2.5 kg;
+   bodyweight/rep-based (prev w null or 0) → prev r + 1 rep. Display-only, a
+   sibling of the ghost tgt (which stays as-is). Disappears once the user types
+   (the row is no longer "untouched", so no row is the first-untouched one). */
+function firstUntouchedSet(e){
+  for(let i=0;i<e.sets.length;i++){const s=e.sets[i];if(s.w==null&&s.r==null)return i;}
+  return -1;
+}
+function beatLastHint(name,idx){
+  const prev=prevSessionSet(name,idx);            // {tw,rlo,rhi} from previous SESSION's same-index set
+  if(!prev)return '';
+  const pw=prev.tw, pr=prev.rlo;                  // rlo carries the logged rep count (see prevSessionSet)
+  if(pw!=null&&pw>0){
+    if(pr==null)return '';                        // set incomplete last time — no honest step-up
+    return '▲ try '+fmtW(pw+2.5);
+  }
+  /* bodyweight / rep-based last time */
+  if(pr==null)return '';
+  return '▲ try '+(pr+1)+' reps';
+}
+/* F38 (2026-07-06): superset flow chip. Inside a linked ss group, once a set on
+   this entry is filled, show "Next: <partner>" — the next entry in the SAME ss
+   group, wrapping. Tapping scrolls that partner card into view. Partner names go
+   through the dataset pattern (house law 4 — apostrophe trap). */
+function ssPartner(ei){
+  const a=store.active;if(!a)return -1;
+  const es=a.entries,e=es[ei];if(!e||e.ss==null)return -1;
+  const group=[];es.forEach((x,i)=>{if(x.ss===e.ss)group.push(i);});
+  if(group.length<2)return -1;
+  const pos=group.indexOf(ei);
+  return group[(pos+1)%group.length];             // wrap to the next member
+}
+function ssFlowHtml(ei){
+  const a=store.active;if(!a)return '';
+  const e=a.entries[ei];if(!e)return '';
+  const anyFilled=e.sets.some(s=>s.w!=null||s.r!=null);
+  if(!anyFilled)return '';
+  const pi=ssPartner(ei);if(pi<0)return '';
+  const partner=a.entries[pi];if(!partner)return '';
+  return '<button class="ssflow" data-n="'+esc(partner.name)+'" onclick="scrollToEntry(this.dataset.n)">'+
+    ico('link')+'Next: '+esc(partner.name)+
+    '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M9 6l6 6-6 6"/></svg>'+
+    '</button>';
+}
+/* F38: scroll the superset partner's card into view (by exercise name) */
+function scrollToEntry(name){
+  const a=store.active;if(!a)return;
+  const ei=a.entries.findIndex(e=>e.name===name);if(ei<0)return;
+  const card=document.querySelector('#main .excard[data-ei="'+ei+'"]');
+  if(card)card.scrollIntoView({behavior:'smooth',block:'center'});
+}
+/* F36/F37/F38: refresh the live cues for one exercise card WITHOUT a full
+   re-render (a render would blur the input mid-keystroke, F25's reason). Updates
+   the stats line, the PR record line, the superset flow chip, and re-applies the
+   PR row highlight + chip to the correct set row. Called from wireInputs on every
+   keystroke; a no-op while editing a past workout. */
+function updateLiveCues(ei){
+  const a=store.active;if(!a||a.editing)return;
+  const card=document.querySelector('#main .excard[data-ei="'+ei+'"]');
+  const cs=$('cs'+ei);if(cs)cs.innerHTML=cardStatsLine(ei);
+  const prl=$('prl'+ei);if(prl)prl.innerHTML=prLineHtml(ei);
+  const ssf=$('ssf'+ei);if(ssf)ssf.innerHTML=ssFlowHtml(ei);
+  if(!card)return;
+  const e=a.entries[ei];
+  const prm=prMoment(ei);
+  const hintSi=firstUntouchedSet(e);              // F37: only this row keeps its hint
+  card.querySelectorAll('[data-swipe="set"]').forEach(row=>{
+    const si=+row.dataset.si;const isPr=!!prm&&prm.si===si;
+    row.classList.toggle('pr',isPr);              // F36 glow + border
+    const fg=row.querySelector('.swipe-fg');if(!fg)return;
+    let extra=fg.querySelector('.setextra');
+    const hint=si===hintSi?beatLastHint(e.name,si):'';   // F37 (empty once touched)
+    if(isPr||hint){
+      let html='';
+      if(isPr)html+='<span class="prchip">PR</span>';
+      if(hint)html+='<span class="hintchip">'+hint+'</span>';
+      if(!extra){extra=document.createElement('div');extra.className='setextra';fg.appendChild(extra);}
+      extra.innerHTML=html;
+    }else if(extra)extra.remove();
+  });
 }
 /* F27 (2026-07-06): a new set NEVER copies the current session's values —
    that was a prefill (ghost-fill law violation). It starts empty; the tgt
@@ -1176,7 +1635,9 @@ function armRoHold(e,row){
   cancelRoHold();
   const px=e.clientX,py=e.clientY,pid=e.pointerId;
   const timer=setTimeout(()=>{
-    roHold=null;
+    /* B2 (sweep 2026-07-06): cancelRoHold removes the 3 document listeners —
+       a bare roHold=null leaked them on every completed hold */
+    cancelRoHold();
     startRoDrag({clientY:py,clientX:px,pointerId:pid,preventDefault(){}},row,row);
   },200);
   roHold={timer,px,py,pid};
@@ -1401,7 +1862,7 @@ function discardWorkout(){
 }
 function finishWorkout(){
   const a=store.active;
-  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
+  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
   if(!entries.length){toast('Log at least one set first');return;}
   if(a.editing){
     const idx=store.workouts.findIndex(x=>x.id===a.editing);
@@ -1425,8 +1886,9 @@ function finishWorkout(){
   store.active=null;save();clearInterval(tick);
   const vol=entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+(statSet(s)?setVol(s):0),0),0);   // F26
   const nsets=entries.reduce((t,e)=>t+e.sets.length,0);
-  openModal('<h2 style="margin-bottom:4px">Workout saved 💪</h2>'+
-    '<p class="muted small">'+fmtDur(w.start,w.end)+' · '+nsets+' sets · '+fmtNum(vol)+' kg volume</p>'+
+  openModal('<div style="text-align:center;margin-bottom:6px">'+badgerSVG(64)+'</div>'+
+    '<h2 style="margin-bottom:4px;text-align:center">Workout saved</h2>'+
+    '<p class="muted small" style="text-align:center">'+fmtDur(w.start,w.end)+' · '+nsets+' sets · '+fmtNum(vol)+' kg volume</p>'+
     (prs.length?'<div class="card"><h3>New records</h3>'+prs.map(p=>'<div class="listrow" style="cursor:default"><div class="grow">'+esc(p.name)+'</div><b style="color:var(--good)">e1RM '+fmtW(p.e1)+' kg</b></div>').join('')+'</div>':'')+
     '<button class="btn primary wide" onclick="closeModal();setView(\'log\')">Nice</button>');
   render();
@@ -1537,23 +1999,25 @@ function renderExercises(){
      '<button class="btn primary grow" onclick="createExercise(\'\')">＋ New exercise</button></div>';
   h+='<input style="width:100%;margin:8px 0" placeholder="Search '+names.length+' exercises…" data-act="exq" value="'+esc(state.exQuery)+'">';
   h+='<div class="chiprow">'+cats.map(c=>'<button class="chip'+(state.exCat===c?' on':'')+'" onclick="state.exCat=\''+c+'\';render()">'+c+'</button>').join('')+'</div>';
-  h+='<div class="card" style="padding:4px 14px">';
-  let shown=0;
+  let list='';let shown=0;
   for(const n of names){
     const m=store.ex[n];
     if(state.exCat!=='All'&&m.cat!==state.exCat)continue;
     if(state.exQuery&&!n.toLowerCase().includes(state.exQuery.toLowerCase()))continue;
     shown++;
     const pr=prFor(n);const rk=showRanks()?rankFor(n):null;
-    h+='<div class="listrow" data-ex="'+esc(n)+'">'+
+    list+='<div class="listrow" data-ex="'+esc(n)+'">'+
       (m.vid?'<img class="thumb" loading="lazy" src="exercises/'+esc(m.vid)+'/0.jpg" alt="">':
         '<span class="thumb" style="background:var(--card2);display:inline-flex;align-items:center;justify-content:center;color:'+(CAT_COLORS[m.cat]||CAT_COLORS.Other)+';font-weight:800">'+esc(n[0])+'</span>')+
       '<div class="grow"><div style="font-weight:600">'+esc(n)+'</div>'+
       '<div class="tiny muted">'+(pr.sessions?pr.sessions+' sessions'+(pr.bestE1?' · best e1RM '+fmtW(pr.bestE1)+' kg':''):'never logged')+'</div></div>'+
       (rk&&!rk.locked?rankBadge(rk.tier):'')+'</div>';
   }
-  h+=shown?'':'<p class="muted small" style="padding:12px 0">Nothing matches.</p>';
-  h+='</div>';
+  /* F42: no matches (or an empty library) → the badger instead of an empty card */
+  if(shown)h+='<div class="card" style="padding:4px 14px">'+list+'</div>';
+  else h+='<div class="card">'+emptyState(
+    (state.exQuery||state.exCat!=='All')?'Nothing matches':'No exercises yet',
+    (state.exQuery||state.exCat!=='All')?'Try a different search, or add it from the catalog above.':'Browse the catalog or add your own with the buttons above.',64)+'</div>';
   return h;
 }
 let visTimer=null;
@@ -1696,18 +2160,6 @@ function lineChart(pts,fmtY){
      '<text x="'+(W-R)+'" y="'+(H-8)+'" font-size="11" fill="var(--faint)" text-anchor="end">'+esc(pts[pts.length-1].t)+'</text></svg>';
   return s;
 }
-const EXICONS={
-  hist:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>',
-  chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V12M12 20V5M19 20v-6"/></svg>',
-  star:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg>',
-};
-function exActionBtns(name){
-  const d='data-n="'+esc(name)+'"';
-  return '<span class="exicons">'+
-    '<button class="iconbtn" '+d+' title="History" onclick="openExHistory(this.dataset.n)">'+EXICONS.hist+'</button>'+
-    '<button class="iconbtn" '+d+' title="Charts" onclick="openExCharts(this.dataset.n)">'+EXICONS.chart+'</button>'+
-    '<button class="iconbtn" '+d+' title="Personal records" onclick="openExPRs(this.dataset.n)">'+EXICONS.star+'</button></span>';
-}
 function dateBadge(s){const d=toDate(s);
   return '<div class="datebadge"><div class="dow">'+DAYS[d.getDay()]+'</div><div class="d">'+d.getDate()+'</div></div>';}
 /* full session history for one exercise */
@@ -1808,7 +2260,7 @@ function sparkSvg(pts,cls){
 /* ============================== STATS view ============================== */
 function renderStats(){
   const sw=statWorkouts();const nw=sw.length;                        // F24 + F26
-  if(!nw)return '<div class="card hero"><div class="big">No data yet</div><p class="muted small">Stats appear after your first workout.</p></div>';
+  if(!nw)return '<div class="card">'+emptyState('No data yet','Stats appear after your first workout.')+'</div>';
   let nsets=0,vol=0,nreps=0,durMin=0,durN=0;
   for(const w of sw){
     if(w.start&&w.end){const m=(toDate(w.end)-toDate(w.start))/60000;if(m>0&&m<360){durMin+=m;durN++;}}
@@ -1855,19 +2307,57 @@ function renderStats(){
       '<span class="chip">'+SEX_LABEL[(store.settings&&store.settings.sex)||'male']+' standards</span></div>';
     for(const {n,r} of ranked){
       const t=TIERS[r.tier];
+      const gap=rankGap(r);   // F40(a): what's left to rank up
       h+='<div style="padding:9px 0;border-bottom:1px solid var(--line)"><div class="row">'+
         '<div class="grow" style="font-weight:600" data-n="'+esc(n)+'" onclick="openExercise(this.dataset.n)">'+esc(n)+'</div>'+
         '<span class="tiny muted">'+(r.unit==='reps'?r.value+' reps':r.value.toFixed(2)+'× BW')+'</span>'+rankBadge(r.tier)+'</div>'+
-        '<div class="rankbar"><i style="width:'+Math.round(r.prog*100)+'%;background:'+t.color+'"></i></div></div>';
+        '<div class="rankbar"><i style="width:'+Math.round(r.prog*100)+'%;background:'+t.color+'"></i></div>'+
+        (gap?'<div class="tiny muted" style="margin-top:5px">'+gap.text+'</div>':'')+'</div>';
     }
     h+='<p class="tiny muted" style="margin:10px 0 0">Only lifts with published strength standards are ranked — barbell and dumbbell lifts by weight relative to bodyweight, pull-ups/dips/push-ups by reps. Machine and cable exercises stay unranked because weight stacks differ between gym equipment brands. Change the standard (male / female / unisex) or hide ranks entirely under Settings.</p></div>';
   }
-  // categories by sets
-  const catCount={};
-  for(const w of store.workouts)for(const e of w.entries){const c=(store.ex[e.name]||{}).cat||'Other';catCount[c]=(catCount[c]||0)+e.sets.length;}
+  // F39: sets by muscle group, with a timeframe selector (default This week)
+  h+=muscleGroupCard();
+  return h;
+}
+/* F39 (2026-07-06): muscle-group set counts within a timeframe. Routes through
+   statWorkouts() (so the live workout counts, F24) and statSet() (warmup
+   exclusion, F26). "This week" reuses weekStart() — the app's one week
+   definition. Timeframe lives in transient state.mgFrame (never persisted). */
+const MG_FRAMES={week:'This week',month:'This month','3m':'3 months','1y':'1 year',all:'All time'};
+function mgCutoff(frame){
+  if(frame==='week')return weekStart().getTime();
+  const now=new Date();
+  if(frame==='month'){const d=new Date(now);d.setHours(0,0,0,0);d.setDate(1);return d.getTime();}
+  if(frame==='3m')return Date.now()-90*86400000;
+  if(frame==='1y')return Date.now()-365*86400000;
+  return 0;   // all time
+}
+function muscleCounts(frame){
+  const cutoff=mgCutoff(frame);const catCount={};
+  for(const w of statWorkouts()){                                    // F24: includes the live workout
+    if(cutoff&&toDate(w.start).getTime()<cutoff)continue;
+    for(const e of w.entries){
+      const c=(store.ex[e.name]||{}).cat||'Other';
+      let n=0;for(const s of e.sets)if(statSet(s))n++;               // F26: warmups excluded unless counted
+      if(n)catCount[c]=(catCount[c]||0)+n;
+    }
+  }
+  return catCount;
+}
+function muscleGroupCard(){
+  const frame=state.mgFrame||'week';
+  const catCount=muscleCounts(frame);
   const catList=Object.entries(catCount).sort((a,b)=>b[1]-a[1]);
   const maxC=catList.length?catList[0][1]:1;
-  h+='<div class="card"><h3>Sets by muscle group</h3>';
+  let h='<div class="card"><div class="row" style="margin-bottom:10px"><h3 class="grow" style="margin:0">Sets by muscle group</h3>'+
+    '<select onchange="state.mgFrame=this.value;render()" style="padding:6px 8px;font-size:16px;max-width:150px">'+
+    Object.entries(MG_FRAMES).map(([k,v])=>'<option value="'+k+'"'+(k===frame?' selected':'')+'>'+v+'</option>').join('')+
+    '</select></div>';
+  if(!catList.length){
+    h+='<p class="muted small" style="margin:0">No sets logged in this timeframe.</p></div>';
+    return h;
+  }
   for(const [c,n] of catList){
     h+='<div class="row small" style="padding:5px 0"><span style="width:86px">'+esc(c)+'</span>'+
       '<div class="grow rankbar" style="margin:0"><i style="width:'+Math.round(n/maxC*100)+'%;background:'+(CAT_COLORS[c]||CAT_COLORS.Other)+'"></i></div>'+
@@ -1984,7 +2474,8 @@ function renderSettings(){
     '<p class="small muted" style="margin:6px 0 12px">'+(autoOn?'Sett updates itself to the newest version when you open it online.':'Auto-update is off — check manually below.')+'</p>'+
     '<button class="btn wide" onclick="checkForUpdates(true)">Check for updates now</button></div>';
   // about + changelog (tucked away)
-  const clRow=c=>'<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>v'+c.v+'</b> <span class="tiny muted">'+c.date+'</span><div class="small muted">'+esc(c.desc)+'</div></div>';
+  const clRow=c=>'<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>v'+c.v+'</b> <span class="tiny muted">'+c.date+'</span>'+
+    '<ul class="small muted" style="margin:6px 0 0;padding-left:18px">'+(c.items||[c.desc]).map(it=>'<li style="margin:3px 0">'+esc(it)+'</li>').join('')+'</ul></div>';
   h+='<div class="card"><h3>About</h3>'+
     '<p class="small muted" style="margin:0 0 4px">Sett v'+APP_VERSION+' · '+(ranksOn?SEX_LABEL[sex]+' strength standards':'ranks off')+'</p>'+
     '<details><summary class="small muted" style="cursor:pointer;padding:8px 0">Changelog</summary>'+
@@ -2021,7 +2512,8 @@ function askSexIfUnset(){
 function markOnboarded(){store.settings=store.settings||{};store.settings._onboarded=true;save();}
 /* first-run onboarding: welcome → import or start fresh → ranks */
 function startOnboarding(){
-  openModal('<h2>Welcome to Sett 💪</h2>'+
+  openModal('<div style="text-align:center;margin-bottom:8px">'+badgerSVG(72)+'</div>'+
+    '<h2 style="text-align:center">Welcome to Sett</h2>'+
     '<p class="small muted" style="margin-bottom:6px">A private workout log — everything stays on this device, nothing is uploaded.</p>'+
     '<p class="small muted" style="margin-bottom:18px">Coming from RepCount or another app? Import your history to carry on where you left off. New to tracking? Start fresh — you can always import later from Settings.</p>'+
     '<label class="btn primary wide" style="margin-bottom:10px">Import a RepCount CSV<input type="file" accept=".csv,text/csv" style="display:none" onchange="onboardImportCsv(this)"></label>'+
@@ -2233,15 +2725,19 @@ if(window.visualViewport){
   window.visualViewport.addEventListener('scroll',kbAdj);
 }
 function wireInputs(){
-  document.querySelectorAll('#main [data-ei]').forEach(el=>{
+  /* [data-f] filter is load-bearing: .excard/.swipe containers also carry
+     data-ei (for updateLiveCues + gestures) and input events bubble to
+     them — an unfiltered selector writes a junk s[undefined] key per
+     keystroke (shipped v0.9.6–0.9.7; found in R6 verification) */
+  document.querySelectorAll('#main [data-ei][data-f]').forEach(el=>{
     el.addEventListener('input',()=>{
       const e=store.active.entries[+el.dataset.ei];
       if(el.dataset.f==='note'){e.note=el.value;}
       else{const s=e.sets[+el.dataset.si];
         s[el.dataset.f]=el.value===''?null:(el.dataset.f==='r'?parseInt(el.value,10):parseFloat(el.value));}
       save();
-      /* F25: live stats line under this exercise card, no full re-render */
-      const cs=$('cs'+el.dataset.ei);if(cs)cs.innerHTML=cardStatsLine(+el.dataset.ei);
+      /* F25/F36/F37/F38: live cues under this exercise card, no full re-render */
+      updateLiveCues(+el.dataset.ei);
     });
   });
   document.querySelectorAll('#main [data-act]').forEach(el=>{
@@ -2251,7 +2747,7 @@ function wireInputs(){
       else if(el.dataset.act==='wstart'){if(el.value)store.active.start=el.value.replace('T',' ');save();}
       else if(el.dataset.act==='wend'){if(el.value)store.active.end=el.value.replace('T',' ');save();}
       else if(el.dataset.act==='exq'){state.exQuery=el.value;
-        clearTimeout(wireInputs._t);wireInputs._t=setTimeout(()=>{const el2=document.querySelector('[data-act=exq]');const pos=el2.selectionStart;render();const el3=document.querySelector('[data-act=exq]');el3.focus();el3.setSelectionRange(pos,pos);},250);}
+        clearTimeout(wireInputs._t);wireInputs._t=setTimeout(()=>{const el2=document.querySelector('[data-act=exq]');if(!el2)return;const pos=el2.selectionStart;render();const el3=document.querySelector('[data-act=exq]');if(el3){el3.focus();el3.setSelectionRange(pos,pos);}},250);}
     });
   });
   document.querySelectorAll('#main [data-rname]').forEach(el=>el.addEventListener('input',()=>{if(state.editRoutine)state.editRoutine.name=el.value;}));
@@ -2482,7 +2978,7 @@ function autoStopStale(){
   if(!a||a.editing)return false;
   const t=a.touch||toDate(a.start).getTime();
   if(Date.now()-t<AUTOSTOP_MS)return false;
-  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
+  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
   if(!entries.length){store.active=null;save();toast('Forgotten empty workout discarded');return true;}
   for(const e of entries)ensureEx(e.name);
   const w={id:newWid(),start:a.start,end:nowStr(new Date(t)),routine:(a.routine||'').trim(),bw:a.bw||null,entries};
