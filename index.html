@@ -354,8 +354,9 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.6';
+const APP_VERSION='0.9.7';
 const CHANGELOG=[
+  {v:'0.9.7', date:'2026-07-06', desc:'Sett has a new face: a badger peeking out of its sett — that\'s what the name means. Also new: starting a routine or repeating a past workout now asks before it starts (no more accidental workouts), reordering exercises slides the others smoothly out of the way as you drag, lists stretch and bounce back when you scroll past the end, Stats moved next to Routines in the bottom bar, and a workout started from a routine no longer offers "Save as routine" — it already is one.'},
   {v:'0.9.6', date:'2026-07-06', desc:'Stats now update live while you train — the numbers under each exercise, History, Charts and Personal records all include the workout you\'re doing right now. Each exercise card shows a compact line with today\'s volume, your best set and your record to beat. New: warmup sets — tap the little W next to a set to mark it; warmups don\'t count toward your stats or records unless you turn that on in settings. A new set no longer copies the one above it; it shows last session\'s numbers as faint hints instead. Also fixed: the icon buttons wrapping under the pills, the nav bar popping up while scrolling with the keyboard open, the page bouncing near the bottom, text getting highlighted while reordering, and menus letting the page behind them scroll.'},
   {v:'0.9.5', date:'2026-07-06', desc:'Housekeeping only: cleared out leftover code from the old up/down reorder arrows, which press-and-hold reordering replaced in 0.9.4. Nothing looks or works differently.'},
   {v:'0.9.4', date:'2026-07-06', desc:'Polish for the swipe and menu changes. The page no longer scrolls sideways when you swipe, and nothing spills outside the menus anymore. Closing a menu by swiping right is now instant and no longer asks — even for menus with a delete button (deleting still asks on its own). You can swipe right to leave the screen when you\'re editing a past workout, just like the menus. To reorder exercises, press and hold a row and drag it — the up/down arrows are gone. Turning a superset off now fully clears it, so the SUPERSET tag no longer sticks around. The exercise ⋯ menu has a small ⓘ that explains what supersets and drop sets are. When the keyboard opens, the bottom tab bar tucks away instead of floating over it. And every menu now slides closed smoothly, however you close it.'},
@@ -683,7 +684,7 @@ function rankBadge(tier,extra){
 
 /* ============================== state & render ============================== */
 const state={view:'home', exQuery:'', exCat:'All', editRoutine:null, pickTarget:'active'};
-const NAV=['home','log','routines','exercises','stats','more'];
+const NAV=['home','log','routines','stats','exercises','more'];   /* F35: Stats before Exercises */
 const TITLES={home:'Home', log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', more:'More', settings:'Settings'};
 const showRanks=()=>!(store.settings&&store.settings.showRanks===false);
 const ICONS={
@@ -760,7 +761,7 @@ function renderHome(){
   h+='<div class="card"><h3>Routines</h3>';
   if(store.routines.length){
     for(const r of store.routines.slice(0,3))
-      h+='<div class="listrow" data-id="'+esc(r.id)+'" onclick="startRoutine(this.dataset.id)">'+
+      h+='<div class="listrow" data-id="'+esc(r.id)+'" onclick="confirmStart(\'routine\',this.dataset.id)">'+   /* F33: confirm before starting */
         '<div class="grow small" style="font-weight:600">'+esc(r.name)+'</div>'+
         '<span class="tiny muted">'+r.exercises.length+' exercise'+(r.exercises.length===1?'':'s')+'</span></div>';
   }else{
@@ -820,8 +821,8 @@ function renderRoutines(){
        '<span class="tiny muted">saved · with targets</span></div><div class="card" style="padding:4px 14px">';
     for(const r of store.routines){
       const sets=r.exercises.reduce((n,e)=>n+e.sets.length,0);
-      h+='<div class="listrow"><div class="grow" style="cursor:pointer" onclick="startRoutine(\''+esc(r.id)+'\')"><div style="font-weight:700">'+esc(r.name)+'</div>'+
-        '<div class="tiny muted">'+r.exercises.length+' exercises · '+sets+' sets</div></div>'+
+      h+='<div class="listrow"><div class="grow" style="cursor:pointer" data-id="'+esc(r.id)+'" onclick="confirmStart(\'routine\',this.dataset.id)"><div style="font-weight:700">'+esc(r.name)+'</div>'+   /* F33: confirm before starting */
+        '<div class="tiny muted">'+r.exercises.length+' exercise'+(r.exercises.length===1?'':'s')+' · '+sets+' set'+(sets===1?'':'s')+'</div></div>'+
         '<button class="iconbtn" title="Edit routine" onclick="editRoutineById(\''+esc(r.id)+'\')">'+ico('edit')+'</button>'+
         '<button class="iconbtn" title="Delete routine" onclick="deleteRoutine(\''+esc(r.id)+'\')">'+ico('trash')+'</button></div>';
     }
@@ -830,7 +831,7 @@ function renderRoutines(){
   h+='<div class="row" style="margin:16px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">Popular routines</h3>'+
      '<span class="tiny muted">common splits</span></div><div class="card" style="padding:4px 14px">';
   POPULAR_ROUTINES.forEach((r,i)=>{
-    h+='<div class="listrow" onclick="startPopular('+i+')">'+
+    h+='<div class="listrow" onclick="confirmStart(\'popular\','+i+')">'+   /* F33: confirm before starting */
       '<div class="grow"><div style="font-weight:700">'+esc(r.name)+'</div>'+
       '<div class="tiny muted">'+r.ex.length+' exercises · '+esc(r.ex.slice(0,3).join(', '))+'…</div></div>'+
       '<div class="muted">›</div></div>';
@@ -907,7 +908,7 @@ function startRoutine(id){
   const r=store.routines.find(x=>x.id===id);if(!r)return;
   if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}
   for(const ex of r.exercises)ensureEx(ex.name);
-  store.active={start:nowStr(),routine:r.name,bw:latestBW(),
+  store.active={start:nowStr(),routine:r.name,bw:latestBW(),fromRoutine:r.id||r.name||true,   /* F31: routine-started → no in-workout "Save as routine" */
     entries:r.exercises.map(ex=>({name:ex.name,ss:ex.ss??null,note:'',
       sets:ex.sets.map(t=>({w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:{tw:t.tw??null,rlo:t.rlo??null,rhi:t.rhi??null}}))}))};
   save();setView('log');toast('Started “'+r.name+'”');
@@ -916,9 +917,37 @@ function startPopular(i){
   if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}
   const r=POPULAR_ROUTINES[i];if(!r)return;
   for(const n of r.ex)ensureEx(n);
-  store.active={start:nowStr(),routine:r.name,bw:latestBW(),
+  store.active={start:nowStr(),routine:r.name,bw:latestBW(),fromRoutine:r.name||true,   /* F31: popular routine → no in-workout "Save as routine" */
     entries:r.ex.map(n=>({name:n,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]}))};
   save();setView('log');toast('Started “'+r.name+'”');
+}
+/* F33 (2026-07-06) OWNER SPEC, verbatim: "Pressing on a routine/previous
+   workout shouldn't instantly start a new workout, let the user confirm if
+   they want to start it." A petite confirm sheet — name + N exercises · M sets
+   summary + a primary Start; normal sheet dismissals cancel. The existing
+   "finish or discard current workout first" guard fires BEFORE the confirm
+   (no point confirming what can't start). Dataset pattern keeps the
+   apostrophe foot-gun out of the Start handler. */
+function confirmStart(kind,arg){
+  if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}
+  let name='',nex=0,nsets=0;
+  if(kind==='routine'){const r=store.routines.find(x=>x.id===arg);if(!r)return;
+    name=r.name;nex=r.exercises.length;nsets=r.exercises.reduce((n,e)=>n+e.sets.length,0);}
+  else if(kind==='popular'){const r=POPULAR_ROUTINES[arg];if(!r)return;
+    name=r.name;nex=r.ex.length;nsets=r.ex.length;}
+  else if(kind==='repeat'){const w=store.workouts.find(x=>x.id===arg);if(!w)return;
+    name=w.routine||'Workout';nex=w.entries.length;nsets=w.entries.reduce((n,e)=>n+e.sets.length,0);}
+  else return;
+  openModal('<h2 style="word-break:break-word">'+esc(name)+'</h2>'+
+    '<p class="muted small" style="margin:6px 0 14px">'+nex+' exercise'+(nex===1?'':'s')+' · '+nsets+' set'+(nsets===1?'':'s')+
+      (kind==='repeat'?' · last time\'s numbers shown as hints':'')+'</p>'+
+    '<button class="btn primary wide" data-cs-kind="'+kind+'" data-cs-arg="'+esc(String(arg))+'" onclick="doConfirmedStart(this.dataset.csKind,this.dataset.csArg)">Start workout</button>');
+}
+function doConfirmedStart(kind,arg){
+  closeModal();
+  if(kind==='routine')startRoutine(arg);
+  else if(kind==='popular')startPopular(+arg);
+  else if(kind==='repeat')repeatWorkout(arg);
 }
 function weekSummary(){
   const now=new Date();const day=(now.getDay()+6)%7; // Monday start
@@ -1019,7 +1048,7 @@ function renderActive(){
   });
   h+='<div class="row"><button class="btn grow" onclick="openPicker()">＋ Add exercise</button>'+
      (a.entries.length>1?'<button class="btn" onclick="openReorder()">'+ico('sort')+' Reorder</button>':'')+'</div>'+
-     (a.editing||!a.entries.length?'':'<button class="btn ghost wide small" style="margin-top:8px" onclick="saveActiveAsRoutine()">'+ico('bookmark')+'Save as routine</button>')+
+     (a.editing||!a.entries.length||a.fromRoutine?'':'<button class="btn ghost wide small" style="margin-top:8px" onclick="saveActiveAsRoutine()">'+ico('bookmark')+'Save as routine</button>')+   /* F31: already a routine — hide the button */
      '<div class="row" style="margin-top:14px">'+
      '<button class="btn danger" onclick="discardWorkout()">'+(a.editing?'Cancel':'Discard')+'</button>'+
      '<button class="btn primary grow" onclick="finishWorkout()">'+(a.editing?'Save changes':'Finish workout')+'</button></div>';
@@ -1173,12 +1202,18 @@ let roDrag=null;
 function startRoDrag(e,row,captureEl){
   if(!row)return;
   const rows=[...document.querySelectorAll('#rolist [data-ro]')];
-  roDrag={from:+row.dataset.ro,row,y0:e.clientY,target:+row.dataset.ro,
+  const from=+row.dataset.ro;
+  const rowH=row.getBoundingClientRect().height;
+  roDrag={from,row,y0:e.clientY,target:from,rows,rowH,slot:from,
     centers:rows.map(r=>{const b=r.getBoundingClientRect();return b.top+b.height/2;})};
   try{(captureEl||row).setPointerCapture(e.pointerId);}catch(_){}
   row.style.touchAction='none';   // now that the drag is armed, own the gesture
   row.style.position='relative';row.style.zIndex='5';row.style.background='var(--card2)';
   row.style.boxShadow='0 6px 18px rgba(0,0,0,.35)';row.style.borderRadius='10px';
+  /* F32 (2026-07-06) OWNER SPEC: neighbors slide live as you drag. Give every
+     OTHER row a transition so its FLIP shift eases; the dragged row itself gets
+     NO transition (it must track the finger 1:1). */
+  for(const r of rows)if(r!==row)r.style.transition='transform .18s ease';
   document.addEventListener('pointermove',roDragMove,{passive:false});
   document.addEventListener('pointerup',roDragEnd);
   document.addEventListener('pointercancel',roDragEnd);
@@ -1189,6 +1224,21 @@ function roDragMove(e){
   roDrag.row.style.transform='translateY('+(e.clientY-roDrag.y0)+'px)';
   let ti=0;for(const c of roDrag.centers)if(e.clientY>c)ti++;
   roDrag.target=Math.max(0,Math.min(roDrag.centers.length,ti));
+  /* F32: the dragged row's DESTINATION index (target minus 1 when moving down,
+     because its own slot is counted). Neighbors between origin and destination
+     shift by one row-height into the gap the dragged row leaves. */
+  const from=roDrag.from;let dest=roDrag.target;if(dest>from)dest--;
+  dest=Math.max(0,Math.min(roDrag.rows.length-1,dest));
+  if(dest!==roDrag.slot){
+    roDrag.slot=dest;
+    roDrag.rows.forEach((r,i)=>{
+      if(r===roDrag.row)return;
+      let shift=0;
+      if(dest<from&&i>=dest&&i<from)shift=roDrag.rowH;         // dragged moving up → these slide down
+      else if(dest>from&&i>from&&i<=dest)shift=-roDrag.rowH;   // dragged moving down → these slide up
+      r.style.transform=shift?'translateY('+shift+'px)':'';
+    });
+  }
 }
 function roDragEnd(){
   if(!roDrag)return;
@@ -1196,7 +1246,10 @@ function roDragEnd(){
   document.removeEventListener('pointerup',roDragEnd);
   document.removeEventListener('pointercancel',roDragEnd);
   const from=roDrag.from;let to=roDrag.target;if(to>from)to--;
-  const row=roDrag.row;roDrag=null;
+  const row=roDrag.row;const allRows=roDrag.rows;roDrag=null;
+  /* F32: strip the neighbor transitions/transforms before the DOM commit so
+     the settle lands without a re-render fighting the eased transforms. */
+  for(const r of allRows){r.style.transition='';r.style.transform='';}
   row.style.transform='';row.style.position='';row.style.zIndex='';row.style.background='';
   row.style.boxShadow='';row.style.borderRadius='';row.style.touchAction='pan-y';
   if(to!==from&&to>=0&&store.active){
@@ -1456,7 +1509,7 @@ function openWorkout(id){
     h+='</div>';
   }
   h+='<div class="row" style="margin-top:8px">'+
-    '<button class="btn grow" onclick="repeatWorkout(\''+esc(w.id)+'\')">Repeat</button>'+
+    '<button class="btn grow" data-id="'+esc(w.id)+'" onclick="closeModal();confirmStart(\'repeat\',this.dataset.id)">Repeat</button>'+   /* F33: confirm before starting */
     '<button class="btn grow" onclick="saveWorkoutAsRoutine(\''+esc(w.id)+'\')">Save as routine</button></div>'+
     '<div class="row" style="margin-top:8px">'+
     '<button class="btn danger" onclick="deleteWorkout(\''+esc(w.id)+'\')">Delete</button>'+
@@ -2353,6 +2406,69 @@ function wireEditorExit(){
   m.addEventListener('touchcancel',()=>{armed=false;x0=null;axis=0;});
 }
 
+/* F34 (2026-07-06) OWNER SPEC, verbatim: "Add a little bungee animation when
+   you scroll all the way up or down app wide." Rubber-band on VERTICAL
+   overscroll — drag past the top/bottom of a scroller with resistance
+   (translateY of the content, ~0.35 damping, capped ~80px) and spring back on
+   release. Touch-only (no wheel). Engages ONLY on a clearly-vertical drag that
+   is already at the scroll edge and pulling further outward, so it can't fight
+   row swipes (horizontal, F1/F8), the sheet's own drag-down (owned by the
+   sheethead) or swipe-right exit (horizontal). Applied to the main page
+   (window scroll → translate #main) and to open-sheet content (#overlay scroll
+   → translate #sheet). Does NOT touch --kb / .kb-open (F28) or the body scroll
+   lock (F30 sets position:fixed, which suspends main-page bungee while a sheet
+   is open — correct, the sheet's own bungee takes over). */
+const BUNGEE_DAMP=0.35, BUNGEE_MAX=80;
+function wireBungee(scroller,content,scrollTopOf){
+  if(!content||content._bungeeWired)return;content._bungeeWired=true;
+  let y0=null,x0=null,active=0,axis=0,dy=0;
+  const top=()=>scrollTopOf();
+  const bottom=()=>{
+    const el=scroller===window?document.scrollingElement||document.documentElement:scroller;
+    return el.scrollHeight-el.clientHeight-scrollTopOf();
+  };
+  const busy=()=>content.classList.contains('closing')||content.classList.contains('dragging');
+  content.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1||busy()){y0=null;return;}
+    y0=e.touches[0].clientY;x0=e.touches[0].clientX;active=0;axis=0;dy=0;
+    if(!active)content.style.transition='';
+  },{passive:true});
+  content.addEventListener('touchmove',e=>{
+    if(y0==null||busy())return;
+    const y=e.touches[0].clientY,x=e.touches[0].clientX;
+    const ddy=y-y0,ddx=x-x0;
+    if(!axis){
+      const ax=Math.abs(ddx),ay=Math.abs(ddy);
+      if(ax<8&&ay<8)return;
+      if(ay<=ax*1.4){axis='x';return;}   // horizontal — leave it to swipe gestures / do nothing
+      axis='y';
+    }
+    if(axis!=='y')return;
+    if(!active){
+      // only engage at the matching edge, pulling further past it (~2px slack)
+      if(ddy>0&&top()<=1)active=1;         // pulling down at the top
+      else if(ddy<0&&bottom()<=1)active=-1;// pulling up at the bottom
+      else return;
+    }
+    const raw=(y-y0);                       // signed overshoot from where the pull began
+    let d=raw*BUNGEE_DAMP;
+    if(active>0)d=Math.max(0,Math.min(BUNGEE_MAX,d));
+    else d=Math.min(0,Math.max(-BUNGEE_MAX,d));
+    dy=d;content.style.transform='translateY('+d+'px)';
+    e.preventDefault();                     // we own this gesture now
+  },{passive:false});
+  const end=()=>{
+    if(y0==null)return;y0=null;
+    if(!active){content.style.transform='';return;}
+    active=0;
+    content.style.transition='transform .3s cubic-bezier(.22,.61,.36,1)';
+    content.style.transform='';
+    setTimeout(()=>{if(content.style.transform==='')content.style.transition='';},320);
+  };
+  content.addEventListener('touchend',end);
+  content.addEventListener('touchcancel',end);
+}
+
 /* F2 auto-stop — OWNER SPEC, verbatim (2026-07-06): "Workouts should have an
    auto stop and also not put you back in it when you leave." A closed PWA
    can't run timers, so this runs on open and on returning to the foreground:
@@ -2388,6 +2504,10 @@ autoStopStale();
 render();
 wireSwipe();
 wireEditorExit();
+/* F34: main-page bungee (window scroll → translate #main) and sheet-content
+   bungee (#overlay scroll → translate #sheet). Both wire-once and idempotent. */
+wireBungee(window,$('main'),()=>window.scrollY||window.pageYOffset||0);
+wireBungee($('overlay'),$('sheet'),()=>$('overlay').scrollTop);
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
