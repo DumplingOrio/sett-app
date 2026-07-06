@@ -1,6 +1,6 @@
 /* Sett service worker — offline cache + auto-update.
    Bump CACHE on every release so old assets are dropped. */
-const CACHE = 'sett-v0.9.2';
+const CACHE = 'sett-v0.9.3';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './exercises.js',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
