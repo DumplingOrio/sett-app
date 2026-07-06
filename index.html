@@ -336,8 +336,9 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.4';
+const APP_VERSION='0.9.5';
 const CHANGELOG=[
+  {v:'0.9.5', date:'2026-07-06', desc:'Housekeeping only: cleared out leftover code from the old up/down reorder arrows, which press-and-hold reordering replaced in 0.9.4. Nothing looks or works differently.'},
   {v:'0.9.4', date:'2026-07-06', desc:'Polish for the swipe and menu changes. The page no longer scrolls sideways when you swipe, and nothing spills outside the menus anymore. Closing a menu by swiping right is now instant and no longer asks — even for menus with a delete button (deleting still asks on its own). You can swipe right to leave the screen when you\'re editing a past workout, just like the menus. To reorder exercises, press and hold a row and drag it — the up/down arrows are gone. Turning a superset off now fully clears it, so the SUPERSET tag no longer sticks around. The exercise ⋯ menu has a small ⓘ that explains what supersets and drop sets are. When the keyboard opens, the bottom tab bar tucks away instead of floating over it. And every menu now slides closed smoothly, however you close it.'},
   {v:'0.9.3', date:'2026-07-06', desc:'Swiping is calmer and smarter: swiping back from an open Delete or Copy now stops at the middle instead of flying through, and short accidental swipes no longer trigger anything. The revealed buttons are now small round icons that match the rest of the app instead of big colour blocks. You can swipe RIGHT to close menus (menus with a delete option ask first, so a stray swipe can\'t lose anything) — pulling down from the top edge still works too. Menu rows are slimmer. Supersets and drop sets are finally visible: every exercise card in a workout has small Set, Drop set and Superset buttons right under the sets. Reordering got its own menu — tap Reorder next to Add exercise (or in an exercise\'s ⋯ menu) for a full list you can drag or nudge with arrows. The ⋯ menu also gained Replace exercise, which swaps the exercise but keeps everything you\'ve logged. And when the keyboard is open, lists now scroll all the way — the last entries are no longer stuck underneath it.'},
   {v:'0.9.2', date:'2026-07-06', desc:'Sett now opens on a new Home tab: a start button, your routines ready for a one-tap start, and your last workout — and the app never drops you straight back into an old workout again. A workout you forget to finish stops itself an hour after you last touched it and is saved with an honest end time (one with nothing logged is quietly discarded). Swiping rows was rebuilt: a quick flick now works, swipes no longer grab the screen while you scroll, and tapping anywhere closes an open row. Menus can be pulled down by their top edge to close. The exercise History list shows month headings, personal records got their own look — your best lift up top and a rep ladder underneath — Scrolling on the More tab no longer sticks at the edge, and the thin line under each set’s weight and reps boxes is gone.'},
@@ -1034,8 +1035,6 @@ function cleanSS(){
   for(const e of es)if(e.ss!=null&&count[e.ss]<2)e.ss=null;
 }
 function removeEntry(ei){store.active.entries.splice(ei,1);cleanSS();save();render();}
-function moveEntry(ei,dir){const es=store.active.entries;const j=ei+dir;if(j<0||j>=es.length)return;
-  [es[ei],es[j]]=[es[j],es[ei]];cleanSS();save();render();}
 function toggleSS(ei){
   const es=store.active.entries,e=es[ei],prev=es[ei-1];if(!prev)return;
   if(e.ss!=null&&e.ss===prev.ss){e.ss=null;cleanSS();}
