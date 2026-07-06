@@ -23,7 +23,10 @@
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
     font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    overscroll-behavior-y:none;}
+    overscroll-behavior-y:none;
+    /* F16: nothing may create horizontal page scroll — an off-screen sheet
+       (translateX/Y 110vw) or an overflowing pill row would let iOS pan the app */
+    overflow-x:clip;}
   /* --kb = live keyboard height (F12, set via visualViewport) so lists can
      scroll past the iOS keyboard instead of hiding their last entries */
   body{padding-bottom:calc(76px + env(safe-area-inset-bottom) + var(--kb,0px));}
@@ -56,7 +59,11 @@
   .tabbar{position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex;
     justify-content:space-around; padding:8px 8px calc(8px + env(safe-area-inset-bottom));
     background:color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter:blur(14px);
-    border-top:1px solid var(--line);}
+    border-top:1px solid var(--line);
+    transition:transform .2s cubic-bezier(.22,.61,.36,1);}
+  /* F20: with the iOS keyboard up (--kb>0) iOS floats the fixed tabbar above it;
+     slide it away while typing, restore on close. */
+  .kb-open .tabbar{transform:translateY(120%);}
   .tab{display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint);
     font-size:11px; font-weight:600; min-width:56px; padding:4px 6px; border-radius:12px;}
   .tab svg{width:24px; height:24px;}
@@ -122,10 +129,19 @@
   .menu button{display:flex; align-items:center; gap:10px; width:100%; text-align:left;
     padding:10px 4px; border:none; border-bottom:1px solid var(--line); background:none;
     color:var(--text); font-size:14px; font-weight:600;}
-  .menu button .ico{width:16px; height:16px;}
+  .menu button .ico{width:16px; height:16px; flex:none;}   /* F19: icons never squash the label */
   .menu button:last-child{border-bottom:none;}
   .menu button.del{color:var(--bad);}
   .menu button:active{background:var(--card2);}
+  /* F22: petite ⓘ affordance + collapsible explainer in the exercise ⋯ menu */
+  .infobtn{width:30px; height:30px; flex:none; display:inline-flex; align-items:center; justify-content:center;
+    border-radius:50%; color:var(--faint); border:1px solid var(--line);}
+  .infobtn .ico{width:16px; height:16px;}
+  .infobtn.on{color:var(--accent); border-color:var(--accent);}
+  .exinfo{background:var(--card2); border:1px solid var(--line); border-radius:12px;
+    padding:8px 12px; margin-bottom:10px;}
+  .exinfo p{margin:4px 0; font-size:13px; line-height:1.4; color:var(--muted);}
+  .exinfo b{color:var(--text);}
   .tgtgrid{display:grid; grid-template-columns:30px 1fr 1fr 1fr 34px; gap:8px; align-items:center; margin-top:8px;}
   .tgtgrid input{text-align:center; padding:11px 6px; font-weight:700; font-size:16px;}
   .setidx{color:var(--faint); font-weight:800; text-align:center; font-size:14px;}
@@ -180,9 +196,13 @@
 
   /* modal */
   #overlay{position:fixed; inset:0; z-index:50; display:none; background:rgba(5,6,8,.72);
-    backdrop-filter:blur(4px); overflow-y:auto;}
+    backdrop-filter:blur(4px); overflow-y:auto; overflow-x:clip;}
   #overlay.show{display:block; animation:ovl .2s ease-out;}
   @keyframes ovl{from{opacity:0;} to{opacity:1;}}
+  /* F23: one animated dismissal for every close path — overlay fades while the
+     sheet slides off; .closing suppresses the entrance animation. */
+  #overlay.closing{animation:none; opacity:0; transition:opacity .22s cubic-bezier(.22,.61,.36,1);}
+  .sheet.closing{animation:none; transition:transform .22s cubic-bezier(.22,.61,.36,1);}
   .sheet{max-width:640px; margin:8vh auto 0; background:var(--card); border:1px solid var(--line);
     border-radius:20px 20px 0 0; min-height:60vh; padding:0 18px calc(30px + env(safe-area-inset-bottom) + var(--kb,0px));
     animation:up .28s cubic-bezier(.22,.61,.36,1);
@@ -261,7 +281,7 @@
     background:transparent; border:none; border-radius:0;}
   .setrow2 .sp{flex:1;}
   .setmenu{width:30px; height:30px; font-size:16px;}
-  .exfoot{margin-top:12px; gap:2px;}
+  .exfoot{margin-top:12px; gap:2px; flex-wrap:wrap;}   /* F16: wrap so pills + icon buttons fit 375px */
   .exi{width:40px; height:36px; flex:none; display:inline-flex; align-items:center; justify-content:center;
     border-radius:10px; color:var(--accent);}
   .exi:active{background:var(--card2);}
@@ -308,7 +328,7 @@
 <main id="main"></main>
 <div id="restbar"></div>
 <nav class="tabbar" id="tabbar"></nav>
-<div id="overlay" onclick="if(event.target===this)closeModal()"><div class="sheet" id="sheet"></div></div>
+<div id="overlay" onclick="if(event.target===this)closeModalAnimated('y')"><div class="sheet" id="sheet"></div></div>
 <div id="toast"></div>
 
 <script src="exercises.js" onerror="window.SETT_CATALOG=[];window.SETT_ALIAS={}"></script>
@@ -316,8 +336,9 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.3';
+const APP_VERSION='0.9.4';
 const CHANGELOG=[
+  {v:'0.9.4', date:'2026-07-06', desc:'Polish for the swipe and menu changes. The page no longer scrolls sideways when you swipe, and nothing spills outside the menus anymore. Closing a menu by swiping right is now instant and no longer asks — even for menus with a delete button (deleting still asks on its own). You can swipe right to leave the screen when you\'re editing a past workout, just like the menus. To reorder exercises, press and hold a row and drag it — the up/down arrows are gone. Turning a superset off now fully clears it, so the SUPERSET tag no longer sticks around. The exercise ⋯ menu has a small ⓘ that explains what supersets and drop sets are. When the keyboard opens, the bottom tab bar tucks away instead of floating over it. And every menu now slides closed smoothly, however you close it.'},
   {v:'0.9.3', date:'2026-07-06', desc:'Swiping is calmer and smarter: swiping back from an open Delete or Copy now stops at the middle instead of flying through, and short accidental swipes no longer trigger anything. The revealed buttons are now small round icons that match the rest of the app instead of big colour blocks. You can swipe RIGHT to close menus (menus with a delete option ask first, so a stray swipe can\'t lose anything) — pulling down from the top edge still works too. Menu rows are slimmer. Supersets and drop sets are finally visible: every exercise card in a workout has small Set, Drop set and Superset buttons right under the sets. Reordering got its own menu — tap Reorder next to Add exercise (or in an exercise\'s ⋯ menu) for a full list you can drag or nudge with arrows. The ⋯ menu also gained Replace exercise, which swaps the exercise but keeps everything you\'ve logged. And when the keyboard is open, lists now scroll all the way — the last entries are no longer stuck underneath it.'},
   {v:'0.9.2', date:'2026-07-06', desc:'Sett now opens on a new Home tab: a start button, your routines ready for a one-tap start, and your last workout — and the app never drops you straight back into an old workout again. A workout you forget to finish stops itself an hour after you last touched it and is saved with an honest end time (one with nothing logged is quietly discarded). Swiping rows was rebuilt: a quick flick now works, swipes no longer grab the screen while you scroll, and tapping anywhere closes an open row. Menus can be pulled down by their top edge to close. The exercise History list shows month headings, personal records got their own look — your best lift up top and a rep ladder underneath — Scrolling on the More tab no longer sticks at the edge, and the thin line under each set’s weight and reps boxes is gone.'},
   {v:'0.9.1', date:'2026-07-05', desc:'Swipe now works the way it was always meant to. Swipe a row to the LEFT and it stops with a red Remove or Delete button on the right side; swipe a set to the RIGHT and it stops with an orange Copy button on the left side. Nothing happens from the swipe itself — you tap the button. Works on sets and exercises during a workout, and on past workouts in the Log. Also removed the long underline that appeared under the weight and reps boxes while typing.'},
@@ -653,6 +674,7 @@ const ICO={
   repeat:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
   play:'<path d="M8 5.5l11 6.5-11 6.5z"/>',
   sort:'<path d="M8 4v16M8 20l-3.5-3.5M8 20l3.5-3.5M16 20V4M16 4l-3.5 3.5M16 4l3.5 3.5"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5v.01"/>',
 };
 function ico(name,sz){return '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(sz?' style="width:'+sz+'px;height:'+sz+'px"':'')+'>'+(ICO[name]||'')+'</svg>';}
 function setView(v){
@@ -1003,12 +1025,20 @@ function copySet(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
 function copySetToRest(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
   for(let i=si+1;i<e.sets.length;i++){e.sets[i].w=s.w;e.sets[i].r=s.r;}save();render();}
 function toggleDrop(ei,si){const s=store.active.entries[ei].sets[si];s.drop=!s.drop;save();render();}
-function removeEntry(ei){store.active.entries.splice(ei,1);save();render();}
+/* F22 (2026-07-06): any superset group with fewer than 2 members is not a
+   superset — clear the orphan's ss so no stale "SUPERSET A" badge lingers.
+   Called after every op that can dissolve a pair (unlink/remove/replace/reorder). */
+function cleanSS(){
+  const a=store.active;if(!a)return;const es=a.entries;
+  const count={};for(const e of es)if(e.ss!=null)count[e.ss]=(count[e.ss]||0)+1;
+  for(const e of es)if(e.ss!=null&&count[e.ss]<2)e.ss=null;
+}
+function removeEntry(ei){store.active.entries.splice(ei,1);cleanSS();save();render();}
 function moveEntry(ei,dir){const es=store.active.entries;const j=ei+dir;if(j<0||j>=es.length)return;
-  [es[ei],es[j]]=[es[j],es[ei]];save();render();}
+  [es[ei],es[j]]=[es[j],es[ei]];cleanSS();save();render();}
 function toggleSS(ei){
   const es=store.active.entries,e=es[ei],prev=es[ei-1];if(!prev)return;
-  if(e.ss!=null&&e.ss===prev.ss){e.ss=null;}
+  if(e.ss!=null&&e.ss===prev.ss){e.ss=null;cleanSS();}
   else{if(prev.ss==null){let g=0;for(const x of es)if(x.ss!=null)g=Math.max(g,x.ss+1);prev.ss=g;}e.ss=prev.ss;}
   save();render();
 }
@@ -1016,40 +1046,72 @@ function setEntryNote(ei,v){const a=store.active;if(a&&a.entries[ei]){a.entries[
 /* F14: swap the exercise, keep everything logged (sets, targets, notes, superset) */
 function replaceEntryExercise(ei,name){
   const a=store.active;if(!a||!a.entries[ei])return false;
-  ensureEx(name);a.entries[ei].name=name;save();return true;
+  ensureEx(name);a.entries[ei].name=name;cleanSS();save();return true;
 }
-/* F13 reorder overview — OWNER SPEC (2026-07-06): "RepCount has a seperate
-   menu for this where it lists each exercise in a full overview where you
-   can adjust the reorder." Built as sketched: drag handles AND arrows. */
+/* F13 reorder overview + F21 (2026-07-06) — OWNER SPEC: "just holding on the
+   exercise should allow you to reorder it in the submenu. Don't really need the
+   arrow reordering." Press-and-hold (~200ms) anywhere on a row arms the drag so
+   normal list scrolling still works; the ⠿ handle drags immediately. */
 function openReorder(){
   const a=store.active;if(!a||a.entries.length<2)return;
-  let h='<h2>Reorder exercises</h2><p class="tiny muted" style="margin-bottom:4px">Drag rows or use the arrows — changes apply right away.</p><div id="rolist">';
+  let h='<h2>Reorder exercises</h2><p class="tiny muted" style="margin-bottom:4px">Press and hold a row, then drag to reorder — or drag the ⠿ handle. Changes apply right away.</p><div id="rolist">';
   a.entries.forEach((e,ei)=>{
-    h+='<div class="listrow" data-ro="'+ei+'" style="cursor:default">'+
+    h+='<div class="listrow" data-ro="'+ei+'" style="cursor:grab; touch-action:pan-y">'+
       '<span class="draghandle" data-rodrag="'+ei+'">⠿</span>'+
       '<div class="grow"><div class="small" style="font-weight:600">'+esc(e.name)+'</div>'+
       '<div class="tiny muted">'+e.sets.length+' set'+(e.sets.length===1?'':'s')+(e.ss!=null?' · superset '+String.fromCharCode(65+e.ss%26):'')+'</div></div>'+
-      '<button class="exi" aria-label="Move up"'+(ei===0?' disabled style="opacity:.3"':'')+' onclick="roMove('+ei+',-1)">'+ico('up')+'</button>'+
-      '<button class="exi" aria-label="Move down"'+(ei===a.entries.length-1?' disabled style="opacity:.3"':'')+' onclick="roMove('+ei+',1)">'+ico('down')+'</button></div>';
+      '</div>';
   });
   h+='</div><button class="btn primary wide" style="margin-top:12px" onclick="closeModal()">Done</button>';
   openModal(h);
+  // ⠿ handle: drag immediately. Row body: hold ~200ms to arm (scroll wins otherwise).
   document.querySelectorAll('#rolist [data-rodrag]').forEach(hd=>
-    hd.addEventListener('pointerdown',e=>startRoDrag(e,hd)));
+    hd.addEventListener('pointerdown',e=>{e.stopPropagation();startRoDrag(e,hd.closest('[data-ro]'),hd);}));
+  document.querySelectorAll('#rolist [data-ro]').forEach(row=>
+    row.addEventListener('pointerdown',e=>armRoHold(e,row)));
 }
-function roMove(ei,dir){const st=$('overlay').scrollTop;moveEntry(ei,dir);openReorder();$('overlay').scrollTop=st;}
+let roHold=null;
+function armRoHold(e,row){
+  if(e.target.closest('[data-rodrag]'))return;   // handle path already handles it
+  cancelRoHold();
+  const px=e.clientX,py=e.clientY,pid=e.pointerId;
+  const timer=setTimeout(()=>{
+    roHold=null;
+    startRoDrag({clientY:py,clientX:px,pointerId:pid,preventDefault(){}},row,row);
+  },200);
+  roHold={timer,px,py,pid};
+  const mv=ev=>{
+    if(!roHold)return;
+    if(Math.abs(ev.clientX-roHold.px)>8||Math.abs(ev.clientY-roHold.py)>8)cancelRoHold();  // it's a scroll
+  };
+  const up=()=>cancelRoHold();
+  roHold.mv=mv;roHold.up=up;
+  document.addEventListener('pointermove',mv,{passive:true});
+  document.addEventListener('pointerup',up,{passive:true});
+  document.addEventListener('pointercancel',up,{passive:true});
+}
+function cancelRoHold(){
+  if(!roHold)return;
+  clearTimeout(roHold.timer);
+  document.removeEventListener('pointermove',roHold.mv);
+  document.removeEventListener('pointerup',roHold.up);
+  document.removeEventListener('pointercancel',roHold.up);
+  roHold=null;
+}
 let roDrag=null;
-function startRoDrag(e,hd){
-  const row=hd.closest('[data-ro]');if(!row)return;
+function startRoDrag(e,row,captureEl){
+  if(!row)return;
   const rows=[...document.querySelectorAll('#rolist [data-ro]')];
   roDrag={from:+row.dataset.ro,row,y0:e.clientY,target:+row.dataset.ro,
     centers:rows.map(r=>{const b=r.getBoundingClientRect();return b.top+b.height/2;})};
-  try{hd.setPointerCapture(e.pointerId);}catch(_){}
+  try{(captureEl||row).setPointerCapture(e.pointerId);}catch(_){}
+  row.style.touchAction='none';   // now that the drag is armed, own the gesture
   row.style.position='relative';row.style.zIndex='5';row.style.background='var(--card2)';
+  row.style.boxShadow='0 6px 18px rgba(0,0,0,.35)';row.style.borderRadius='10px';
   document.addEventListener('pointermove',roDragMove,{passive:false});
   document.addEventListener('pointerup',roDragEnd);
   document.addEventListener('pointercancel',roDragEnd);
-  e.preventDefault();
+  if(e.preventDefault)e.preventDefault();
 }
 function roDragMove(e){
   if(!roDrag)return;e.preventDefault();
@@ -1065,16 +1127,24 @@ function roDragEnd(){
   const from=roDrag.from;let to=roDrag.target;if(to>from)to--;
   const row=roDrag.row;roDrag=null;
   row.style.transform='';row.style.position='';row.style.zIndex='';row.style.background='';
+  row.style.boxShadow='';row.style.borderRadius='';row.style.touchAction='pan-y';
   if(to!==from&&to>=0&&store.active){
-    const es=store.active.entries;const[m]=es.splice(from,1);es.splice(to,0,m);save();render();
+    const es=store.active.entries;const[m]=es.splice(from,1);es.splice(to,0,m);cleanSS();save();render();
     const st=$('overlay').scrollTop;openReorder();$('overlay').scrollTop=st;
   }
 }
 function exMenu(ei){
   const a=store.active;if(!a)return;const e=a.entries[ei];if(!e)return;
   const meta=store.ex[e.name]||{cat:'Other'};
-  openModal('<h2 style="margin-bottom:2px">'+esc(e.name)+'</h2>'+
-    '<p class="tiny muted" style="margin-bottom:12px">'+esc(meta.cat)+'</p>'+
+  openModal('<div class="row" style="align-items:flex-start; gap:8px; margin-bottom:2px">'+
+      '<h2 style="min-width:0; word-break:break-word">'+esc(e.name)+'</h2><span class="sp"></span>'+
+      '<button class="infobtn" aria-label="What do these mean?" onclick="toggleExInfo(this)">'+ico('info')+'</button></div>'+
+    '<p class="tiny muted" style="margin-bottom:8px">'+esc(meta.cat)+'</p>'+
+    /* F22 (2026-07-06): collapsed-by-default plain-English explainers */
+    '<div class="exinfo" hidden>'+
+      '<p><b>Superset</b> — two exercises done back to back with no rest between; link an exercise to the one above it.</p>'+
+      '<p><b>Drop set</b> — a set done right after the previous one at a lower weight, no rest; it shows the D mark.</p>'+
+    '</div>'+
     '<textarea class="howto" placeholder="Notes for this exercise (grip, tempo, machine setting…)" oninput="setEntryNote('+ei+',this.value)" style="margin-bottom:8px">'+esc(e.note||'')+'</textarea>'+
     '<div class="menu">'+
     (ei>0?'<button onclick="toggleSS('+ei+');closeModal()">'+ico('link')+(e.ss!=null?'Unlink from superset':'Superset with exercise above')+'</button>':'')+
@@ -1082,6 +1152,10 @@ function exMenu(ei){
     (a.entries.length>1?'<button onclick="closeModal();openReorder()">'+ico('sort')+'Reorder exercises</button>':'')+
     '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+'Remove exercise</button>'+
     '</div>');
+}
+function toggleExInfo(btn){
+  const box=btn.closest('.sheet').querySelector('.exinfo');if(!box)return;
+  box.hidden=!box.hidden;btn.classList.toggle('on',!box.hidden);
 }
 function setMenu(ei,si){
   const a=store.active;if(!a)return;const e=a.entries[ei];if(!e)return;const s=e.sets[si];if(!s)return;
@@ -1840,13 +1914,34 @@ function wipeAll(){
 }
 
 /* ============================== modal & wiring ============================== */
+let closeAnimTimer=null;
 function openModal(html){
-  $('sheet').innerHTML='<div class="sheethead"><div class="grab" onclick="closeModal()"></div>'+
-    '<button class="sheetclose" onclick="closeModal()" aria-label="Close">✕</button></div>'+html;
-  wireSheetDrag($('sheet').querySelector('.sheethead'));
+  /* F23: a rapid re-open mid-dismissal must land clean — cancel any pending
+     animated close and reset the closing state before showing the new sheet. */
+  if(closeAnimTimer){clearTimeout(closeAnimTimer);closeAnimTimer=null;}
+  const ov=$('overlay'),sh=$('sheet');
+  ov.classList.remove('closing');sh.classList.remove('closing');sh.style.transform='';
+  sh.innerHTML='<div class="sheethead"><div class="grab" onclick="closeModalAnimated(\'y\')"></div>'+
+    '<button class="sheetclose" onclick="closeModalAnimated(\'y\')" aria-label="Close">✕</button></div>'+html;
+  wireSheetDrag(sh.querySelector('.sheethead'));
   wireSheetExit();
-  $('overlay').classList.add('show');$('overlay').scrollTop=0;document.body.style.overflow='hidden';}
-function closeModal(){$('overlay').classList.remove('show');$('sheet').style.transform='';document.body.style.overflow='';clearInterval(visTimer);}
+  ov.classList.add('show');ov.scrollTop=0;document.body.style.overflow='hidden';}
+function closeModal(){const ov=$('overlay'),sh=$('sheet');
+  ov.classList.remove('show','closing');sh.classList.remove('closing');
+  sh.style.transform='';document.body.style.overflow='';clearInterval(visTimer);}
+/* F23 (2026-07-06): smooth, consistent dismissal everywhere. The sheet slides
+   off-screen (right for a swipe-right, down for drag-down / taps) while the
+   overlay fades, THEN the real closeModal() lands. Programmatic closes after an
+   action keep calling closeModal() directly — instant is correct there. */
+function closeModalAnimated(dir){
+  const ov=$('overlay'),sh=$('sheet');
+  if(sh.classList.contains('closing'))return;   // already dismissing
+  sh.classList.remove('dragging');
+  sh.classList.add('closing');ov.classList.add('closing');
+  sh.style.transform=(dir==='x'?'translateX(110%)':'translateY(110%)');
+  if(closeAnimTimer)clearTimeout(closeAnimTimer);
+  closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;closeModal();},240);
+}
 /* F7 OWNER SPEC, verbatim (2026-07-06): "Add a swipe to exit feature in some
    of the menus where it makes sense. For example when a menu doesn't have an
    explicit X to close button." — every sheet: drag the header/grab area down
@@ -1886,7 +1981,7 @@ function wireSheetDrag(head){
       setTimeout(()=>head.removeEventListener('click',swallow,true),400);
     }
     if(e&&e.timeStamp-lt>100)vy=0;   // finger paused before release — not a flick
-    if(dy>120||(vy>0.5&&dy>30)){sheet.style.transform='translateY(110vh)';setTimeout(closeModal,180);}
+    if(dy>120||(vy>0.5&&dy>30)){closeModalAnimated('y');}
     else sheet.style.transform='';
   };
   head.addEventListener('touchend',end);
@@ -1928,8 +2023,10 @@ function wireSheetExit(){
     sheet.classList.remove('dragging');
     if(e&&e.timeStamp-lt>100)vx=0;
     if(dx>110||(vx>0.5&&dx>40)){
-      if(sheet.querySelector('.menu .del,.btn.danger')&&!confirm('Close this menu?')){sheet.style.transform='';return;}
-      sheet.style.transform='translateX(110vw)';setTimeout(closeModal,180);
+      /* F18 (2026-07-06, owner revised F10): swipe-right always closes. A
+         delete button's mere presence is NOT a reason to confirm — destructive
+         actions confirm themselves; closing loses no unsaved input here. */
+      closeModalAnimated('x');
     }else sheet.style.transform='';
   };
   sheet.addEventListener('touchend',end);
@@ -1939,8 +2036,10 @@ function wireSheetExit(){
    keyboard height into --kb (body + sheet bottom padding use it) */
 if(window.visualViewport){
   const kbAdj=()=>{
-    const kb=Math.max(0,window.innerHeight-window.visualViewport.height-window.visualViewport.offsetTop);
-    document.documentElement.style.setProperty('--kb',(kb>40?Math.round(kb):0)+'px');
+    const raw=Math.max(0,window.innerHeight-window.visualViewport.height-window.visualViewport.offsetTop);
+    const kb=raw>40?Math.round(raw):0;
+    document.documentElement.style.setProperty('--kb',kb+'px');
+    document.body.classList.toggle('kb-open',kb>0);   // F20: hide the tabbar while typing
   };
   window.visualViewport.addEventListener('resize',kbAdj);
   window.visualViewport.addEventListener('scroll',kbAdj);
@@ -2085,6 +2184,37 @@ function wireSwipe(){
   // touching anywhere outside the open row (header, tab bar, other cards) closes it
   document.addEventListener('touchstart',e=>{if(_swOpen&&!_swOpen.contains(e.target))closeSwipe();},{passive:true});
 }
+/* F17 (2026-07-06): editing a past workout is a main VIEW (store.active.editing),
+   not a sheet — the sheet swipe-exit never covered it. A clearly-rightward swipe
+   on the editor that starts OUTSIDE any set-row/input/handle cancels editing
+   (discardWorkout already confirms). Axis detection mirrors wireSheetExit so it
+   won't fight row swipes or vertical scroll. */
+function wireEditorExit(){
+  const m=$('main');if(!m||m._edWired)return;m._edWired=true;
+  let x0=null,y0=null,axis=0,armed=false;
+  m.addEventListener('touchstart',e=>{
+    armed=false;x0=null;
+    if(e.touches.length!==1)return;
+    if(!(store.active&&store.active.editing))return;
+    // must start on empty editor space — not a set row, input, button, or drag handle
+    if(e.target.closest('.swipe,input,textarea,select,button,[data-drag],[data-rodrag],.pillbtn'))return;
+    x0=e.touches[0].clientX;y0=e.touches[0].clientY;axis=0;armed=true;
+  },{passive:true});
+  m.addEventListener('touchmove',e=>{
+    if(!armed||x0==null)return;
+    const x=e.touches[0].clientX,y=e.touches[0].clientY;
+    if(!axis){
+      const ax=Math.abs(x-x0),ay=Math.abs(y-y0);
+      if(ax<12&&ay<12)return;
+      axis=(ax>ay*1.6&&x>x0)?'x':'other';   // only a clearly rightward swipe exits
+    }
+  },{passive:true});
+  m.addEventListener('touchend',()=>{
+    if(armed&&axis==='x'&&store.active&&store.active.editing)discardWorkout();
+    armed=false;x0=null;axis=0;
+  });
+  m.addEventListener('touchcancel',()=>{armed=false;x0=null;axis=0;});
+}
 
 /* F2 auto-stop — OWNER SPEC, verbatim (2026-07-06): "Workouts should have an
    auto stop and also not put you back in it when you leave." A closed PWA
@@ -2120,6 +2250,7 @@ applyTheme((store.settings&&store.settings.theme)||'ember');
 autoStopStale();
 render();
 wireSwipe();
+wireEditorExit();
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
