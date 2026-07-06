@@ -196,7 +196,8 @@
 
   /* modal */
   #overlay{position:fixed; inset:0; z-index:50; display:none; background:rgba(5,6,8,.72);
-    backdrop-filter:blur(4px); overflow-y:auto; overflow-x:clip;}
+    backdrop-filter:blur(4px); overflow-y:auto; overflow-x:clip;
+    overscroll-behavior:contain;}   /* F30: don't chain scroll to the page behind */
   #overlay.show{display:block; animation:ovl .2s ease-out;}
   @keyframes ovl{from{opacity:0;} to{opacity:1;}}
   /* F23: one animated dismissal for every close path — overlay fades while the
@@ -255,6 +256,9 @@
   #restbar .inner.done .rt{color:var(--good);}
   #restbar button{border:1px solid var(--line); background:var(--card); color:var(--text);
     border-radius:10px; padding:9px 11px; font-weight:700; font-size:13px; min-width:44px;}
+  /* F29 (2026-07-06): the iOS long-press-to-reorder was selecting the row text
+     mid-hold and firing the callout. Kill selection/callout on the reorder rows. */
+  #rolist .listrow{user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;}
   .draghandle{touch-action:none; cursor:grab; color:var(--faint); font-size:20px; line-height:1;
     padding:2px 8px 2px 0; margin-right:2px; align-self:center; user-select:none;}
   .draghandle:active{cursor:grabbing; color:var(--accent);}
@@ -275,17 +279,31 @@
   .setnum{width:26px; height:26px; flex:none; border:1.6px solid var(--line); border-radius:50%;
     display:grid; place-items:center; font-size:13px; font-weight:700; color:var(--muted);}
   .setnum.drop{border-color:var(--accent); color:var(--accent);}
+  /* F26: warmup circle — distinct from drop's D (dashed border, warm accent) */
+  .setnum.warm{border-style:dashed; border-color:var(--accent); color:var(--accent);}
+  /* F26: petite warmup toggle — muted when off, accent when on; non-invading */
+  .wtog{width:26px; height:26px; flex:none; border:1px solid var(--line); border-radius:8px;
+    background:var(--card2); color:var(--faint); font-size:12px; font-weight:800; margin-right:2px;}
+  .wtog.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
   .setcell{display:flex; flex-direction:column; gap:1px;}
   .setcell label{font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--faint);}
   .setcell input{width:58px; text-align:left; padding:1px 0; font-size:18px; font-weight:800;
     background:transparent; border:none; border-radius:0;}
   .setrow2 .sp{flex:1;}
   .setmenu{width:30px; height:30px; font-size:16px;}
-  .exfoot{margin-top:12px; gap:2px; flex-wrap:wrap;}   /* F16: wrap so pills + icon buttons fit 375px */
-  .exi{width:40px; height:36px; flex:none; display:inline-flex; align-items:center; justify-content:center;
+  /* F25 (2026-07-06): pills + the three icon buttons stay on ONE row that
+     never wraps at 375px (owner's item-2 complaint was the icons wrapping
+     BELOW the pills). nowrap + compact pills/icons keeps them in-bounds. */
+  .exfoot{margin-top:12px; gap:2px; flex-wrap:nowrap; min-width:0;}
+  .exfoot .pillbtn{white-space:nowrap; padding:6px 5px; font-size:11.5px; gap:3px;}
+  .exi{width:32px; height:34px; flex:none; display:inline-flex; align-items:center; justify-content:center;
     border-radius:10px; color:var(--accent);}
   .exi:active{background:var(--card2);}
-  .exi .ico{width:21px; height:21px;}
+  .exi .ico{width:20px; height:20px;}
+  /* F25: dense muted stats line under the footer; PR e1RM (its <b>) in accent */
+  .cardstats{margin-top:8px; font-size:11.5px; color:var(--faint); font-weight:600;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .cardstats b{color:var(--accent); font-weight:800;}
 
   /* #3 rest button in the workout header corner */
   .hbtn{width:36px; height:36px; flex:none; display:inline-flex; align-items:center; justify-content:center;
@@ -336,8 +354,9 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.5';
+const APP_VERSION='0.9.6';
 const CHANGELOG=[
+  {v:'0.9.6', date:'2026-07-06', desc:'Stats now update live while you train — the numbers under each exercise, History, Charts and Personal records all include the workout you\'re doing right now. Each exercise card shows a compact line with today\'s volume, your best set and your record to beat. New: warmup sets — tap the little W next to a set to mark it; warmups don\'t count toward your stats or records unless you turn that on in settings. A new set no longer copies the one above it; it shows last session\'s numbers as faint hints instead. Also fixed: the icon buttons wrapping under the pills, the nav bar popping up while scrolling with the keyboard open, the page bouncing near the bottom, text getting highlighted while reordering, and menus letting the page behind them scroll.'},
   {v:'0.9.5', date:'2026-07-06', desc:'Housekeeping only: cleared out leftover code from the old up/down reorder arrows, which press-and-hold reordering replaced in 0.9.4. Nothing looks or works differently.'},
   {v:'0.9.4', date:'2026-07-06', desc:'Polish for the swipe and menu changes. The page no longer scrolls sideways when you swipe, and nothing spills outside the menus anymore. Closing a menu by swiping right is now instant and no longer asks — even for menus with a delete button (deleting still asks on its own). You can swipe right to leave the screen when you\'re editing a past workout, just like the menus. To reorder exercises, press and hold a row and drag it — the up/down arrows are gone. Turning a superset off now fully clears it, so the SUPERSET tag no longer sticks around. The exercise ⋯ menu has a small ⓘ that explains what supersets and drop sets are. When the keyboard opens, the bottom tab bar tucks away instead of floating over it. And every menu now slides closed smoothly, however you close it.'},
   {v:'0.9.3', date:'2026-07-06', desc:'Swiping is calmer and smarter: swiping back from an open Delete or Copy now stops at the middle instead of flying through, and short accidental swipes no longer trigger anything. The revealed buttons are now small round icons that match the rest of the app instead of big colour blocks. You can swipe RIGHT to close menus (menus with a delete option ask first, so a stray swipe can\'t lose anything) — pulling down from the top edge still works too. Menu rows are slimmer. Supersets and drop sets are finally visible: every exercise card in a workout has small Set, Drop set and Superset buttons right under the sets. Reordering got its own menu — tap Reorder next to Add exercise (or in an exercise\'s ⋯ menu) for a full list you can drag or nudge with arrows. The ⋯ menu also gained Replace exercise, which swaps the exercise but keeps everything you\'ve logged. And when the keyboard is open, lists now scroll all the way — the last entries are no longer stuck underneath it.'},
@@ -465,6 +484,22 @@ const fmtW=w=>w==null?'—':(Math.round(w*10)/10).toString().replace(/\.0$/,'');
 function fmtDur(a,b){if(!a||!b)return'';const m=Math.max(0,Math.round((toDate(b)-toDate(a))/60000));return m>=60?Math.floor(m/60)+' h '+pad2(m%60)+' min':m+' min';}
 function epley(w,r){if(w==null||!r||r<1)return null;if(r===1)return w;return w*(1+r/30);}
 function setVol(s){return (s.w||0)*(s.r||0);}
+/* F26 (2026-07-06): warmup sets are excluded from every stat by default;
+   the "Count warmup sets in stats" setting (default OFF) flips it. Central
+   predicate so PRs/rep ladder/e1RM/volume/ranks all agree. */
+function warmupsCount(){return !!(store&&store.settings&&store.settings.countWarmup);}
+function statSet(s){return warmupsCount()||!s.warmup;}   // true = this set counts toward stats
+/* F24 (2026-07-06): stats read the running workout too, so History/Charts/
+   PRs/week summary/ranks update live during a workout. NOT while editing a
+   past workout — its sets are already in store.workouts, so the edit copy
+   would double-count. Guarded for a null/absent store.active (scripts/test.js
+   drives these with minimal synthetic stores). */
+function statWorkouts(){
+  const ws=(store&&store.workouts)||[];
+  const a=store&&store.active;
+  if(a&&!a.editing&&a.entries&&a.entries.length)return [a,...ws];
+  return ws;
+}
 function repRange(t){if(!t)return '';const lo=t.rlo,hi=t.rhi;if(lo==null&&hi==null)return '';if(lo!=null&&hi!=null)return lo===hi?String(lo):lo+'–'+hi;return String(lo!=null?lo:hi);}
 function toast(msg,ms){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>t.style.display='none',ms||2400);}
 const newWid=()=>'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -584,22 +619,23 @@ const POPULAR_ROUTINES=[
 /* ============================== derived stats ============================== */
 function allSetsOf(name,exclActive){
   const out=[];
-  for(const w of store.workouts)for(const e of w.entries)if(e.name===name)for(const s of e.sets)out.push({s,date:w.start});
+  const ws=exclActive?((store&&store.workouts)||[]):statWorkouts();  // F24 + F26
+  for(const w of ws)for(const e of w.entries)if(e.name===name)for(const s of e.sets)if(statSet(s))out.push({s,date:w.start});
   return out;
 }
 function exSessions(name){
   const out=[];
-  for(const w of store.workouts){
-    const sets=[];for(const e of w.entries)if(e.name===name)sets.push(...e.sets);
+  for(const w of statWorkouts()){                                    // F24 + F26
+    const sets=[];for(const e of w.entries)if(e.name===name)for(const s of e.sets)if(statSet(s))sets.push(s);
     if(!sets.length)continue;
     let best=null;for(const s of sets){const e1=epley(s.w,s.r);if(e1!=null&&(best==null||e1>best))best=e1;}
     out.push({date:w.start,sets,best,vol:sets.reduce((a,s)=>a+setVol(s),0)});
   }
   return out; // newest first (workouts sorted desc)
 }
-function prFor(name){
+function prFor(name,exclActive){
   let maxW=null,maxWr=null,bestE1=null,bestSet=null,total=0,last=null;
-  for(const {s,date} of allSetsOf(name)){
+  for(const {s,date} of allSetsOf(name,exclActive)){                 // F24: exclActive → history only (finishWorkout PR check)
     total++;if(!last||date>last)last=date;
     if(s.w!=null&&(maxW==null||s.w>maxW||(s.w===maxW&&(s.r||0)>(maxWr||0)))){maxW=s.w;maxWr=s.r;}
     const e1=epley(s.w,s.r);
@@ -763,7 +799,7 @@ function historyList(){
       h+='<div class="row" style="margin:18px 4px 4px"><h3 class="grow" style="font-size:14px;color:var(--muted)">'+fmtMonth(w.start)+'</h3>'+
          '<span class="tiny muted">'+perMonth[mk]+' workout'+(perMonth[mk]>1?'s':'')+'</span></div><div class="card" style="padding:4px 14px">';}
     const nsets=w.entries.reduce((t,e)=>t+e.sets.length,0);
-    const vol=w.entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+setVol(s),0),0);
+    const vol=w.entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+(statSet(s)?setVol(s):0),0),0);   // F26: warmups out of volume by default
     h+='<div class="swipe" data-swipe="wk">'+
       '<button class="swipe-act del" aria-label="Delete workout" title="Delete" data-id="'+esc(w.id)+'" onclick="swipeDeleteWorkout(this.dataset.id)">'+ico('trash')+'</button>'+
       '<div class="swipe-fg listrow" onclick="openWorkout(\''+esc(w.id)+'\')">'+dateBadge(w.start)+
@@ -887,7 +923,7 @@ function startPopular(i){
 function weekSummary(){
   const now=new Date();const day=(now.getDay()+6)%7; // Monday start
   const mon=new Date(now);mon.setHours(0,0,0,0);mon.setDate(now.getDate()-day);
-  let n=0;for(const w of store.workouts){if(toDate(w.start)>=mon)n++;else break;}
+  let n=0;for(const w of statWorkouts()){if(toDate(w.start)>=mon)n++;else break;}   // F24: count the live workout too
   return n===0?'No workouts yet this week.':n+' workout'+(n>1?'s':'')+' this week.';
 }
 function startWorkout(){if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}store.active={start:nowStr(),routine:'',bw:latestBW(),entries:[]};save();setView('log');}
@@ -957,10 +993,13 @@ function renderActive(){
         '<button class="swipe-act copy" aria-label="Copy set" title="Copy" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'</button>'+
         '<button class="swipe-act del" aria-label="Remove set" title="Remove" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'</button>'+
         '<div class="swipe-fg setrow2">'+
-        '<span class="setnum'+(s.drop?' drop':'')+'" title="'+(s.drop?'Drop set':'')+'">'+(s.drop?'D':si+1)+'</span>'+
+        /* F26: warmup circle shows W (distinct from drop's D) */
+        '<span class="setnum'+(s.warmup?' warm':s.drop?' drop':'')+'" title="'+(s.warmup?'Warmup set':s.drop?'Drop set':'')+'">'+(s.warmup?'W':s.drop?'D':si+1)+'</span>'+
         '<div class="setcell"><label>Kg</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
         '<div class="setcell"><label>Reps</label><input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'></div>'+
         '<span class="sp"></span>'+
+        /* F26: petite, non-invading W toggle beside the ⋯ menu */
+        '<button class="wtog'+(s.warmup?' on':'')+'" title="'+(s.warmup?'Warmup — tap to unmark':'Mark as warmup')+'" aria-pressed="'+(!!s.warmup)+'" onclick="toggleWarmup('+ei+','+si+')">W</button>'+
         '<button class="setmenu" title="Set options" onclick="setMenu('+ei+','+si+')">⋯</button>'+
         '</div></div>';
     });
@@ -974,6 +1013,8 @@ function renderActive(){
       '<button class="exi" title="Charts" aria-label="Charts" onclick="openExCharts(store.active.entries['+ei+'].name)">'+ico('bars')+'</button>'+
       '<button class="exi" title="Personal records" aria-label="Personal records" onclick="openExPRs(store.active.entries['+ei+'].name)">'+ico('star')+'</button>'+
       '</div>'+
+      /* F25: one dense muted line under the footer — live volume · best set · PR e1RM */
+      '<div class="cardstats" id="cs'+ei+'">'+cardStatsLine(ei)+'</div>'+
       '</div>';
   });
   h+='<div class="row"><button class="btn grow" onclick="openPicker()">＋ Add exercise</button>'+
@@ -1012,8 +1053,36 @@ function lastTimeHint(name){
   }
   return '';
 }
-function addSet(ei){const e=store.active.entries[ei];const p=e.sets[e.sets.length-1];
-  e.sets.push({w:p?p.w:null,r:p?p.r:null,dur:null,dist:null,note:'',drop:false});save();render();
+/* F25 (2026-07-06): compact live stats line under the exercise footer —
+   today's volume · best set this session · standing PR e1RM (accent).
+   Recomputed on every keystroke (wireInputs) so it tracks typed values.
+   Warmups follow the same setting as the rest of the stats. */
+function cardStatsLine(ei){
+  const e=store.active&&store.active.entries[ei];if(!e)return '';
+  let vol=0,best=null,bestS=null;
+  for(const s of e.sets){if(!statSet(s))continue;vol+=setVol(s);
+    const v=setVol(s);if(v>0&&(best==null||v>best)){best=v;bestS=s;}}
+  const pr=prFor(e.name,true).bestE1;   // standing PR from HISTORY only (excludes this live session)
+  const parts=['Vol '+fmtNum(vol)+' kg'];
+  if(bestS)parts.push('Best '+fmtW(bestS.w)+'×'+(bestS.r||0));
+  parts.push('<b>PR e1RM '+(pr!=null?fmtW(pr)+' kg':'—')+'</b>');
+  return parts.join(' · ');
+}
+/* F27 (2026-07-06): a new set NEVER copies the current session's values —
+   that was a prefill (ghost-fill law violation). It starts empty; the tgt
+   ghost is seeded from the SAME index in the previous SESSION (fallback:
+   that session's last set; no history → "—" placeholder from a null tgt). */
+function prevSessionSet(name,idx){
+  for(const w of (store.workouts||[])){          // newest-first; skip the live workout
+    for(const e of w.entries)if(e.name===name&&e.sets.length){
+      const s=e.sets[idx]||e.sets[e.sets.length-1];
+      return {tw:s.w??null,rlo:s.r??null,rhi:s.r??null};
+    }
+  }
+  return null;
+}
+function addSet(ei){const e=store.active.entries[ei];
+  e.sets.push({w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:prevSessionSet(e.name,e.sets.length)});save();render();
   if(store.active&&!store.active.editing&&restAutoOn())startRest();}
 /* F15: on-card "+ Drop set" — adds a set already marked D, seeded from the last weight */
 function addDropSet(ei){const e=store.active.entries[ei];const p=e.sets[e.sets.length-1];
@@ -1026,6 +1095,9 @@ function copySet(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
 function copySetToRest(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
   for(let i=si+1;i<e.sets.length;i++){e.sets[i].w=s.w;e.sets[i].r=s.r;}save();render();}
 function toggleDrop(ei,si){const s=store.active.entries[ei].sets[si];s.drop=!s.drop;save();render();}
+/* F26 (2026-07-06): warmup flag — mutually exclusive with drop on the circle
+   (a warmup isn't a drop). Default OFF-in-stats via the settings toggle. */
+function toggleWarmup(ei,si){const s=store.active.entries[ei].sets[si];s.warmup=!s.warmup;if(s.warmup)s.drop=false;save();render();}
 /* F22 (2026-07-06): any superset group with fewer than 2 members is not a
    superset — clear the orphan's ss so no stale "SUPERSET A" badge lingers.
    Called after every op that can dissolve a pair (unlink/remove/replace/reorder). */
@@ -1128,10 +1200,28 @@ function roDragEnd(){
   row.style.transform='';row.style.position='';row.style.zIndex='';row.style.background='';
   row.style.boxShadow='';row.style.borderRadius='';row.style.touchAction='pan-y';
   if(to!==from&&to>=0&&store.active){
-    const es=store.active.entries;const[m]=es.splice(from,1);es.splice(to,0,m);cleanSS();save();render();
-    const st=$('overlay').scrollTop;openReorder();$('overlay').scrollTop=st;
+    const es=store.active.entries;const[m]=es.splice(from,1);es.splice(to,0,m);cleanSS();save();
+    /* F29 (2026-07-06): move the existing DOM row in place — NO openReorder()
+       rebuild mid-gesture (the full-modal rebuild + scroll-restore hack bugged
+       out the menu). Re-index data-ro on the surviving rows; the main Log
+       re-renders quietly without touching the open sheet. */
+    const list=$('rolist');
+    if(list){
+      const rows=[...list.querySelectorAll('[data-ro]')];
+      const moved=rows[from];
+      list.removeChild(moved);                       // drop it, then reinsert at the target slot
+      const rest=[...list.querySelectorAll('[data-ro]')];
+      if(to>=rest.length)list.appendChild(moved);
+      else list.insertBefore(moved,rest[to]);
+      [...list.querySelectorAll('[data-ro]')].forEach((r,i)=>{
+        r.dataset.ro=i;const hd=r.querySelector('[data-rodrag]');if(hd)hd.dataset.rodrag=i;
+      });
+    }else{render();return;}
+    renderQuietLog();   // keep the underlying workout view in sync, sheet untouched
   }
 }
+/* F29: re-render the Log view behind an open sheet without disturbing the sheet */
+function renderQuietLog(){if(state.view==='log')render();}
 function exMenu(ei){
   const a=store.active;if(!a)return;const e=a.entries[ei];if(!e)return;
   const meta=store.ex[e.name]||{cat:'Other'};
@@ -1272,15 +1362,15 @@ function finishWorkout(){
   // PR check against history before saving
   const prs=[];
   for(const e of entries){
-    const before=prFor(e.name).bestE1;
-    let best=null;for(const s of e.sets){const v=epley(s.w,s.r);if(v!=null&&(best==null||v>best))best=v;}
+    const before=prFor(e.name,true).bestE1;   // F24: compare against HISTORY only, not the workout being finished
+    let best=null;for(const s of e.sets){if(!statSet(s))continue;const v=epley(s.w,s.r);if(v!=null&&(best==null||v>best))best=v;}
     if(best!=null&&best>0&&(before==null||best>before))prs.push({name:e.name,e1:best});
     ensureEx(e.name);
   }
   const w={id:newWid(),start:a.start,end:nowStr(),routine:a.routine.trim(),bw:a.bw||null,entries};
   store.workouts.unshift(w);store.workouts.sort((x,y)=>x.start<y.start?1:-1);
   store.active=null;save();clearInterval(tick);
-  const vol=entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+setVol(s),0),0);
+  const vol=entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+(statSet(s)?setVol(s):0),0),0);   // F26
   const nsets=entries.reduce((t,e)=>t+e.sets.length,0);
   openModal('<h2 style="margin-bottom:4px">Workout saved 💪</h2>'+
     '<p class="muted small">'+fmtDur(w.start,w.end)+' · '+nsets+' sets · '+fmtNum(vol)+' kg volume</p>'+
@@ -1664,12 +1754,12 @@ function sparkSvg(pts,cls){
 
 /* ============================== STATS view ============================== */
 function renderStats(){
-  if(!store.workouts.length)return '<div class="card hero"><div class="big">No data yet</div><p class="muted small">Stats appear after your first workout.</p></div>';
-  const nw=store.workouts.length;
+  const sw=statWorkouts();const nw=sw.length;                        // F24 + F26
+  if(!nw)return '<div class="card hero"><div class="big">No data yet</div><p class="muted small">Stats appear after your first workout.</p></div>';
   let nsets=0,vol=0,nreps=0,durMin=0,durN=0;
-  for(const w of store.workouts){
+  for(const w of sw){
     if(w.start&&w.end){const m=(toDate(w.end)-toDate(w.start))/60000;if(m>0&&m<360){durMin+=m;durN++;}}
-    for(const e of w.entries)for(const s of e.sets){nsets++;vol+=setVol(s);nreps+=s.r||0;}
+    for(const e of w.entries)for(const s of e.sets)if(statSet(s)){nsets++;vol+=setVol(s);nreps+=s.r||0;}
   }
   let h='';
   // overall rank (only if the rank system is enabled)
@@ -1745,13 +1835,13 @@ const STAT_DEFS={
 };
 function monthlyStat(key){
   const agg={};
-  for(const w of store.workouts){
+  for(const w of statWorkouts()){                                    // F24 + F26
     const mk=monthKey(w.start);
     const a=agg[mk]||(agg[mk]={vol:0,sets:0,reps:0,durMin:0,durN:0,bwSum:0,bwN:0,n:0});
     a.n++;
     if(w.start&&w.end){const m=(toDate(w.end)-toDate(w.start))/60000;if(m>0&&m<360){a.durMin+=m;a.durN++;}}
     if(w.bw){a.bwSum+=w.bw;a.bwN++;}
-    for(const e of w.entries)for(const s of e.sets){a.sets++;a.vol+=setVol(s);a.reps+=s.r||0;}
+    for(const e of w.entries)for(const s of e.sets)if(statSet(s)){a.sets++;a.vol+=setVol(s);a.reps+=s.r||0;}
   }
   return Object.keys(agg).sort().map(mk=>{
     const a=agg[mk];
@@ -1822,6 +1912,11 @@ function renderSettings(){
     '<button class="btn small" onclick="setRestTime('+(restT-15)+')">−15s</button>'+
     '<span style="min-width:56px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums">'+Math.floor(restT/60)+':'+pad2(restT%60)+'</span>'+
     '<button class="btn small" onclick="setRestTime('+(restT+15)+')">+15s</button></div></div>';
+  // F26: warmup sets in stats (default OFF)
+  const warmOn=warmupsCount();
+  h+='<div class="card"><div class="row"><h3 class="grow">Count warmup sets in stats</h3>'+
+    '<button class="'+(warmOn?'toggle on':'toggle')+'" onclick="setCountWarmup('+(!warmOn)+')"><span class="knob"></span></button></div>'+
+    '<p class="small muted" style="margin:6px 0 0">'+(warmOn?'Warmup sets count toward volume, records, e1RM and ranks.':'Warmup sets (marked W) are left out of volume, records, e1RM and ranks. Turn on to include them.')+'</p></div>';
   // data
   h+='<div class="card"><h3>Your data</h3>'+
     '<p class="small muted" style="margin:0 0 12px">Everything lives on this device only — nothing is uploaded anywhere. The JSON backup saves everything; the CSV export is for Excel and doesn\'t keep supersets or drop sets.</p>'+
@@ -1859,6 +1954,7 @@ function setSex(k){store.settings=store.settings||{};store.settings.sex=k;save()
 function setTheme(id){store.settings=store.settings||{};store.settings.theme=id;save();applyTheme(id);render();}
 function setRanks(on){store.settings=store.settings||{};store.settings.showRanks=on;save();toast(on?'Ranks on':'Ranks hidden');render();}
 function setAutoUpdate(on){store.settings=store.settings||{};store.settings.autoUpdate=on;save();render();}
+function setCountWarmup(on){store.settings=store.settings||{};store.settings.countWarmup=on;save();toast(on?'Warmups counted in stats':'Warmups excluded from stats');render();}
 /* onboarding after first import: offer ranks, then which standard */
 function askSexIfUnset(){
   if(store.settings&&(store.settings.sex||store.settings.showRanks===false||store.settings._onboarded))return;
@@ -1924,10 +2020,29 @@ function openModal(html){
     '<button class="sheetclose" onclick="closeModalAnimated(\'y\')" aria-label="Close">✕</button></div>'+html;
   wireSheetDrag(sh.querySelector('.sheethead'));
   wireSheetExit();
-  ov.classList.add('show');ov.scrollTop=0;document.body.style.overflow='hidden';}
+  ov.classList.add('show');ov.scrollTop=0;lockBodyScroll();}
+/* F30 (2026-07-06): body{overflow:hidden} does NOT stop iOS Safari from
+   scrolling the page behind the sheet — the scroll chains through the overlay.
+   The reliable lock is position:fixed with top:-scrollY, restored on close.
+   Guarded so a rapid re-open mid-dismissal (F23) doesn't re-capture 0. */
+let _scrollLockY=null;
+function lockBodyScroll(){
+  if(_scrollLockY!=null)return;                 // already locked (re-open mid-close)
+  _scrollLockY=window.scrollY||window.pageYOffset||0;
+  const b=document.body;
+  b.style.position='fixed';b.style.top=(-_scrollLockY)+'px';
+  b.style.left='0';b.style.right='0';b.style.width='100%';b.style.overflow='hidden';
+}
+function unlockBodyScroll(){
+  if(_scrollLockY==null)return;
+  const y=_scrollLockY;_scrollLockY=null;
+  const b=document.body;
+  b.style.position='';b.style.top='';b.style.left='';b.style.right='';b.style.width='';b.style.overflow='';
+  window.scrollTo(0,y);                          // return to the exact prior position
+}
 function closeModal(){const ov=$('overlay'),sh=$('sheet');
   ov.classList.remove('show','closing');sh.classList.remove('closing');
-  sh.style.transform='';document.body.style.overflow='';clearInterval(visTimer);}
+  sh.style.transform='';unlockBodyScroll();clearInterval(visTimer);}
 /* F23 (2026-07-06): smooth, consistent dismissal everywhere. The sheet slides
    off-screen (right for a swipe-right, down for drag-down / taps) while the
    overlay fades, THEN the real closeModal() lands. Programmatic closes after an
@@ -2032,14 +2147,35 @@ function wireSheetExit(){
   sheet.addEventListener('touchcancel',end);
 }
 /* F12: keep list bottoms reachable while the iOS keyboard is up — mirror the
-   keyboard height into --kb (body + sheet bottom padding use it) */
+   keyboard height into --kb (body + sheet bottom padding use it).
+   F28 (2026-07-06): the old formula subtracted vv.offsetTop, which SWINGS
+   during scroll → kb flipped to 0 mid-scroll → .kb-open dropped (tab bar
+   reappeared) and --kb flapped (page bounced). Fix: (1) keyboard height =
+   layout viewport minus visual viewport height ONLY (no offsetTop); (2) the
+   .kb-open class is driven by INPUT FOCUS (focusin/focusout), not by the
+   flapping height, so scrolling can never toggle the tab bar; (3) hysteresis
+   — --kb only drops to 0 when it's genuinely near 0, and the class holds as
+   long as a text-capable field keeps focus AND the viewport is shrunk. */
+function isTextInput(el){
+  if(!el)return false;
+  if(el.tagName==='TEXTAREA')return true;
+  if(el.tagName!=='INPUT')return false;
+  return !['button','submit','checkbox','radio','range','file','color','reset','image'].includes((el.type||'text').toLowerCase());
+}
 if(window.visualViewport){
+  let kbFocused=false;
   const kbAdj=()=>{
-    const raw=Math.max(0,window.innerHeight-window.visualViewport.height-window.visualViewport.offsetTop);
+    const raw=Math.max(0,window.innerHeight-window.visualViewport.height);   // F28: no offsetTop
     const kb=raw>40?Math.round(raw):0;
     document.documentElement.style.setProperty('--kb',kb+'px');
-    document.body.classList.toggle('kb-open',kb>0);   // F20: hide the tabbar while typing
+    /* F28: keyboard is "up" while a text field holds focus and the viewport is
+       actually shrunk — scroll-driven offsetTop noise can't flip this off. */
+    document.body.classList.toggle('kb-open',kbFocused&&kb>0);
   };
+  document.addEventListener('focusin',e=>{if(isTextInput(e.target)){kbFocused=true;kbAdj();}});
+  document.addEventListener('focusout',e=>{if(isTextInput(e.target)){kbFocused=false;
+    /* let the blur settle before deciding the keyboard is really gone */
+    setTimeout(()=>{if(!isTextInput(document.activeElement)){kbFocused=false;kbAdj();}},120);}});
   window.visualViewport.addEventListener('resize',kbAdj);
   window.visualViewport.addEventListener('scroll',kbAdj);
 }
@@ -2051,6 +2187,8 @@ function wireInputs(){
       else{const s=e.sets[+el.dataset.si];
         s[el.dataset.f]=el.value===''?null:(el.dataset.f==='r'?parseInt(el.value,10):parseFloat(el.value));}
       save();
+      /* F25: live stats line under this exercise card, no full re-render */
+      const cs=$('cs'+el.dataset.ei);if(cs)cs.innerHTML=cardStatsLine(+el.dataset.ei);
     });
   });
   document.querySelectorAll('#main [data-act]').forEach(el=>{
