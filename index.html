@@ -23,8 +23,13 @@
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
     font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    overscroll-behavior-y:none;}
-  body{padding-bottom:calc(76px + env(safe-area-inset-bottom));}
+    overscroll-behavior-y:none;
+    /* F16: nothing may create horizontal page scroll — an off-screen sheet
+       (translateX/Y 110vw) or an overflowing pill row would let iOS pan the app */
+    overflow-x:clip;}
+  /* --kb = live keyboard height (F12, set via visualViewport) so lists can
+     scroll past the iOS keyboard instead of hiding their last entries */
+  body{padding-bottom:calc(76px + env(safe-area-inset-bottom) + var(--kb,0px));}
   h1,h2,h3{margin:0; letter-spacing:-.02em;}
   button{font:inherit; color:inherit; background:none; border:none; cursor:pointer; padding:0;}
   input,textarea,select{font:inherit; color:var(--text); background:var(--card2);
@@ -43,13 +48,22 @@
   .gearbtn svg{width:22px; height:22px;}
   .gearbtn.on{color:var(--accent);}
 
+  /* min-height fills the viewport minus topbar (~50px + safe-top) and the
+     body's tab-bar padding (76px + safe-bottom) WITHOUT exceeding it — a
+     short view (More) must not overflow by a few px, or scrolling hits a
+     dead edge instantly and feels broken (owner feedback 2026-07-06) */
   main{max-width:640px; margin:0 auto; padding:6px 16px 24px;
-    min-height:82vh; min-height:calc(100dvh - 150px);}
+    min-height:70vh;
+    min-height:calc(100dvh - 126px - env(safe-area-inset-top) - env(safe-area-inset-bottom));}
 
   .tabbar{position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex;
     justify-content:space-around; padding:8px 8px calc(8px + env(safe-area-inset-bottom));
     background:color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter:blur(14px);
-    border-top:1px solid var(--line);}
+    border-top:1px solid var(--line);
+    transition:transform .2s cubic-bezier(.22,.61,.36,1);}
+  /* F20: with the iOS keyboard up (--kb>0) iOS floats the fixed tabbar above it;
+     slide it away while typing, restore on close. */
+  .kb-open .tabbar{transform:translateY(120%);}
   .tab{display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint);
     font-size:11px; font-weight:600; min-width:56px; padding:4px 6px; border-radius:12px;}
   .tab svg{width:24px; height:24px;}
@@ -57,6 +71,17 @@
 
   .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r);
     padding:16px; margin:12px 0;}
+  .card.resume{display:flex; align-items:center; gap:10px; cursor:pointer;
+    background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 35%, transparent);}
+  .card.resume>.ico{color:var(--accent); flex:none;}
+  .prlabel{color:var(--faint); text-transform:uppercase; letter-spacing:.05em; font-weight:700;}
+  .pillbtn{display:inline-flex; align-items:center; gap:5px; padding:6px 10px; border-radius:9px;
+    border:1px solid var(--line); background:var(--card2); color:var(--muted);
+    font-size:12px; font-weight:700; flex:none;}
+  .pillbtn .ico{width:13px; height:13px;}
+  .pillbtn.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+  .prbar{height:20px; background:var(--accent-soft); border-radius:6px; display:flex; align-items:center;
+    padding:0 8px; font-size:11.5px; font-weight:700; color:var(--accent); white-space:nowrap;}
   .card h3{font-size:15px; margin-bottom:10px;}
   .row{display:flex; align-items:center; gap:10px;}
   .grow{flex:1; min-width:0;}
@@ -102,11 +127,21 @@
   .setmenu:active{background:var(--card2);}
   .menu{display:flex; flex-direction:column; margin-top:4px;}
   .menu button{display:flex; align-items:center; gap:10px; width:100%; text-align:left;
-    padding:15px 4px; border:none; border-bottom:1px solid var(--line); background:none;
-    color:var(--text); font-size:15px; font-weight:600;}
+    padding:10px 4px; border:none; border-bottom:1px solid var(--line); background:none;
+    color:var(--text); font-size:14px; font-weight:600;}
+  .menu button .ico{width:16px; height:16px; flex:none;}   /* F19: icons never squash the label */
   .menu button:last-child{border-bottom:none;}
   .menu button.del{color:var(--bad);}
   .menu button:active{background:var(--card2);}
+  /* F22: petite ⓘ affordance + collapsible explainer in the exercise ⋯ menu */
+  .infobtn{width:30px; height:30px; flex:none; display:inline-flex; align-items:center; justify-content:center;
+    border-radius:50%; color:var(--faint); border:1px solid var(--line);}
+  .infobtn .ico{width:16px; height:16px;}
+  .infobtn.on{color:var(--accent); border-color:var(--accent);}
+  .exinfo{background:var(--card2); border:1px solid var(--line); border-radius:12px;
+    padding:8px 12px; margin-bottom:10px;}
+  .exinfo p{margin:4px 0; font-size:13px; line-height:1.4; color:var(--muted);}
+  .exinfo b{color:var(--text);}
   .tgtgrid{display:grid; grid-template-columns:30px 1fr 1fr 1fr 34px; gap:8px; align-items:center; margin-top:8px;}
   .tgtgrid input{text-align:center; padding:11px 6px; font-weight:700; font-size:16px;}
   .setidx{color:var(--faint); font-weight:800; text-align:center; font-size:14px;}
@@ -161,12 +196,18 @@
 
   /* modal */
   #overlay{position:fixed; inset:0; z-index:50; display:none; background:rgba(5,6,8,.72);
-    backdrop-filter:blur(4px); overflow-y:auto;}
+    backdrop-filter:blur(4px); overflow-y:auto; overflow-x:clip;}
   #overlay.show{display:block; animation:ovl .2s ease-out;}
   @keyframes ovl{from{opacity:0;} to{opacity:1;}}
+  /* F23: one animated dismissal for every close path — overlay fades while the
+     sheet slides off; .closing suppresses the entrance animation. */
+  #overlay.closing{animation:none; opacity:0; transition:opacity .22s cubic-bezier(.22,.61,.36,1);}
+  .sheet.closing{animation:none; transition:transform .22s cubic-bezier(.22,.61,.36,1);}
   .sheet{max-width:640px; margin:8vh auto 0; background:var(--card); border:1px solid var(--line);
-    border-radius:20px 20px 0 0; min-height:60vh; padding:0 18px calc(30px + env(safe-area-inset-bottom));
-    animation:up .28s cubic-bezier(.22,.61,.36,1);}
+    border-radius:20px 20px 0 0; min-height:60vh; padding:0 18px calc(30px + env(safe-area-inset-bottom) + var(--kb,0px));
+    animation:up .28s cubic-bezier(.22,.61,.36,1);
+    transition:transform .22s cubic-bezier(.22,.61,.36,1);}
+  .sheet.dragging{transition:none;}
   @keyframes up{from{transform:translateY(30px); opacity:.4;} to{transform:none; opacity:1;}}
   #main.slide-up{animation:sUp .34s cubic-bezier(.22,.61,.36,1);}
   #main.slide-left{animation:sLeft .42s cubic-bezier(.22,.61,.36,1);}
@@ -230,8 +271,7 @@
   /* #1 RepCount-style set rows: circled number + compact left-packed Kg/Reps,
      values hug the left so the row no longer fills the whole bar */
   .excard{padding:14px 16px;}
-  .setrow2{display:flex; align-items:center; gap:20px; padding:8px 0;
-    border-bottom:1px solid var(--line);}
+  .setrow2{display:flex; align-items:center; gap:20px; padding:8px 0;}
   .setnum{width:26px; height:26px; flex:none; border:1.6px solid var(--line); border-radius:50%;
     display:grid; place-items:center; font-size:13px; font-weight:700; color:var(--muted);}
   .setnum.drop{border-color:var(--accent); color:var(--accent);}
@@ -241,7 +281,7 @@
     background:transparent; border:none; border-radius:0;}
   .setrow2 .sp{flex:1;}
   .setmenu{width:30px; height:30px; font-size:16px;}
-  .exfoot{margin-top:12px; gap:2px;}
+  .exfoot{margin-top:12px; gap:2px; flex-wrap:wrap;}   /* F16: wrap so pills + icon buttons fit 375px */
   .exi{width:40px; height:36px; flex:none; display:inline-flex; align-items:center; justify-content:center;
     border-radius:10px; color:var(--accent);}
   .exi:active{background:var(--card2);}
@@ -261,14 +301,17 @@
   .swipe .swipe-fg{position:relative; z-index:1; background:var(--card);
     transition:transform .2s cubic-bezier(.22,.61,.36,1);}
   .swipe.swiping .swipe-fg{transition:none;}
-  .swipe.open-l .swipe-fg{transform:translateX(92px);}   /* swiped right → Copy shows left */
-  .swipe.open-r .swipe-fg{transform:translateX(-92px);}  /* swiped left → Delete shows right */
-  .swipe .swipe-act{position:absolute; top:0; bottom:0; width:92px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
-    border:none; border-radius:10px; font-weight:800; font-size:12px; letter-spacing:.02em;}
-  .swipe .swipe-act.copy{left:0; background:var(--accent); color:#18100a;}
-  .swipe .swipe-act.del{right:0; background:var(--bad); color:#fff;}
-  .swipe .swipe-act .ico{width:20px; height:20px;}
+  /* F9 (2026-07-06): icon-only inset buttons tinted like the app's chips —
+     seamless with the row, no solid slab. Reveal offset = button + margins. */
+  .swipe.open-l .swipe-fg{transform:translateX(60px);}   /* swiped right → Copy shows left */
+  .swipe.open-r .swipe-fg{transform:translateX(-60px);}  /* swiped left → Delete shows right */
+  .swipe .swipe-act{position:absolute; top:5px; bottom:5px; width:48px;
+    display:flex; align-items:center; justify-content:center; border-radius:12px;}
+  .swipe .swipe-act.copy{left:6px; background:color-mix(in srgb, var(--accent) 16%, transparent);
+    border:1px solid color-mix(in srgb, var(--accent) 40%, transparent); color:var(--accent);}
+  .swipe .swipe-act.del{right:6px; background:color-mix(in srgb, var(--bad) 16%, transparent);
+    border:1px solid color-mix(in srgb, var(--bad) 40%, transparent); color:var(--bad);}
+  .swipe .swipe-act .ico{width:18px; height:18px;}
   .swipe:last-child .listrow{border-bottom:none;}
 
   @media(prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important;}}
@@ -285,7 +328,7 @@
 <main id="main"></main>
 <div id="restbar"></div>
 <nav class="tabbar" id="tabbar"></nav>
-<div id="overlay" onclick="if(event.target===this)closeModal()"><div class="sheet" id="sheet"></div></div>
+<div id="overlay" onclick="if(event.target===this)closeModalAnimated('y')"><div class="sheet" id="sheet"></div></div>
 <div id="toast"></div>
 
 <script src="exercises.js" onerror="window.SETT_CATALOG=[];window.SETT_ALIAS={}"></script>
@@ -293,8 +336,12 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.1';
+const APP_VERSION='0.9.5';
 const CHANGELOG=[
+  {v:'0.9.5', date:'2026-07-06', desc:'Housekeeping only: cleared out leftover code from the old up/down reorder arrows, which press-and-hold reordering replaced in 0.9.4. Nothing looks or works differently.'},
+  {v:'0.9.4', date:'2026-07-06', desc:'Polish for the swipe and menu changes. The page no longer scrolls sideways when you swipe, and nothing spills outside the menus anymore. Closing a menu by swiping right is now instant and no longer asks — even for menus with a delete button (deleting still asks on its own). You can swipe right to leave the screen when you\'re editing a past workout, just like the menus. To reorder exercises, press and hold a row and drag it — the up/down arrows are gone. Turning a superset off now fully clears it, so the SUPERSET tag no longer sticks around. The exercise ⋯ menu has a small ⓘ that explains what supersets and drop sets are. When the keyboard opens, the bottom tab bar tucks away instead of floating over it. And every menu now slides closed smoothly, however you close it.'},
+  {v:'0.9.3', date:'2026-07-06', desc:'Swiping is calmer and smarter: swiping back from an open Delete or Copy now stops at the middle instead of flying through, and short accidental swipes no longer trigger anything. The revealed buttons are now small round icons that match the rest of the app instead of big colour blocks. You can swipe RIGHT to close menus (menus with a delete option ask first, so a stray swipe can\'t lose anything) — pulling down from the top edge still works too. Menu rows are slimmer. Supersets and drop sets are finally visible: every exercise card in a workout has small Set, Drop set and Superset buttons right under the sets. Reordering got its own menu — tap Reorder next to Add exercise (or in an exercise\'s ⋯ menu) for a full list you can drag or nudge with arrows. The ⋯ menu also gained Replace exercise, which swaps the exercise but keeps everything you\'ve logged. And when the keyboard is open, lists now scroll all the way — the last entries are no longer stuck underneath it.'},
+  {v:'0.9.2', date:'2026-07-06', desc:'Sett now opens on a new Home tab: a start button, your routines ready for a one-tap start, and your last workout — and the app never drops you straight back into an old workout again. A workout you forget to finish stops itself an hour after you last touched it and is saved with an honest end time (one with nothing logged is quietly discarded). Swiping rows was rebuilt: a quick flick now works, swipes no longer grab the screen while you scroll, and tapping anywhere closes an open row. Menus can be pulled down by their top edge to close. The exercise History list shows month headings, personal records got their own look — your best lift up top and a rep ladder underneath — Scrolling on the More tab no longer sticks at the edge, and the thin line under each set’s weight and reps boxes is gone.'},
   {v:'0.9.1', date:'2026-07-05', desc:'Swipe now works the way it was always meant to. Swipe a row to the LEFT and it stops with a red Remove or Delete button on the right side; swipe a set to the RIGHT and it stops with an orange Copy button on the left side. Nothing happens from the swipe itself — you tap the button. Works on sets and exercises during a workout, and on past workouts in the Log. Also removed the long underline that appeared under the weight and reps boxes while typing.'},
   {v:'0.9.0', date:'2026-07-05', desc:'Safety fixes from a full bug hunt, before new features land. Starting a new workout while another is in progress now warns you instead of silently wiping it. Workouts logged in the same minute no longer get tangled behind the scenes (deleting one could delete both). Exercises with an apostrophe in their name, like Farmer\'s Walk, had buttons that did nothing on their detail page — fixed. Restoring an incomplete backup could break the Exercises tab; the app now repairs missing pieces automatically. And under the hood, Sett now has an automated test suite that runs before every release.'},
   {v:'0.8.1', date:'2026-07-05', desc:'The workout screen now really looks like RepCount. Each set is a compact row — a circled set number, then Kg and Reps sitting neatly to the left with small labels, instead of two big boxes that stretched across the whole width. Because the rows are tighter, the exercise\'s History, Charts and Personal-records buttons are back on the card itself (bottom-right), not hidden in the ⋯ menu. Swiping now shows a proper coloured button: swipe a set right for an orange Copy, swipe an exercise left for a red Remove, each with an icon.'},
@@ -404,7 +451,7 @@ function STD(){return STANDARDS_BY_SEX[(store&&store.settings&&store.settings.se
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad2=n=>String(n).padStart(2,'0');
-const nowStr=()=>{const d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+' '+pad2(d.getHours())+':'+pad2(d.getMinutes());};
+const nowStr=d=>{d=d||new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+' '+pad2(d.getHours())+':'+pad2(d.getMinutes());};
 const toDate=s=>new Date(String(s).replace(' ','T'));
 const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -440,7 +487,9 @@ let store=null, firstRun=false;
 try{const raw=localStorage.getItem(KEY);if(raw){const s=JSON.parse(raw);if(s&&s.schema===1)store=s;}}catch(e){console.warn('store load failed',e);}
 if(!store){store=freshStore();firstRun=true;}
 normalizeStore();
-function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){toast('Could not save — storage full?');console.error(e);}}
+function save(){
+  if(store.active&&!store.active.editing)store.active.touch=Date.now();
+  try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){toast('Could not save — storage full?');console.error(e);}}
 
 /* exercise catalog (exercises.js, generated from free-exercise-db, public domain) */
 const CATALOG=window.SETT_CATALOG||[];
@@ -597,11 +646,12 @@ function rankBadge(tier,extra){
 }
 
 /* ============================== state & render ============================== */
-const state={view:'log', exQuery:'', exCat:'All', editRoutine:null, pickTarget:'active'};
-const NAV=['log','routines','exercises','stats','more'];
-const TITLES={log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', more:'More', settings:'Settings'};
+const state={view:'home', exQuery:'', exCat:'All', editRoutine:null, pickTarget:'active'};
+const NAV=['home','log','routines','exercises','stats','more'];
+const TITLES={home:'Home', log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', more:'More', settings:'Settings'};
 const showRanks=()=>!(store.settings&&store.settings.showRanks===false);
 const ICONS={
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>',
   log:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></svg>',
   routines:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M4 9v6M17.5 6.5v11M20 9v6M6.5 12h11"/></svg>',
   exercises:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>',
@@ -623,6 +673,9 @@ const ICO={
   copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
   bookmark:'<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>',
   repeat:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  play:'<path d="M8 5.5l11 6.5-11 6.5z"/>',
+  sort:'<path d="M8 4v16M8 20l-3.5-3.5M8 20l3.5-3.5M16 20V4M16 4l-3.5 3.5M16 4l3.5 3.5"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5v.01"/>',
 };
 function ico(name,sz){return '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(sz?' style="width:'+sz+'px;height:'+sz+'px"':'')+'>'+(ICO[name]||'')+'</svg>';}
 function setView(v){
@@ -642,12 +695,52 @@ function render(){
   $('gear').classList.toggle('on',state.view==='settings');
   $('tabbar').innerHTML=NAV.map(v=>
     '<button class="tab'+(state.view===v?' on':'')+'" onclick="setView(\''+v+'\')">'+ICONS[v]+'<span>'+TITLES[v]+'</span></button>').join('');
-  const fn={log:renderLog,routines:renderRoutines,exercises:renderExercises,stats:renderStats,more:renderMore,settings:renderSettings}[state.view]||renderLog;
+  const fn={home:renderHome,log:renderLog,routines:renderRoutines,exercises:renderExercises,stats:renderStats,more:renderMore,settings:renderSettings}[state.view]||renderHome;
   $('main').innerHTML=fn();
   wireInputs();
 }
 function catChip(cat){const c=CAT_COLORS[cat]||CAT_COLORS.Other;
   return '<span class="chip"><span class="dot" style="background:'+c+'"></span>'+esc(cat)+'</span>';}
+
+/* ============================== HOME view ============================== */
+/* F3 landing page (owner picked sketch A "Quick start", 2026-07-06).
+   F2 OWNER SPEC, verbatim: "Workouts should have an auto stop and also not
+   put you back in it when you leave." — the app always opens here; a live
+   workout shows as a banner you tap to resume, never as the whole screen. */
+function renderHome(){
+  let h='';
+  const a=store.active;
+  if(a){
+    clearInterval(tick);
+    tick=setInterval(()=>{const el=$('elapsed');if(el)el.textContent=elapsedStr();else clearInterval(tick);},1000);
+    h+='<div class="card resume" onclick="setView(\'log\')">'+ico('play',18)+
+      '<div class="grow"><div class="small" style="font-weight:700">'+(a.editing?'Editing a past workout':'Workout in progress')+'</div>'+
+      '<div class="tiny muted">'+(a.editing?'unsaved changes':'<span class="elapsed" id="elapsed">'+elapsedStr()+'</span> · '+a.entries.length+' exercise'+(a.entries.length===1?'':'s'))+'</div></div>'+
+      '<span class="small" style="color:var(--accent);font-weight:700">'+(a.editing?'Continue':'Resume')+'</span></div>';
+  }else{
+    h+='<button class="btn primary wide" style="margin:4px 0 6px" onclick="startWorkout()">＋ Start workout</button>';
+  }
+  h+='<p class="tiny muted" style="margin:2px 4px 8px">'+weekSummary()+'</p>';
+  h+='<div class="card"><h3>Routines</h3>';
+  if(store.routines.length){
+    for(const r of store.routines.slice(0,3))
+      h+='<div class="listrow" data-id="'+esc(r.id)+'" onclick="startRoutine(this.dataset.id)">'+
+        '<div class="grow small" style="font-weight:600">'+esc(r.name)+'</div>'+
+        '<span class="tiny muted">'+r.exercises.length+' exercise'+(r.exercises.length===1?'':'s')+'</span></div>';
+  }else{
+    h+='<p class="muted small" style="margin:6px 0 0">No routines yet — build one and it shows up here for a one-tap start.</p>';
+  }
+  h+='<button class="btn ghost small wide" style="margin-top:10px" onclick="setView(\'routines\')">All routines</button></div>';
+  const w=store.workouts[0];
+  if(w){
+    const nsets=w.entries.reduce((t,e)=>t+e.sets.length,0);
+    h+='<div class="card"><h3>Last workout</h3>'+
+      '<div class="listrow" data-id="'+esc(w.id)+'" onclick="openWorkout(this.dataset.id)">'+dateBadge(w.start)+
+      '<div class="grow"><div class="small" style="font-weight:600">'+(w.routine?esc(w.routine):'Workout')+'</div>'+
+      '<div class="tiny muted">'+w.entries.length+' exercises · '+nsets+' sets · '+fmtDur(w.start,w.end)+'</div></div></div></div>';
+  }
+  return h;
+}
 
 /* ============================== LOG view ============================== */
 /* LOG = history of past workouts (active workout takes over when in progress) */
@@ -672,7 +765,7 @@ function historyList(){
     const nsets=w.entries.reduce((t,e)=>t+e.sets.length,0);
     const vol=w.entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+setVol(s),0),0);
     h+='<div class="swipe" data-swipe="wk">'+
-      '<button class="swipe-act del" data-id="'+esc(w.id)+'" onclick="swipeDeleteWorkout(this.dataset.id)">'+ico('trash')+'Delete</button>'+
+      '<button class="swipe-act del" aria-label="Delete workout" title="Delete" data-id="'+esc(w.id)+'" onclick="swipeDeleteWorkout(this.dataset.id)">'+ico('trash')+'</button>'+
       '<div class="swipe-fg listrow" onclick="openWorkout(\''+esc(w.id)+'\')">'+dateBadge(w.start)+
       '<div class="grow"><div style="font-weight:700">'+esc(w.routine||'Workout')+'</div>'+
       '<div class="tiny muted">'+w.entries.length+' exercises · '+nsets+' sets · '+fmtDur(w.start,w.end)+'</div></div>'+
@@ -848,7 +941,7 @@ function renderActive(){
     const linked=e.ss!=null;
     h+='<div class="card excard" data-ei="'+ei+'">'+
       '<div class="swipe" data-swipe="ex" data-ei="'+ei+'">'+
-      '<button class="swipe-act del" onclick="swipeRemoveEx('+ei+')">'+ico('trash')+'Remove</button>'+
+      '<button class="swipe-act del" aria-label="Remove exercise" title="Remove" onclick="swipeRemoveEx('+ei+')">'+ico('trash')+'</button>'+
       '<div class="swipe-fg"><div class="row">'+
       (a.entries.length>1?'<span class="draghandle" data-drag="'+ei+'" title="Drag to reorder">⠿</span>':'')+
       '<div class="grow"><span style="font-weight:800">'+esc(e.name)+'</span> '+
@@ -861,8 +954,8 @@ function renderActive(){
       const twPh=s.tgt&&s.tgt.tw!=null?' placeholder="'+s.tgt.tw+'"':' placeholder="—"';
       const rPh=s.tgt&&repRange(s.tgt)?' placeholder="'+repRange(s.tgt)+'"':' placeholder="—"';
       h+='<div class="swipe" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
-        '<button class="swipe-act copy" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'Copy</button>'+
-        '<button class="swipe-act del" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'Remove</button>'+
+        '<button class="swipe-act copy" aria-label="Copy set" title="Copy" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'</button>'+
+        '<button class="swipe-act del" aria-label="Remove set" title="Remove" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'</button>'+
         '<div class="swipe-fg setrow2">'+
         '<span class="setnum'+(s.drop?' drop':'')+'" title="'+(s.drop?'Drop set':'')+'">'+(s.drop?'D':si+1)+'</span>'+
         '<div class="setcell"><label>Kg</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
@@ -871,14 +964,20 @@ function renderActive(){
         '<button class="setmenu" title="Set options" onclick="setMenu('+ei+','+si+')">⋯</button>'+
         '</div></div>';
     });
-    h+='<div class="row exfoot"><button class="btn ghost small grow" onclick="addSet('+ei+')">＋ Add set</button>'+
+    /* F15 (2026-07-06): superset/drop set visible on the card, not buried in ⋯ */
+    h+='<div class="row exfoot">'+
+      '<button class="pillbtn" onclick="addSet('+ei+')">＋ Set</button>'+
+      '<button class="pillbtn" onclick="addDropSet('+ei+')">＋ Drop set</button>'+
+      (ei>0?'<button class="pillbtn'+(linked?' on':'')+'" onclick="toggleSS('+ei+')">'+ico('link')+(linked?'Linked':'Superset')+'</button>':'')+
+      '<span class="sp"></span>'+
       '<button class="exi" title="History" aria-label="History" onclick="openExHistory(store.active.entries['+ei+'].name)">'+ico('clock')+'</button>'+
       '<button class="exi" title="Charts" aria-label="Charts" onclick="openExCharts(store.active.entries['+ei+'].name)">'+ico('bars')+'</button>'+
       '<button class="exi" title="Personal records" aria-label="Personal records" onclick="openExPRs(store.active.entries['+ei+'].name)">'+ico('star')+'</button>'+
       '</div>'+
       '</div>';
   });
-  h+='<button class="btn wide" onclick="openPicker()">＋ Add exercise</button>'+
+  h+='<div class="row"><button class="btn grow" onclick="openPicker()">＋ Add exercise</button>'+
+     (a.entries.length>1?'<button class="btn" onclick="openReorder()">'+ico('sort')+' Reorder</button>':'')+'</div>'+
      (a.editing||!a.entries.length?'':'<button class="btn ghost wide small" style="margin-top:8px" onclick="saveActiveAsRoutine()">'+ico('bookmark')+'Save as routine</button>')+
      '<div class="row" style="margin-top:14px">'+
      '<button class="btn danger" onclick="discardWorkout()">'+(a.editing?'Cancel':'Discard')+'</button>'+
@@ -916,6 +1015,10 @@ function lastTimeHint(name){
 function addSet(ei){const e=store.active.entries[ei];const p=e.sets[e.sets.length-1];
   e.sets.push({w:p?p.w:null,r:p?p.r:null,dur:null,dist:null,note:'',drop:false});save();render();
   if(store.active&&!store.active.editing&&restAutoOn())startRest();}
+/* F15: on-card "+ Drop set" — adds a set already marked D, seeded from the last weight */
+function addDropSet(ei){const e=store.active.entries[ei];const p=e.sets[e.sets.length-1];
+  e.sets.push({w:p?p.w:null,r:null,dur:null,dist:null,note:'',drop:true});save();render();
+  if(store.active&&!store.active.editing&&restAutoOn())startRest();}
 function removeSet(ei,si){store.active.entries[ei].sets.splice(si,1);save();render();}
 function copySet(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
   e.sets.splice(si+1,0,{w:s.w,r:s.r,dur:s.dur,dist:s.dist,note:'',drop:false,tgt:s.tgt?{...s.tgt}:null});
@@ -923,28 +1026,135 @@ function copySet(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
 function copySetToRest(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
   for(let i=si+1;i<e.sets.length;i++){e.sets[i].w=s.w;e.sets[i].r=s.r;}save();render();}
 function toggleDrop(ei,si){const s=store.active.entries[ei].sets[si];s.drop=!s.drop;save();render();}
-function removeEntry(ei){store.active.entries.splice(ei,1);save();render();}
-function moveEntry(ei,dir){const es=store.active.entries;const j=ei+dir;if(j<0||j>=es.length)return;
-  [es[ei],es[j]]=[es[j],es[ei]];save();render();}
+/* F22 (2026-07-06): any superset group with fewer than 2 members is not a
+   superset — clear the orphan's ss so no stale "SUPERSET A" badge lingers.
+   Called after every op that can dissolve a pair (unlink/remove/replace/reorder). */
+function cleanSS(){
+  const a=store.active;if(!a)return;const es=a.entries;
+  const count={};for(const e of es)if(e.ss!=null)count[e.ss]=(count[e.ss]||0)+1;
+  for(const e of es)if(e.ss!=null&&count[e.ss]<2)e.ss=null;
+}
+function removeEntry(ei){store.active.entries.splice(ei,1);cleanSS();save();render();}
 function toggleSS(ei){
   const es=store.active.entries,e=es[ei],prev=es[ei-1];if(!prev)return;
-  if(e.ss!=null&&e.ss===prev.ss){e.ss=null;}
+  if(e.ss!=null&&e.ss===prev.ss){e.ss=null;cleanSS();}
   else{if(prev.ss==null){let g=0;for(const x of es)if(x.ss!=null)g=Math.max(g,x.ss+1);prev.ss=g;}e.ss=prev.ss;}
   save();render();
 }
 function setEntryNote(ei,v){const a=store.active;if(a&&a.entries[ei]){a.entries[ei].note=v;save();}}
+/* F14: swap the exercise, keep everything logged (sets, targets, notes, superset) */
+function replaceEntryExercise(ei,name){
+  const a=store.active;if(!a||!a.entries[ei])return false;
+  ensureEx(name);a.entries[ei].name=name;cleanSS();save();return true;
+}
+/* F13 reorder overview + F21 (2026-07-06) — OWNER SPEC: "just holding on the
+   exercise should allow you to reorder it in the submenu. Don't really need the
+   arrow reordering." Press-and-hold (~200ms) anywhere on a row arms the drag so
+   normal list scrolling still works; the ⠿ handle drags immediately. */
+function openReorder(){
+  const a=store.active;if(!a||a.entries.length<2)return;
+  let h='<h2>Reorder exercises</h2><p class="tiny muted" style="margin-bottom:4px">Press and hold a row, then drag to reorder — or drag the ⠿ handle. Changes apply right away.</p><div id="rolist">';
+  a.entries.forEach((e,ei)=>{
+    h+='<div class="listrow" data-ro="'+ei+'" style="cursor:grab; touch-action:pan-y">'+
+      '<span class="draghandle" data-rodrag="'+ei+'">⠿</span>'+
+      '<div class="grow"><div class="small" style="font-weight:600">'+esc(e.name)+'</div>'+
+      '<div class="tiny muted">'+e.sets.length+' set'+(e.sets.length===1?'':'s')+(e.ss!=null?' · superset '+String.fromCharCode(65+e.ss%26):'')+'</div></div>'+
+      '</div>';
+  });
+  h+='</div><button class="btn primary wide" style="margin-top:12px" onclick="closeModal()">Done</button>';
+  openModal(h);
+  // ⠿ handle: drag immediately. Row body: hold ~200ms to arm (scroll wins otherwise).
+  document.querySelectorAll('#rolist [data-rodrag]').forEach(hd=>
+    hd.addEventListener('pointerdown',e=>{e.stopPropagation();startRoDrag(e,hd.closest('[data-ro]'),hd);}));
+  document.querySelectorAll('#rolist [data-ro]').forEach(row=>
+    row.addEventListener('pointerdown',e=>armRoHold(e,row)));
+}
+let roHold=null;
+function armRoHold(e,row){
+  if(e.target.closest('[data-rodrag]'))return;   // handle path already handles it
+  cancelRoHold();
+  const px=e.clientX,py=e.clientY,pid=e.pointerId;
+  const timer=setTimeout(()=>{
+    roHold=null;
+    startRoDrag({clientY:py,clientX:px,pointerId:pid,preventDefault(){}},row,row);
+  },200);
+  roHold={timer,px,py,pid};
+  const mv=ev=>{
+    if(!roHold)return;
+    if(Math.abs(ev.clientX-roHold.px)>8||Math.abs(ev.clientY-roHold.py)>8)cancelRoHold();  // it's a scroll
+  };
+  const up=()=>cancelRoHold();
+  roHold.mv=mv;roHold.up=up;
+  document.addEventListener('pointermove',mv,{passive:true});
+  document.addEventListener('pointerup',up,{passive:true});
+  document.addEventListener('pointercancel',up,{passive:true});
+}
+function cancelRoHold(){
+  if(!roHold)return;
+  clearTimeout(roHold.timer);
+  document.removeEventListener('pointermove',roHold.mv);
+  document.removeEventListener('pointerup',roHold.up);
+  document.removeEventListener('pointercancel',roHold.up);
+  roHold=null;
+}
+let roDrag=null;
+function startRoDrag(e,row,captureEl){
+  if(!row)return;
+  const rows=[...document.querySelectorAll('#rolist [data-ro]')];
+  roDrag={from:+row.dataset.ro,row,y0:e.clientY,target:+row.dataset.ro,
+    centers:rows.map(r=>{const b=r.getBoundingClientRect();return b.top+b.height/2;})};
+  try{(captureEl||row).setPointerCapture(e.pointerId);}catch(_){}
+  row.style.touchAction='none';   // now that the drag is armed, own the gesture
+  row.style.position='relative';row.style.zIndex='5';row.style.background='var(--card2)';
+  row.style.boxShadow='0 6px 18px rgba(0,0,0,.35)';row.style.borderRadius='10px';
+  document.addEventListener('pointermove',roDragMove,{passive:false});
+  document.addEventListener('pointerup',roDragEnd);
+  document.addEventListener('pointercancel',roDragEnd);
+  if(e.preventDefault)e.preventDefault();
+}
+function roDragMove(e){
+  if(!roDrag)return;e.preventDefault();
+  roDrag.row.style.transform='translateY('+(e.clientY-roDrag.y0)+'px)';
+  let ti=0;for(const c of roDrag.centers)if(e.clientY>c)ti++;
+  roDrag.target=Math.max(0,Math.min(roDrag.centers.length,ti));
+}
+function roDragEnd(){
+  if(!roDrag)return;
+  document.removeEventListener('pointermove',roDragMove);
+  document.removeEventListener('pointerup',roDragEnd);
+  document.removeEventListener('pointercancel',roDragEnd);
+  const from=roDrag.from;let to=roDrag.target;if(to>from)to--;
+  const row=roDrag.row;roDrag=null;
+  row.style.transform='';row.style.position='';row.style.zIndex='';row.style.background='';
+  row.style.boxShadow='';row.style.borderRadius='';row.style.touchAction='pan-y';
+  if(to!==from&&to>=0&&store.active){
+    const es=store.active.entries;const[m]=es.splice(from,1);es.splice(to,0,m);cleanSS();save();render();
+    const st=$('overlay').scrollTop;openReorder();$('overlay').scrollTop=st;
+  }
+}
 function exMenu(ei){
   const a=store.active;if(!a)return;const e=a.entries[ei];if(!e)return;
   const meta=store.ex[e.name]||{cat:'Other'};
-  openModal('<h2 style="margin-bottom:2px">'+esc(e.name)+'</h2>'+
-    '<p class="tiny muted" style="margin-bottom:12px">'+esc(meta.cat)+'</p>'+
+  openModal('<div class="row" style="align-items:flex-start; gap:8px; margin-bottom:2px">'+
+      '<h2 style="min-width:0; word-break:break-word">'+esc(e.name)+'</h2><span class="sp"></span>'+
+      '<button class="infobtn" aria-label="What do these mean?" onclick="toggleExInfo(this)">'+ico('info')+'</button></div>'+
+    '<p class="tiny muted" style="margin-bottom:8px">'+esc(meta.cat)+'</p>'+
+    /* F22 (2026-07-06): collapsed-by-default plain-English explainers */
+    '<div class="exinfo" hidden>'+
+      '<p><b>Superset</b> — two exercises done back to back with no rest between; link an exercise to the one above it.</p>'+
+      '<p><b>Drop set</b> — a set done right after the previous one at a lower weight, no rest; it shows the D mark.</p>'+
+    '</div>'+
     '<textarea class="howto" placeholder="Notes for this exercise (grip, tempo, machine setting…)" oninput="setEntryNote('+ei+',this.value)" style="margin-bottom:8px">'+esc(e.note||'')+'</textarea>'+
     '<div class="menu">'+
     (ei>0?'<button onclick="toggleSS('+ei+');closeModal()">'+ico('link')+(e.ss!=null?'Unlink from superset':'Superset with exercise above')+'</button>':'')+
-    (ei>0?'<button onclick="moveEntry('+ei+',-1);closeModal()">'+ico('up')+'Move up</button>':'')+
-    (ei<a.entries.length-1?'<button onclick="moveEntry('+ei+',1);closeModal()">'+ico('down')+'Move down</button>':'')+
+    '<button onclick="closeModal();openPicker(\'replace:'+ei+'\')">'+ico('repeat')+'Replace exercise</button>'+
+    (a.entries.length>1?'<button onclick="closeModal();openReorder()">'+ico('sort')+'Reorder exercises</button>':'')+
     '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+'Remove exercise</button>'+
     '</div>');
+}
+function toggleExInfo(btn){
+  const box=btn.closest('.sheet').querySelector('.exinfo');if(!box)return;
+  box.hidden=!box.hidden;btn.classList.toggle('on',!box.hidden);
 }
 function setMenu(ei,si){
   const a=store.active;if(!a)return;const e=a.entries[ei];if(!e)return;const s=e.sets[si];if(!s)return;
@@ -1081,7 +1291,7 @@ function finishWorkout(){
 /* exercise picker */
 function openPicker(target){
   state.pickTarget=target||'active';
-  openModal('<h2>Add exercise</h2>'+
+  openModal('<h2>'+(String(state.pickTarget).startsWith('replace:')?'Replace exercise':'Add exercise')+'</h2>'+
     '<input id="pickq" placeholder="Search or type a new name…" style="width:100%;margin:12px 0" oninput="renderPickList()">'+
     '<div id="picklist"></div>');
   renderPickList();$('pickq').focus();
@@ -1101,6 +1311,11 @@ function renderPickList(){
   $('picklist').querySelectorAll('[data-new]').forEach(el=>el.onclick=()=>createExercise(el.dataset.new));
 }
 function pickExercise(name){
+  if(String(state.pickTarget).startsWith('replace:')){
+    const ei=+String(state.pickTarget).slice(8);
+    if(replaceEntryExercise(ei,name))toast('Replaced with “'+name+'”');
+    state.pickTarget='active';closeModal();render();return;
+  }
   if(state.pickTarget==='routine'){ensureEx(name);
     state.editRoutine.exercises.push({name,ss:null,sets:[{tw:null,rlo:null,rhi:null}]});
     closeModal();render();return;}
@@ -1117,7 +1332,11 @@ function createExercise(name){
 function saveNewExercise(){
   const name=$('newname').value.trim();if(!name)return;
   store.ex[name]={cat:$('newcat').value,howto:$('newhow').value.trim(),custom:true,vid:autoVisual(name)};
-  if(state.pickTarget==='routine'&&state.editRoutine){state.editRoutine.exercises.push({name,ss:null,sets:[{tw:null,rlo:null,rhi:null}]});}
+  if(String(state.pickTarget).startsWith('replace:')){
+    replaceEntryExercise(+String(state.pickTarget).slice(8),name);
+    state.pickTarget='active';toast('Replaced with “'+name+'”');
+  }
+  else if(state.pickTarget==='routine'&&state.editRoutine){state.editRoutine.exercises.push({name,ss:null,sets:[{tw:null,rlo:null,rhi:null}]});}
   else if(store.active)store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});
   save();closeModal();render();
 }
@@ -1353,7 +1572,11 @@ function openExHistory(name){
   const sessions=exSessions(name);
   let h='<h2>History</h2><p class="tiny muted">'+esc(name)+' · '+sessions.length+' sessions</p>';
   if(!sessions.length)h+='<p class="muted small">Never logged.</p>';
+  let curMonth='';
   for(const s of sessions){
+    const mk=monthKey(s.date);
+    if(mk!==curMonth){curMonth=mk;
+      h+='<h3 style="font-size:13px;color:var(--muted);margin:14px 4px 2px">'+fmtMonth(s.date)+'</h3>';}
     h+='<div class="listrow" style="cursor:default">'+dateBadge(s.date)+
       '<div class="grow"><div class="small" style="font-weight:600">'+s.sets.map(x=>fmtW(x.w)+'×'+(x.r??(x.dur!=null?x.dur+'s':'—'))).join(', ')+'</div>'+
       '<div class="tiny muted">'+fmtNum(s.vol)+' kg volume</div></div>'+
@@ -1391,6 +1614,9 @@ function repRecords(name){
   for(const r of rs){if(best[r].w>maxW){out.push({r,...best[r]});maxW=best[r].w;}}
   return out.reverse(); // ascending reps, strictly decreasing... increasing weight toward low reps
 }
+/* F6 (2026-07-06): the tile-grid layout was a RepCount carbon copy — owner
+   asked for Sett's own design, same elements. Design A: hero est. 1RM, rep
+   ladder as proportional accent bars, dated best-single-workout list. */
 function openExPRs(name){
   const rr=repRecords(name);
   const sessions=exSessions(name);
@@ -1398,24 +1624,32 @@ function openExPRs(name){
   const volR=bestBy(s=>s.vol||null), e1R=bestBy(s=>s.best), repsR=bestBy(s=>s.sets.reduce((a,x)=>a+(x.r||0),0)||null),
         setsR=bestBy(s=>s.sets.length), maxwR=bestBy(s=>Math.max(0,...s.sets.map(x=>x.w||0))||null),
         maxrR=bestBy(s=>Math.max(0,...s.sets.map(x=>x.r||0))||null);
-  const tile=(l,v,d)=>'<div class="stat"><div class="l" style="color:var(--accent)">'+l+'</div><div class="v">'+v+'</div>'+
-    (d?'<div class="tiny muted">'+fmtDay(d)+'</div>':'')+'</div>';
   let h='<h2>Personal records</h2><p class="tiny muted">'+esc(name)+'</p>';
+  if(!sessions.length)h+='<p class="muted small">Never logged.</p>';
+  if(e1R)h+='<div class="card" style="text-align:center">'+
+    '<div class="tiny prlabel">Best est. 1RM</div>'+
+    '<div style="font-size:30px;font-weight:800;color:var(--accent);line-height:1.2">'+fmtW(e1R.v)+' <span style="font-size:15px;font-weight:700">kg</span></div>'+
+    '<div class="tiny muted">'+fmtDay(e1R.date)+'</div></div>';
   if(rr.length){
-    h+='<div class="card"><h3>'+ico('star')+' Rep records</h3>';
-    for(const x of rr)h+='<div class="row small" style="padding:6px 0;border-bottom:1px solid var(--line)">'+
-      '<span style="width:90px" class="muted">'+x.r+' rep max</span><b class="grow">'+fmtW(x.w)+' kg</b>'+
-      '<span class="tiny muted">'+fmtDay(x.date)+'</span></div>';
+    const maxW=Math.max(...rr.map(x=>x.w));
+    h+='<div class="card"><div class="tiny prlabel" style="margin-bottom:8px">Rep ladder</div>';
+    for(const x of rr)
+      h+='<div class="row" style="gap:8px;padding:3px 0">'+
+        '<span class="tiny muted" style="width:42px;flex:none">'+x.r+' rep'+(x.r>1?'s':'')+'</span>'+
+        '<div class="prbar" style="width:'+Math.max(30,Math.round(x.w/maxW*100))+'%">'+fmtW(x.w)+' kg</div></div>';
+    h+='<p class="tiny muted" style="margin:8px 0 0">Heaviest set you’ve logged at each rep count.</p></div>';
+  }
+  const rows=[['Volume',volR,v=>fmtNum(v)+' kg'],['Total reps',repsR,v=>v],['Total sets',setsR,v=>v],
+              ['Max weight',maxwR,v=>fmtW(v)+' kg'],['Max reps',maxrR,v=>v]].filter(x=>x[1]);
+  if(rows.length){
+    h+='<div class="card"><div class="tiny prlabel" style="margin-bottom:4px">Best single workout</div>';
+    rows.forEach(([l,b,fmt],i)=>{
+      h+='<div class="row small" style="padding:6px 0'+(i<rows.length-1?';border-bottom:1px solid var(--line)':'')+'">'+
+        '<span class="grow">'+l+'</span><b>'+fmt(b.v)+'</b>'+
+        '<span class="tiny" style="color:var(--faint);width:74px;text-align:right;flex:none">'+fmtDay(b.date)+'</span></div>';
+    });
     h+='</div>';
   }
-  h+='<div class="statgrid two" style="margin:12px 0">'+
-    (volR?tile('Volume',fmtNum(volR.v)+' kg',volR.date):'')+
-    (e1R?tile('Est. 1RM',fmtW(e1R.v)+' kg',e1R.date):'')+
-    (repsR?tile('Total reps',repsR.v,repsR.date):'')+
-    (setsR?tile('Total sets',setsR.v,setsR.date):'')+
-    (maxwR?tile('Max weight',fmtW(maxwR.v)+' kg',maxwR.date):'')+
-    (maxrR?tile('Max reps',maxrR.v,maxrR.date):'')+'</div>'+
-    '<p class="tiny muted">Volume, reps and sets records are per single workout.</p>';
   openModal(h);
 }
 function sparkSvg(pts,cls){
@@ -1679,11 +1913,136 @@ function wipeAll(){
 }
 
 /* ============================== modal & wiring ============================== */
+let closeAnimTimer=null;
 function openModal(html){
-  $('sheet').innerHTML='<div class="sheethead"><div class="grab" onclick="closeModal()"></div>'+
-    '<button class="sheetclose" onclick="closeModal()" aria-label="Close">✕</button></div>'+html;
-  $('overlay').classList.add('show');$('overlay').scrollTop=0;document.body.style.overflow='hidden';}
-function closeModal(){$('overlay').classList.remove('show');document.body.style.overflow='';clearInterval(visTimer);}
+  /* F23: a rapid re-open mid-dismissal must land clean — cancel any pending
+     animated close and reset the closing state before showing the new sheet. */
+  if(closeAnimTimer){clearTimeout(closeAnimTimer);closeAnimTimer=null;}
+  const ov=$('overlay'),sh=$('sheet');
+  ov.classList.remove('closing');sh.classList.remove('closing');sh.style.transform='';
+  sh.innerHTML='<div class="sheethead"><div class="grab" onclick="closeModalAnimated(\'y\')"></div>'+
+    '<button class="sheetclose" onclick="closeModalAnimated(\'y\')" aria-label="Close">✕</button></div>'+html;
+  wireSheetDrag(sh.querySelector('.sheethead'));
+  wireSheetExit();
+  ov.classList.add('show');ov.scrollTop=0;document.body.style.overflow='hidden';}
+function closeModal(){const ov=$('overlay'),sh=$('sheet');
+  ov.classList.remove('show','closing');sh.classList.remove('closing');
+  sh.style.transform='';document.body.style.overflow='';clearInterval(visTimer);}
+/* F23 (2026-07-06): smooth, consistent dismissal everywhere. The sheet slides
+   off-screen (right for a swipe-right, down for drag-down / taps) while the
+   overlay fades, THEN the real closeModal() lands. Programmatic closes after an
+   action keep calling closeModal() directly — instant is correct there. */
+function closeModalAnimated(dir){
+  const ov=$('overlay'),sh=$('sheet');
+  if(sh.classList.contains('closing'))return;   // already dismissing
+  sh.classList.remove('dragging');
+  sh.classList.add('closing');ov.classList.add('closing');
+  sh.style.transform=(dir==='x'?'translateX(110%)':'translateY(110%)');
+  if(closeAnimTimer)clearTimeout(closeAnimTimer);
+  closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;closeModal();},240);
+}
+/* F7 OWNER SPEC, verbatim (2026-07-06): "Add a swipe to exit feature in some
+   of the menus where it makes sense. For example when a menu doesn't have an
+   explicit X to close button." — every sheet: drag the header/grab area down
+   to dismiss. The sheethead is sticky, so it's always reachable. */
+function wireSheetDrag(head){
+  if(!head)return;
+  const sheet=$('sheet');
+  let y0=null,x0=null,dy=0,ly=0,lt=0,vy=0,axis=0;
+  head.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1)return;
+    y0=e.touches[0].clientY;x0=e.touches[0].clientX;dy=0;vy=0;axis=0;ly=y0;lt=e.timeStamp;
+  },{passive:true});
+  head.addEventListener('touchmove',e=>{
+    if(y0==null)return;
+    const y=e.touches[0].clientY,x=e.touches[0].clientX;
+    if(!axis){
+      const ax=Math.abs(x-x0),ay=Math.abs(y-y0);
+      if(ax<10&&ay<10)return;
+      axis=ay>=ax?'y':'x';   // horizontal moves belong to swipe-right-to-exit
+      if(axis==='y')sheet.classList.add('dragging');
+    }
+    if(axis!=='y')return;
+    dy=Math.max(0,y-y0);
+    const dt=e.timeStamp-lt;
+    if(dt>0){vy=0.8*((y-ly)/dt)+0.2*vy;ly=y;lt=e.timeStamp;}
+    sheet.style.transform='translateY('+dy+'px)';
+    if(dy>0)e.preventDefault();
+  },{passive:false});
+  const end=e=>{
+    if(y0==null)return;
+    const wasY=axis==='y';y0=null;
+    if(!wasY)return;
+    sheet.classList.remove('dragging');
+    if(dy>8){   // a real drag happened — don't let the release also count as a grab-tap
+      const swallow=ev=>{ev.stopPropagation();ev.preventDefault();};
+      head.addEventListener('click',swallow,true);
+      setTimeout(()=>head.removeEventListener('click',swallow,true),400);
+    }
+    if(e&&e.timeStamp-lt>100)vy=0;   // finger paused before release — not a flick
+    if(dy>120||(vy>0.5&&dy>30)){closeModalAnimated('y');}
+    else sheet.style.transform='';
+  };
+  head.addEventListener('touchend',end);
+  head.addEventListener('touchcancel',end);
+}
+/* F10 OWNER SPEC, verbatim (2026-07-06): "I want it to be swipe right to
+   exit … Should be able to swipe out of most menus like these, the ones
+   that have a delete option should still prompt this on swipe." His
+   clarified pick: sheets containing a destructive action confirm before
+   closing. Wired ONCE on the persistent #sheet element; drag-down stays. */
+function wireSheetExit(){
+  const sheet=$('sheet');if(!sheet||sheet._exitWired)return;sheet._exitWired=true;
+  let x0=null,y0=null,dx=0,axis=0,lx=0,lt=0,vx=0;
+  sheet.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1){x0=null;return;}
+    x0=e.touches[0].clientX;y0=e.touches[0].clientY;dx=0;axis=0;vx=0;lx=x0;lt=e.timeStamp;
+  },{passive:true});
+  sheet.addEventListener('touchmove',e=>{
+    if(x0==null)return;
+    const x=e.touches[0].clientX,y=e.touches[0].clientY;
+    if(!axis){
+      const ax=Math.abs(x-x0),ay=Math.abs(y-y0);
+      if(ax<14&&ay<14)return;
+      axis=(ax>ay*1.6&&x>x0)?'x':'other';   // only a clearly rightward swipe exits
+      if(axis==='x')sheet.classList.add('dragging');
+    }
+    if(axis!=='x')return;
+    if(e.target.closest('input,textarea,select'))return;   // don't fight text selection
+    dx=Math.max(0,x-x0);
+    const dt=e.timeStamp-lt;
+    if(dt>0){vx=0.8*((x-lx)/dt)+0.2*vx;lx=x;lt=e.timeStamp;}
+    sheet.style.transform='translateX('+dx+'px)';
+    e.preventDefault();
+  },{passive:false});
+  const end=e=>{
+    if(x0==null)return;
+    const wasX=axis==='x';x0=null;
+    if(!wasX)return;
+    sheet.classList.remove('dragging');
+    if(e&&e.timeStamp-lt>100)vx=0;
+    if(dx>110||(vx>0.5&&dx>40)){
+      /* F18 (2026-07-06, owner revised F10): swipe-right always closes. A
+         delete button's mere presence is NOT a reason to confirm — destructive
+         actions confirm themselves; closing loses no unsaved input here. */
+      closeModalAnimated('x');
+    }else sheet.style.transform='';
+  };
+  sheet.addEventListener('touchend',end);
+  sheet.addEventListener('touchcancel',end);
+}
+/* F12: keep list bottoms reachable while the iOS keyboard is up — mirror the
+   keyboard height into --kb (body + sheet bottom padding use it) */
+if(window.visualViewport){
+  const kbAdj=()=>{
+    const raw=Math.max(0,window.innerHeight-window.visualViewport.height-window.visualViewport.offsetTop);
+    const kb=raw>40?Math.round(raw):0;
+    document.documentElement.style.setProperty('--kb',kb+'px');
+    document.body.classList.toggle('kb-open',kb>0);   // F20: hide the tabbar while typing
+  };
+  window.visualViewport.addEventListener('resize',kbAdj);
+  window.visualViewport.addEventListener('scroll',kbAdj);
+}
 function wireInputs(){
   document.querySelectorAll('#main [data-ei]').forEach(el=>{
     el.addEventListener('input',()=>{
@@ -1735,7 +2094,12 @@ function wireInputs(){
    fires from the swipe itself. One row open at a time; tapping elsewhere
    closes it. Sets: Copy (right-swipe) + Remove (left-swipe). Exercises and
    workouts: left-swipe → Remove/Delete only. */
-const SWW=92;
+/* F8 OWNER SPEC, verbatim (2026-07-06): "too sensitive right now … if i
+   swipe to delete and then swipe back it should stop in the middle, same
+   story for the copy swipe." An open row drags from its OPEN position and
+   a release settles at the nearest stop (open ↔ middle) — one gesture can
+   never latch the opposite action. Flick thresholds raised. */
+const SWW=60, SWLATCH=SWW*0.55, SWVEL=0.5;   // latch: 33px slow drag OR a genuinely fast flick
 const SWDIRS={set:{l:1,r:1}, ex:{l:1}, wk:{l:1}};   // l = left-swipe allowed (del), r = right-swipe (copy)
 let _sw=null, _swOpen=null, _swMoved=false, _swClosedTap=false;
 function closeSwipe(){if(_swOpen){_swOpen.classList.remove('open-l','open-r');_swOpen=null;}}
@@ -1747,34 +2111,61 @@ function swipeStart(ev){
   _swMoved=false;_swClosedTap=false;
   if(ev.touches.length!==1){_sw=null;return;}
   const el=ev.target.closest('.swipe');
-  if(_swOpen&&_swOpen!==el){closeSwipe();_swClosedTap=true;}
+  /* touching anything OTHER than the open row closes it (that tap is
+     swallowed); touching the open row keeps it latched so it can be
+     dragged back from its open position (or tap-closed on release) */
+  if(_swOpen&&el!==_swOpen){closeSwipe();_swClosedTap=true;}
   if(!el||!el.dataset.swipe){_sw=null;return;}
   if(ev.target.closest('[data-drag],button,input,textarea,select,a')){_sw=null;return;}
   const dirs=SWDIRS[el.dataset.swipe]||{};
   _sw={el,fg:el.querySelector('.swipe-fg'),x0:ev.touches[0].clientX,y0:ev.touches[0].clientY,
     dx:0,axis:0,dirs,
-    base:el.classList.contains('open-r')?-SWW:el.classList.contains('open-l')?SWW:0};
+    base:el.classList.contains('open-r')?-SWW:el.classList.contains('open-l')?SWW:0,
+    vx:0,lx:ev.touches[0].clientX,lt:ev.timeStamp};
 }
 function swipeMove(ev){
   if(!_sw)return;
   const t=ev.touches[0],dx=t.clientX-_sw.x0,dy=t.clientY-_sw.y0;
   if(!_sw.axis){
-    if(Math.abs(dx)<8&&Math.abs(dy)<8)return;
-    _sw.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
-    if(_sw.axis==='x'){_sw.el.classList.add('swiping');_sw.el.classList.remove('open-l','open-r');}
+    const ax=Math.abs(dx),ay=Math.abs(dy);
+    if(ax<12&&ay<12)return;
+    /* only clearly horizontal gestures swipe; anything diagonal scrolls */
+    if(ax>ay*1.6){_sw.axis='x';_sw.el.classList.add('swiping');_sw.el.classList.remove('open-l','open-r');}
     else{_sw=null;return;}
   }
   ev.preventDefault();
-  const min=_sw.dirs.l?-SWW:0, max=_sw.dirs.r?SWW:0;   // left drag → del (right side), right drag → copy (left side)
-  const d=Math.max(min,Math.min(max,_sw.base+dx));
+  const dt=ev.timeStamp-_sw.lt;
+  if(dt>0){_sw.vx=0.8*((t.clientX-_sw.lx)/dt)+0.2*_sw.vx;_sw.lx=t.clientX;_sw.lt=ev.timeStamp;}
+  /* from an open row the travel is capped at neutral — swiping back can
+     never continue into the opposite action */
+  let min,max;
+  if(_sw.base<0){min=-SWW;max=0;}
+  else if(_sw.base>0){min=0;max=SWW;}
+  else{min=_sw.dirs.l?-SWW:0;max=_sw.dirs.r?SWW:0;}
+  let d=_sw.base+dx;
+  if(d<min)d=min+(d-min)*0.22; else if(d>max)d=max+(d-max)*0.22;   // rubber-band past the end
   _sw.dx=d;_swMoved=true;_sw.fg.style.transform='translateX('+d+'px)';
 }
-function swipeEnd(){
+function swipeEnd(ev){
   if(!_sw)return;
   const s=_sw;_sw=null;s.el.classList.remove('swiping');s.fg.style.transform='';
-  if(s.axis!=='x')return;
-  if(s.dx<=-SWW/2){s.el.classList.add('open-r');_swOpen=s.el;}      // latched: Delete/Remove visible on the right
-  else if(s.dx>=SWW/2){s.el.classList.add('open-l');_swOpen=s.el;}  // latched: Copy visible on the left
+  if(s.axis!=='x'){
+    /* a plain tap on the open row closes it; the click is swallowed */
+    if(_swOpen===s.el){closeSwipe();_swClosedTap=true;}
+    return;
+  }
+  if(ev&&ev.timeStamp-s.lt>100)s.vx=0;   // finger paused before release — not a flick
+  if(s.base!==0){
+    /* released from an open row: nearest stop wins — re-open or neutral */
+    const back=Math.sign(s.vx)!==Math.sign(s.base)&&Math.abs(s.vx)>SWVEL;   // flick toward neutral closes
+    const stayOpen=!back&&Math.abs(s.dx)>=SWW/2&&Math.sign(s.dx)===Math.sign(s.base);
+    if(stayOpen){s.el.classList.add(s.base<0?'open-r':'open-l');_swOpen=s.el;}
+    else if(_swOpen===s.el)_swOpen=null;
+    return;
+  }
+  const flickL=s.vx<-SWVEL&&s.dx<-28, flickR=s.vx>SWVEL&&s.dx>28;   // a quick flick latches too
+  if(s.dirs.l&&(flickL||(s.dx<=-SWLATCH&&!flickR))){s.el.classList.add('open-r');_swOpen=s.el;}   // Delete/Remove on the right
+  else if(s.dirs.r&&(flickR||(s.dx>=SWLATCH&&!flickL))){s.el.classList.add('open-l');_swOpen=s.el;}   // Copy on the left
   else if(_swOpen===s.el)_swOpen=null;
 }
 /* after a swipe (or an outside-tap that closed an open row), swallow the
@@ -1792,6 +2183,61 @@ function wireSwipe(){
   // touching anywhere outside the open row (header, tab bar, other cards) closes it
   document.addEventListener('touchstart',e=>{if(_swOpen&&!_swOpen.contains(e.target))closeSwipe();},{passive:true});
 }
+/* F17 (2026-07-06): editing a past workout is a main VIEW (store.active.editing),
+   not a sheet — the sheet swipe-exit never covered it. A clearly-rightward swipe
+   on the editor that starts OUTSIDE any set-row/input/handle cancels editing
+   (discardWorkout already confirms). Axis detection mirrors wireSheetExit so it
+   won't fight row swipes or vertical scroll. */
+function wireEditorExit(){
+  const m=$('main');if(!m||m._edWired)return;m._edWired=true;
+  let x0=null,y0=null,axis=0,armed=false;
+  m.addEventListener('touchstart',e=>{
+    armed=false;x0=null;
+    if(e.touches.length!==1)return;
+    if(!(store.active&&store.active.editing))return;
+    // must start on empty editor space — not a set row, input, button, or drag handle
+    if(e.target.closest('.swipe,input,textarea,select,button,[data-drag],[data-rodrag],.pillbtn'))return;
+    x0=e.touches[0].clientX;y0=e.touches[0].clientY;axis=0;armed=true;
+  },{passive:true});
+  m.addEventListener('touchmove',e=>{
+    if(!armed||x0==null)return;
+    const x=e.touches[0].clientX,y=e.touches[0].clientY;
+    if(!axis){
+      const ax=Math.abs(x-x0),ay=Math.abs(y-y0);
+      if(ax<12&&ay<12)return;
+      axis=(ax>ay*1.6&&x>x0)?'x':'other';   // only a clearly rightward swipe exits
+    }
+  },{passive:true});
+  m.addEventListener('touchend',()=>{
+    if(armed&&axis==='x'&&store.active&&store.active.editing)discardWorkout();
+    armed=false;x0=null;axis=0;
+  });
+  m.addEventListener('touchcancel',()=>{armed=false;x0=null;axis=0;});
+}
+
+/* F2 auto-stop — OWNER SPEC, verbatim (2026-07-06): "Workouts should have an
+   auto stop and also not put you back in it when you leave." A closed PWA
+   can't run timers, so this runs on open and on returning to the foreground:
+   a live workout idle past AUTOSTOP_MS (owner picked 1 h after the last
+   touch) is finalized retroactively with end = that last touch; one with no
+   logged sets is discarded. `store.active.touch` is bumped by save() on
+   every change while a workout is live. */
+const AUTOSTOP_MS=3600000;
+function autoStopStale(){
+  const a=store.active;
+  if(!a||a.editing)return false;
+  const t=a.touch||toDate(a.start).getTime();
+  if(Date.now()-t<AUTOSTOP_MS)return false;
+  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
+  if(!entries.length){store.active=null;save();toast('Forgotten empty workout discarded');return true;}
+  for(const e of entries)ensureEx(e.name);
+  const w={id:newWid(),start:a.start,end:nowStr(new Date(t)),routine:(a.routine||'').trim(),bw:a.bw||null,entries};
+  store.workouts.unshift(w);store.workouts.sort((x,y)=>x.start<y.start?1:-1);
+  store.active=null;save();
+  toast('Workout auto-stopped and saved (ended '+fmtClock(w.end)+')');
+  return true;
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&autoStopStale())render();});
 
 /* ============================== init ============================== */
 if(firstRun){
@@ -1800,9 +2246,10 @@ if(firstRun){
 }
 migrateVisuals();
 applyTheme((store.settings&&store.settings.theme)||'ember');
-if(store.active)state.view='log';
+autoStopStale();
 render();
 wireSwipe();
+wireEditorExit();
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
