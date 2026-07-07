@@ -193,6 +193,11 @@
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .gtile .gl{font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase;
     letter-spacing:.04em; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  /* F71 — petite one-line rank-up cue directly below the glance strip. Muted,
+     single line, ellipsis if long. Absent when ranks off / nothing close. */
+  .rankline{display:block; width:100%; text-align:left; font-size:12px; color:var(--muted);
+    margin:0 0 6px; padding:2px 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .rankline b{color:var(--text); font-weight:700;}
   /* Routines as a horizontally scrollable chip row — must NOT widen the page. */
   .routerow{display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none;
     scroll-snap-type:x proximity;}
@@ -516,8 +521,15 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.18';
+const APP_VERSION='0.9.19';
 const CHANGELOG=[
+  {v:'0.9.19', date:'2026-07-07', items:[
+    'The whole exercise catalog is now browsable — all 873 exercises, not just the first thirty. Just keep scrolling.',
+    'Returning from an exercise preview is smoother now — the catalog keeps your place instead of jumping back to the top.',
+    'Another go at the bottom bar drifting up: it should now stay put when you open a menu from a scrolled page.',
+    'Home\'s glance strip shows this week\'s volume, with a readable "closest to ranking up" line right below it.',
+    'A little more digging happened under the hood.',
+  ]},
   {v:'0.9.18', date:'2026-07-07', items:[
     'Sett now speaks Norwegian — pick your language when you first open the app or anytime under Settings → Appearance.',
   ]},
@@ -858,6 +870,7 @@ const STRINGS={
     'home.unsaved':'unsaved changes','home.continue':'Continue','home.resume':'Resume',
     'home.startWorkout':'＋ Start workout',
     'home.thisWeek':'this week','home.bodyweight':'bodyweight','home.toRankUp':'rank up',
+    'home.rankLine':'{0} — {1}',
     'home.routines':'Routines','home.all':'All ›','home.workout':'Workout',
     'home.noRoutines':'No routines yet — build one and it shows up here for a one-tap start.',
     'home.lastWorkout':'Last workout',
@@ -918,6 +931,8 @@ const STRINGS={
     // rank gap glue (tier NAMES stay English — they are the rank system, not UI chrome)
     'rank.to':'to','rank.kgE1':'kg of e1RM','rank.topTier':'Top tier','rank.repsBest':'reps best',
     'rank.wayTo':'{0}% of the way to {1} ({2})','rank.topReached':'Top tier reached. Monster.',
+    // catalog browser count line (F73) — filtered-aware
+    'cat.countAll':'{0} exercises with visuals','cat.countMatch':'{0} {1} match',
     // Exercises
     'ex.browseCatalog':'Browse catalog','ex.newExercise':'＋ New exercise','ex.search':'Search {0} exercises…',
     'ex.nothingTitle':'Nothing matches','ex.nothingSub':'Try a different search, or add it from the catalog above.',
@@ -983,6 +998,7 @@ const STRINGS={
     'home.unsaved':'ulagrede endringer','home.continue':'Fortsett','home.resume':'Gjenoppta',
     'home.startWorkout':'＋ Start økt',
     'home.thisWeek':'denne uka','home.bodyweight':'kroppsvekt','home.toRankUp':'rang opp',
+    'home.rankLine':'{0} — {1}',
     'home.routines':'Rutiner','home.all':'Alle ›','home.workout':'Økt',
     'home.noRoutines':'Ingen rutiner ennå — lag én, så dukker den opp her for rask start.',
     'home.lastWorkout':'Siste økt',
@@ -1036,6 +1052,7 @@ const STRINGS={
     'st.rankExplain':'Bare løft med publiserte styrkestandarder rangeres — vektstang- og manualløft etter vekt relativt til kroppsvekt, pull-ups/dips/push-ups etter reps. Maskin- og kabeløvelser forblir urangert fordi vektstabler varierer mellom utstyrsmerker. Endre standarden (mann / kvinne / kjønnsnøytral) eller skjul ranger helt under Innstillinger.',
     'rank.to':'til','rank.kgE1':'kg e1RM','rank.topTier':'Toppnivå','rank.repsBest':'reps best',
     'rank.wayTo':'{0}% av veien til {1} ({2})','rank.topReached':'Toppnivå nådd. Monster.',
+    'cat.countAll':'{0} øvelser med bilder','cat.countMatch':'{0} {1} treff',
     'ex.browseCatalog':'Bla i katalogen','ex.newExercise':'＋ Ny øvelse','ex.search':'Søk i {0} øvelser…',
     'ex.nothingTitle':'Ingen treff','ex.nothingSub':'Prøv et annet søk, eller legg den til fra katalogen over.',
     'ex.noneTitle':'Ingen øvelser ennå','ex.noneSub':'Bla i katalogen eller legg til dine egne med knappene over.',
@@ -1743,24 +1760,26 @@ function renderHome(){
     h+='<button class="btn primary wide" style="margin:4px 0 8px" onclick="startWorkout()">'+T('home.startWorkout')+'</button>';
   }
 
-  // GLANCE STRIP — three equal mini tiles. Workouts + records → Stats;
-  // closest rank-up → that lift. When ranks off / none, a neutral tile replaces it.
+  // GLANCE STRIP — three equal mini tiles: this-week WORKOUTS · RECORDS · VOLUME
+  // (F71: the third tile is now volume in tonnes, matching the Stats strip
+  // format). All three tap to Stats. The rank-up moved OUT of the strip into a
+  // petite one-line cue directly below (F71).
   const tw=thisWeekStats();
-  const cru=showRanks()?closestRankUp():null;
-  let rankTile;
-  if(cru){
-    const col=TIERS[cru.rk.tier].color;
-    rankTile='<button class="gtile" data-n="'+esc(cru.name)+'" onclick="openExercise(this.dataset.n)">'+
-      '<div class="gv" style="color:'+col+'">'+esc(cru.gap.text.split(' '+T('rank.to')+' ')[0])+'</div>'+
-      '<div class="gl">'+T('rank.to')+' '+esc((cru.gap.text.split(' '+T('rank.to')+' ')[1]||T('home.toRankUp')))+'</div></button>';
-  }else{
-    rankTile='<button class="gtile" onclick="setView(\'stats\')"><div class="gv">'+
-      (latestBW()?fmtW(latestBW()):'—')+'</div><div class="gl">'+T('home.bodyweight')+'</div></button>';
-  }
+  const volT=(tw.vol/1000).toFixed(1)+' t';
   h+='<div class="glance">'+
     '<button class="gtile" onclick="setView(\'stats\')"><div class="gv">'+tw.workouts+'</div><div class="gl">'+T('home.thisWeek')+'</div></button>'+
     '<button class="gtile" onclick="setView(\'stats\')"><div class="gv">'+tw.records+'</div><div class="gl">'+plur('u.record',tw.records)+'</div></button>'+
-    rankTile+'</div>';
+    '<button class="gtile" onclick="setView(\'stats\')"><div class="gv">'+esc(volT)+'</div><div class="gl">'+T('st.volume')+'</div></button>'+
+    '</div>';
+
+  // RANK-UP LINE (F71) — a petite tappable one-liner directly below the strip:
+  // "Bench Press — 2.5 kg to Gold" (the gap text is already the rank-gap glue,
+  // i18n'd). Absent entirely when ranks are off or nothing is close.
+  const cru=showRanks()?closestRankUp():null;
+  if(cru&&cru.gap&&!cru.gap.top){
+    h+='<button class="rankline" data-n="'+esc(cru.name)+'" onclick="openExercise(this.dataset.n)">'+
+      T('home.rankLine','<b>'+esc(cru.name)+'</b>',esc(cru.gap.text))+'</button>';
+  }
 
   // RECAP — monthly recap card stays as-is, below the glance strip (F41).
   h+=recapCardHtml();
@@ -2946,22 +2965,29 @@ function openExercise(name,replace){
 function unlinkVisual(name){store.ex[name].vid=null;save();openExercise(name,1);}
 /* visual picker: link any catalog visual to any exercise (incl. custom ones) */
 function openVisualPicker(name){
+  _vpChunks=1;   // F73: reset the chunk window on a fresh open
   openModal('<h2>Choose a visual</h2><p class="tiny muted">for '+esc(name)+'</p>'+
-    '<input id="vpq" placeholder="Search 873 exercises…" style="width:100%;margin:10px 0" data-n="'+esc(name)+'" oninput="renderVisualList(this.dataset.n)">'+
+    '<input id="vpq" placeholder="Search 873 exercises…" style="width:100%;margin:10px 0" data-n="'+esc(name)+'" oninput="onCatalogSearch(this)">'+
     '<div id="vplist"></div>');
   renderVisualList(name);$('vpq').focus();
 }
 function renderVisualList(name){
-  const q=($('vpq').value||'').trim().toLowerCase();
-  const hits=CATALOG.filter(c=>!q||c.n.toLowerCase().includes(q)).slice(0,30);
+  const q=($('vpq')?($('vpq').value||''):'').trim().toLowerCase();
+  const all=CATALOG.filter(c=>!q||(c.n||'').toLowerCase().includes(q));
+  const shown=Math.min(all.length,_vpChunks*CATALOG_CHUNK);
+  const hits=all.slice(0,shown);
   /* F63: inline-dataset handlers (data-vp = catalog id, data-n = the exercise
-     name being linked) survive an innerHTML restore — no JS-bound closures. */
-  $('vplist').innerHTML=hits.map(c=>
+     name being linked) survive an innerHTML restore — no JS-bound closures.
+     F73: chunked — render `shown` rows + a sentinel row while more remain. */
+  let h=hits.map(c=>
     '<div class="listrow" data-vp="'+esc(c.i)+'" data-n="'+esc(name)+'" onclick="vpickVisual(this.dataset.vp,this.dataset.n)">'+
     '<img class="thumb" loading="lazy" src="exercises/'+esc(c.i)+'/0.jpg" alt="">'+
     '<div class="grow"><div style="font-weight:600">'+esc(c.n)+'</div>'+
-    '<div class="tiny muted">'+esc(c.p.join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div></div>').join('')
+    '<div class="tiny muted">'+esc((c.p||[]).join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div></div>').join('')
     ||'<p class="muted small">No match.</p>';
+  if(shown<all.length)h+=catalogSentinel('vplist','renderVisualList',name);
+  $('vplist').innerHTML=h;
+  armCatalogSentinel('vplist',()=>{_vpChunks++;renderVisualList(name);});
 }
 /* F63: the visual-picker row action, top-level (was a closure). Links the chosen
    catalog visual to the exercise and returns to its sheet (no duplicate back-step). */
@@ -2977,25 +3003,96 @@ function vpickVisual(vid,name){
    live target (active workout / routine / replace) in one deliberate act. */
 function openCatalog(pick){
   state.catalogPick=!!pick;
+  _catChunks=1;   // F73: reset the chunk window on a fresh open
   const sub=pick?'Tap one to preview it, then add it to this workout.'
                 :'Tap one to preview it — add to your library from there.';
-  openModal('<h2>Exercise catalog</h2><p class="tiny muted">873 exercises with visuals — '+sub+'</p>'+
-    '<input id="cbq" placeholder="Search…" style="width:100%;margin:10px 0" oninput="renderCatalogList()">'+
+  openModal('<h2>Exercise catalog</h2><p class="tiny muted" id="cbcount">'+catalogCountLine(CATALOG.length)+' — '+sub+'</p>'+
+    '<input id="cbq" placeholder="Search…" style="width:100%;margin:10px 0" oninput="onCatalogSearch(this)">'+
     '<div id="cblist"></div>');
   renderCatalogList();$('cbq').focus();
 }
+/* F73: chunked catalog render. Show `_catChunks * CATALOG_CHUNK` alphabetical
+   rows plus a sentinel while more remain; the sentinel appends the next chunk
+   when it scrolls into view. Filtered searches chunk the filtered set the same
+   way. The count line reflects the FILTERED count while searching (T(), en+no). */
+const CATALOG_CHUNK=60;
+let _catChunks=1, _vpChunks=1;
 function renderCatalogList(){
-  const q=($('cbq').value||'').trim().toLowerCase();
-  const hits=CATALOG.filter(c=>!q||(c.n||'').toLowerCase().includes(q)||(c.p||[]).some(p=>p.includes(q))).slice(0,30);
+  const q=($('cbq')?($('cbq').value||''):'').trim().toLowerCase();
+  const all=CATALOG.filter(c=>!q||(c.n||'').toLowerCase().includes(q)||(c.p||[]).some(p=>p.includes(q)));
+  const shown=Math.min(all.length,_catChunks*CATALOG_CHUNK);
+  const hits=all.slice(0,shown);
+  /* F73: the count line honestly reflects what's being shown while filtering. */
+  const cc=$('cbcount');
+  if(cc)cc.innerHTML=catalogCountLine(all.length,!!q)+' — '+(state.catalogPick
+    ?'Tap one to preview it, then add it to this workout.'
+    :'Tap one to preview it — add to your library from there.');
   /* F63: inline-dataset onclick (data-cadd = catalog id) survives an innerHTML
      restore by construction — no JS-bound closures that pop→restore would drop. */
-  $('cblist').innerHTML=hits.map(c=>
+  let h=hits.map(c=>
     '<div class="listrow" data-cadd="'+esc(c.i)+'" onclick="catalogRowTap(this.dataset.cadd)">'+
     '<img class="thumb" loading="lazy" src="exercises/'+esc(c.i)+'/0.jpg" alt="">'+
     '<div class="grow"><div style="font-weight:600">'+esc(c.n)+'</div>'+
     '<div class="tiny muted">'+esc((c.p||[]).join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div>'+
     (store.ex[c.n]?'<span class="chip">in library</span>':'')+'</div>').join('')
     ||'<p class="muted small">No match.</p>';
+  if(shown<all.length)h+=catalogSentinel('cblist','renderCatalogList');
+  $('cblist').innerHTML=h;
+  armCatalogSentinel('cblist',()=>{_catChunks++;renderCatalogList();});
+}
+/* F73: the honest count line, filtered-aware. */
+function catalogCountLine(n,filtered){return filtered?T('cat.countMatch',n,plur('u.exercise',n)):T('cat.countAll',n);}
+/* F73: search input handler shared by both lists — reset the chunk window to the
+   first page so a new query starts at the top, then re-render. */
+function onCatalogSearch(el){
+  if(el&&el.id==='cbq'){_catChunks=1;renderCatalogList();}
+  else{_vpChunks=1;renderVisualList(el&&el.dataset?el.dataset.n:null);}
+}
+/* F73: a sentinel row markup. data-sentinel names the list container so a fallback
+   scroll listener can find it; the IntersectionObserver watches the element. */
+function catalogSentinel(listId){
+  return '<div class="listrow catsentinel" data-sentinel="'+esc(listId)+'" style="justify-content:center;color:var(--muted);font-size:12px">···</div>';
+}
+/* F73: attach an IntersectionObserver (root = the #overlay scroller) to the
+   sentinel inside `listId`; onHit appends the next chunk. Falls back to a scroll
+   listener where IntersectionObserver is unavailable. Idempotent per render — the
+   previous observer is disconnected first so re-renders/restores never stack. */
+let _catObs=null, _catScrollFb=null;
+function armCatalogSentinel(listId,onHit){
+  try{
+    if(_catObs){_catObs.disconnect();_catObs=null;}
+    if(_catScrollFb){const ov=$('overlay');if(ov&&ov.removeEventListener)ov.removeEventListener('scroll',_catScrollFb);_catScrollFb=null;}
+    const list=$(listId);if(!list)return;
+    const sen=list.querySelector?list.querySelector('.catsentinel'):null;
+    if(!sen)return;   // no sentinel → all rows shown, nothing to arm
+    if(typeof IntersectionObserver==='function'){
+      const ov=$('overlay');
+      _catObs=new IntersectionObserver(entries=>{
+        for(const en of entries)if(en.isIntersecting){onHit();return;}
+      },{root:ov||null,rootMargin:'200px'});
+      _catObs.observe(sen);
+    }else{
+      const ov=$('overlay');if(!ov||!ov.addEventListener)return;
+      _catScrollFb=()=>{
+        const s=list.querySelector('.catsentinel');if(!s||!s.getBoundingClientRect)return;
+        const r=s.getBoundingClientRect(),oh=(ov.getBoundingClientRect?ov.getBoundingClientRect().bottom:window.innerHeight);
+        if(r.top<oh+200)onHit();
+      };
+      ov.addEventListener('scroll',_catScrollFb,{passive:true});
+    }
+  }catch(e){}
+}
+/* F73: re-arm the sentinel after a back-stack pop restores a catalog/visual-picker
+   list from its HTML snapshot (the restore re-inserts rows + sentinel but not the
+   observer). Called from popModalFrame. The chunk counters are preserved across
+   the push→pop (module state), so the restored HTML and the counter agree. */
+function rearmCatalogSentinelAfterRestore(){
+  const sh=$('sheet');if(!sh||!sh.querySelector)return;
+  if(sh.querySelector('#cblist'))armCatalogSentinel('cblist',()=>{_catChunks++;renderCatalogList();});
+  else if(sh.querySelector('#vplist')){
+    const inp=sh.querySelector('#vpq');const nm=inp&&inp.dataset?inp.dataset.n:null;
+    armCatalogSentinel('vplist',()=>{_vpChunks++;renderVisualList(nm);});
+  }
 }
 /* F62/F63: a catalog row now PREVIEWS (read-only), never writes to the store. */
 function catalogRowTap(id){const c=CAT_BY_ID[id];if(c)catalogPreview(id,false);}
@@ -3960,13 +4057,23 @@ function renderSettings(){
    a 7-day counters summary, storage sizes, and the three action buttons. All
    text run through esc(); long error strings get word-break so nothing overflows
    the 375px card. Reads only the diag store — never store.workouts. */
+/* F72 (2026-07-07): the Diagnostics card header is now a collapse toggle. The
+   open state lives in store.settings.devPanelOpen — default expanded on first
+   unlock (undefined → treated as open), then remembered. Panel copy stays
+   English (dev surface, i18n-exempt by house law). */
+function devPanelOpen(){const s=store.settings||{};return s.devPanelOpen!==false;}   // undefined → open by default
+function toggleDevPanel(){store.settings=store.settings||{};store.settings.devPanelOpen=!devPanelOpen();save();render();}
 function renderDiagCard(){
   const d=diagLoad();
-  const errs=d.log.filter(e=>e.type==='error').slice(-5).reverse();
-  let h='<div class="card"><div class="row"><h3 class="grow">Diagnostics</h3>'+
-    '<span class="chip">dev</span></div>'+
-    '<p class="tiny muted" style="margin:6px 0 12px">On-device only. Errors and usage counts — never your workout data.</p>';
+  const open=devPanelOpen();
+  // F72: tapping the header toggles the body; a chevron indicates state.
+  let h='<div class="card"><div class="row" onclick="toggleDevPanel()" style="cursor:pointer"><h3 class="grow">Diagnostics</h3>'+
+    '<span class="chip">dev</span>'+
+    '<span class="accchev"'+(open?' style="transform:rotate(180deg)"':'')+'>'+ico('chevron')+'</span></div>';
+  if(!open){h+='</div>';return h;}   // collapsed: header only
+  h+='<p class="tiny muted" style="margin:6px 0 12px">On-device only. Errors and usage counts — never your workout data.</p>';
   // recent errors
+  const errs=d.log.filter(e=>e.type==='error').slice(-5).reverse();
   h+='<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Recent errors</div>';
   if(!errs.length)h+='<p class="small muted" style="margin:0 0 12px">No errors recorded.</p>';
   else{
@@ -3975,6 +4082,23 @@ function renderDiagCard(){
         '<div style="color:var(--bad);font-family:ui-monospace,Menlo,Consolas,monospace">'+esc(e.msg||'')+
         (e.src?'<br><span class="muted">'+esc(e.src)+'</span>':'')+'</div>'+
         '<div class="tiny muted">v'+esc(e.v||'')+' · '+esc(e.os||'')+' · '+(e.sa?'installed':'browser')+' · '+esc(e.t||'')+'</div></div>';
+  }
+  // F72: RECENT EVENTS — the last ~5 event/warn entries (navPin, tabbarDrift…)
+  // newest first. renderDiagCard used to filter type==='error' ONLY, so logged
+  // runway instrumentation was invisible — that blindness was the owner's bug.
+  // 'warn' rows take the warning colour if the theme has one, else muted.
+  const evs=d.log.filter(e=>e.type==='event'||e.type==='warn').slice(-5).reverse();
+  h+='<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px">Recent events</div>';
+  if(!evs.length)h+='<p class="small muted" style="margin:0 0 12px">No events recorded.</p>';
+  else{
+    for(const e of evs){
+      const warn=e.type==='warn';
+      const nums=diagEventNums(e);
+      h+='<div style="margin:0 0 10px;font-size:12px;line-height:1.35;overflow-wrap:anywhere;word-break:break-word">'+
+        '<div style="'+(warn?'color:var(--warn,#e0a83b)':'color:var(--text)')+';font-weight:700">'+esc(e.name||e.type||'event')+
+        (nums?' <span class="muted" style="font-weight:400;font-family:ui-monospace,Menlo,Consolas,monospace">'+esc(nums)+'</span>':'')+'</div>'+
+        '<div class="tiny muted">v'+esc(e.v||'')+' · '+esc(e.os||'')+' · '+(e.sa?'installed':'browser')+' · '+esc(e.t||'')+'</div></div>';
+    }
   }
   // 7-day counters
   h+='<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px">Usage · last 7 days</div>';
@@ -4002,6 +4126,16 @@ function renderDiagCard(){
     '<button class="btn wide ghost" onclick="devHide()">Hide</button></div>';
   h+='</div>';
   return h;
+}
+/* F72: compact key-number string for an event/warn entry (navPin/tabbarDrift and
+   their offsets), skipping the common stamp fields already shown on the line. */
+function diagEventNums(e){
+  const skip={type:1,name:1,v:1,os:1,sa:1,t:1};
+  const parts=[];
+  for(const k in e){if(skip[k])continue;const val=e[k];
+    if(val==null||typeof val==='object')continue;
+    parts.push(k+'='+val);}
+  return parts.join(' ');
 }
 /* Sum every counter across the last n local days. */
 function diagCountTotals(n){
@@ -4224,7 +4358,15 @@ function popModalFrame(){
   wireSheetDrag(sh.querySelector('.sheethead'));   /* the drag handle is inside the restored HTML */
   _reopenHook=f.rewire||null;
   if(f.rewire)f.rewire();                           /* re-attach live listeners (reorder drag etc.) */
-  ov.classList.add('show');ov.scrollTop=f.scroll||0;
+  ov.classList.add('show');
+  if(typeof rearmCatalogSentinelAfterRestore==='function')rearmCatalogSentinelAfterRestore();   /* F73: re-arm the chunk sentinel */
+  /* F74 (2026-07-07): restore the sheet scroller's scrollTop after the HTML+field
+     restore so a catalog preview→back doesn't rebuild the list at scroll 0 (the
+     "weird jitter"). The chunk counters are module state preserved across
+     push→pop, so the restored HTML already contains enough rows to make the saved
+     scrollTop reachable — reapply on the next frame so layout has settled. */
+  const y=f.scroll||0;ov.scrollTop=y;
+  if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{if($('overlay'))$('overlay').scrollTop=y;});
   return true;}
 /* F48 (2026-07-07): the centered dialog variant. Same overlay backdrop, scroll
    lock and F23 closing plumbing as the sheet, but NO sheethead/grab, NO
@@ -4256,21 +4398,35 @@ function closeDialog(){
 /* F30 (2026-07-06): body{overflow:hidden} does NOT stop iOS Safari from
    scrolling the page behind the sheet — the scroll chains through the overlay.
    The reliable lock is position:fixed with top:-scrollY, restored on close.
-   Guarded so a rapid re-open mid-dismissal (F23) doesn't re-capture 0. */
+   Guarded so a rapid re-open mid-dismissal (F23) doesn't re-capture 0.
+   F70 (2026-07-07): pin MAIN, never body. iOS WebKit misplaces position:fixed
+   DESCENDANTS of a fixed body — with F30 pinning <body>, the tabbar/#restbar/
+   #toast/#overlay (all fixed) rode UP by ~scrollY on every sheet open from a
+   scrolled page (owner's "x kg" repro). Pinning <main> instead takes the fixed
+   chrome OUT of the locked subtree entirely, so iOS has nothing to misplace.
+   main keeps its max-width/margin-auto centering: for a fixed element
+   left:0;right:0;margin:0 auto preserves the centered max-width box. body keeps
+   overflow:hidden as belt-and-braces. F65's vv pin is UNCHANGED — it handles the
+   real visual-viewport displacement (keyboard residue, URL bar, rubber-band),
+   a different member of the family; this fix removes only the fixed-in-fixed case. */
 let _scrollLockY=null;
 function lockBodyScroll(){
   if(_scrollLockY!=null)return;                 // already locked (re-open mid-close)
   _scrollLockY=window.scrollY||window.pageYOffset||0;
-  const b=document.body;
-  b.style.position='fixed';b.style.top=(-_scrollLockY)+'px';
-  b.style.left='0';b.style.right='0';b.style.width='100%';b.style.overflow='hidden';
+  const b=document.body,m=$('main');
+  if(m){m.style.position='fixed';m.style.top=(-_scrollLockY)+'px';
+    m.style.left='0';m.style.right='0';m.style.margin='0 auto';}
+  b.style.overflow='hidden';                      // belt-and-braces; the pin does the real work
+  if(typeof scheduleTabbarDriftCheck==='function')scheduleTabbarDriftCheck();   // F70(b): measure the bar after a sheet open
 }
 function unlockBodyScroll(){
   if(_scrollLockY==null)return;
   const y=_scrollLockY;_scrollLockY=null;
-  const b=document.body;
-  b.style.position='';b.style.top='';b.style.left='';b.style.right='';b.style.width='';b.style.overflow='';
+  const b=document.body,m=$('main');
+  if(m){m.style.position='';m.style.top='';m.style.left='';m.style.right='';m.style.margin='';}
+  b.style.overflow='';
   window.scrollTo(0,y);                          // return to the exact prior position
+  if(typeof scheduleTabbarDriftCheck==='function')scheduleTabbarDriftCheck();   // F70(b): measure the bar after a sheet close
 }
 /* F55: closeModal fully tears the overlay down AND clears the back-stack — it's
    the explicit-complete path (Start, Save, Delete confirmed, backdrop tap). To
@@ -4524,6 +4680,71 @@ if(window.visualViewport){
   window.addEventListener('scroll',applyVvPin,{passive:true});
   applyVvPin();   // initial pin at load
 }
+/* F70(b) (2026-07-07) — the tabbar watchdog the owner asked for: a check that
+   measures the RENDERED bar, not a theory. The F65 vv pin reads visual-viewport
+   math and correctly read 0 during the F30 fixed-in-fixed displacement — so no
+   navPin diag fired despite the bar visibly riding up. This measures
+   tabbar.getBoundingClientRect().bottom directly and catches ANY mechanism.
+
+   Expected bottom = the visible viewport's bottom = visualViewport.height +
+   visualViewport.offsetTop (fallback innerHeight). A sustained |actual−expected|
+   > TABBAR_DRIFT_PX on TWO consecutive checks (~TABBAR_DRIFT_GAP_MS apart, to skip
+   mid-animation) writes ONE rate-limited (TABBAR_DRIFT_RL_MS) diag 'warn' entry
+   'tabbarDrift' with the numbers. Skipped entirely while .kb-open (the bar is
+   intentionally translated off-screen). Cheap: one getBoundingClientRect per check. */
+const TABBAR_DRIFT_PX=8, TABBAR_DRIFT_GAP_MS=300, TABBAR_DRIFT_RL_MS=30000, TABBAR_WATCH_MS=10000;
+let _tbDriftPending=false, _tbDriftAt=0, _tbWatchTimer=null;
+function tabbarExpectedBottom(){
+  const vv=window.visualViewport;
+  return vv?Math.round(vv.height+vv.offsetTop):Math.round(window.innerHeight||0);
+}
+function tabbarDriftPx(){
+  const tb=$('tabbar');if(!tb||typeof tb.getBoundingClientRect!=='function')return null;
+  const r=tb.getBoundingClientRect();if(!r)return null;
+  return Math.round(Math.abs(r.bottom-tabbarExpectedBottom()));
+}
+/* One drift check. Returns true if it WROTE a diag entry (for tests). A single
+   over-threshold reading only arms _tbDriftPending; the NEXT over-threshold reading
+   confirms and logs (two consecutive), so a mid-animation blip never fires. */
+function checkTabbarDrift(){
+  try{
+    if(document.body.classList.contains('kb-open')){_tbDriftPending=false;return false;}
+    const drift=tabbarDriftPx();
+    if(drift==null){_tbDriftPending=false;return false;}
+    if(drift<=TABBAR_DRIFT_PX){_tbDriftPending=false;return false;}
+    if(!_tbDriftPending){_tbDriftPending=true;return false;}   // first over-threshold: arm, wait for the next
+    _tbDriftPending=false;                                     // second consecutive: confirmed
+    const now=Date.now();
+    if(now-_tbDriftAt<TABBAR_DRIFT_RL_MS)return false;         // rate-limited
+    _tbDriftAt=now;
+    const vv=window.visualViewport;
+    diagLog('warn',{name:'tabbarDrift',
+      actual:Math.round(($('tabbar').getBoundingClientRect().bottom)||0),
+      expected:tabbarExpectedBottom(),
+      scrollY:Math.round(window.scrollY||0),
+      locked:_scrollLockY!=null,
+      vvH:vv?Math.round(vv.height):null,vvOT:vv?Math.round(vv.offsetTop):null,
+      innerH:Math.round(window.innerHeight||0)});
+    return true;
+  }catch(e){return false;}
+}
+/* Two checks TABBAR_DRIFT_GAP_MS apart, so both must agree before logging. Hooked
+   after every sheet open/close (lock/unlock) and run on the slow watch interval. */
+function scheduleTabbarDriftCheck(){
+  _tbDriftPending=false;
+  checkTabbarDrift();
+  setTimeout(checkTabbarDrift,TABBAR_DRIFT_GAP_MS);
+}
+function startTabbarWatch(){
+  if(_tbWatchTimer||typeof setInterval!=='function')return;
+  _tbWatchTimer=setInterval(()=>{
+    /* only while the page is visible — a backgrounded PWA can't drift, and iOS
+       won't run timers anyway. */
+    if(typeof document!=='undefined'&&document.hidden)return;
+    scheduleTabbarDriftCheck();
+  },TABBAR_WATCH_MS);
+  if(_tbWatchTimer&&_tbWatchTimer.unref)_tbWatchTimer.unref();
+}
 function wireInputs(){
   /* [data-f] filter is load-bearing: .excard/.swipe containers also carry
      data-ei (for updateLiveCues + gestures) and input events bubble to
@@ -4746,6 +4967,7 @@ autoStopStale();
 render();
 wireSwipe();
 wireEditorExit();
+startTabbarWatch();   // F70(b): slow ~10s watchdog on the rendered tabbar
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
