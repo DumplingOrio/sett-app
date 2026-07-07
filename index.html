@@ -439,8 +439,11 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.13';
+const APP_VERSION='0.9.14';
 const CHANGELOG=[
+  {v:'0.9.14', date:'2026-07-07', items:[
+    'Install help now knows your phone: iPhone gets the Safari steps, Android gets a one-tap Install button, and other browsers get the right menu path.',
+  ]},
   {v:'0.9.13', date:'2026-07-07', items:[
     'Four new muscle groups — Forearms, Glutes, Calves and Traps — with primary and secondary groups drawn factually from the exercise database.',
     'The muscle-group review is smarter: it no longer flags a group that is factually correct, and suggests the primary group with the full muscle set for context.',
@@ -1035,6 +1038,39 @@ function isStandalone(){
     (typeof matchMedia==='function'&&matchMedia('(display-mode: standalone)').matches);}
   catch(e){return false;}
 }
+/* F59 (2026-07-07): OS-aware install guidance. platformOS() drives which
+   install path the card describes; on Chromium the captured
+   beforeinstallprompt turns the card into a real one-tap Install button. */
+function platformOS(){
+  try{
+    const ua=(window.navigator&&navigator.userAgent)||'';
+    if(/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))return 'ios';
+    if(/Android/i.test(ua))return 'android';
+    return 'other';
+  }catch(e){return 'other';}
+}
+let deferredInstall=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;render();});
+window.addEventListener('appinstalled',()=>{deferredInstall=null;render();});
+function promptInstall(){
+  if(!deferredInstall)return;
+  deferredInstall.prompt();
+  deferredInstall.userChoice.then(()=>{deferredInstall=null;render();});
+}
+/* One source of truth for the install copy — Home card and Settings About
+   both render from this. Returns '' when installed. */
+function installGuidance(){
+  if(isStandalone())return '';
+  const os=platformOS();
+  if(deferredInstall)
+    return '<button class="btn primary wide" style="margin:8px 0 2px" onclick="promptInstall()">Install Sett</button>'+
+      '<p class="tiny muted" style="margin:6px 0 0;text-align:center">One tap — fullscreen, offline, data stays on this device.</p>';
+  if(os==='ios')
+    return '<p class="small muted" style="margin:6px 0 0">Open in Safari, tap Share, then <b>Add to Home Screen</b> — Sett runs fullscreen, works offline, and keeps your data on the phone.</p>';
+  if(os==='android')
+    return '<p class="small muted" style="margin:6px 0 0">In Chrome, open the <b>⋮ menu</b> and choose <b>Install app</b> (or <b>Add to Home screen</b>) — Sett runs fullscreen, works offline, and keeps your data on the phone.</p>';
+  return '<p class="small muted" style="margin:6px 0 0">In your browser’s menu, choose <b>Install app</b> or <b>Add to Home Screen</b> — Sett runs fullscreen, works offline, and keeps your data on this device.</p>';
+}
 const showRanks=()=>!(store.settings&&store.settings.showRanks===false);
 const ICONS={
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>',
@@ -1237,9 +1273,10 @@ function dismissRecap(mk){
 function renderHome(){
   let h='';
   /* F49 (2026-07-07): a compact install card — shown ONLY in a browser tab, the
-     one moment it's useful. Once Sett runs as an installed PWA it never renders. */
-  if(!isStandalone())
-    h+='<div class="card"><h3>Add Sett to your phone</h3><p class="small muted" style="margin:6px 0 0">Open in Safari, tap Share, then <b>Add to Home Screen</b> — Sett runs fullscreen, works offline, and keeps your data on the phone.</p></div>';
+     one moment it's useful. Once Sett runs as an installed PWA it never renders.
+     F59: copy is OS-aware; on Chromium it becomes a one-tap Install button. */
+  const ig=installGuidance();
+  if(ig)h+='<div class="card"><h3>Add Sett to your phone</h3>'+ig+'</div>';
   const a=store.active;
   if(a){
     clearInterval(tick);
@@ -3182,7 +3219,8 @@ function renderSettings(){
     '<p class="small muted" style="margin:0 0 4px">Sett v'+APP_VERSION+' · '+(ranksOn?SEX_LABEL[sex]+' strength standards':'ranks off')+'</p>'+
     // F49: the install walkthrough moved here from the dropped More tab —
     // only useful in a browser tab, so hidden once Sett runs standalone.
-    (isStandalone()?'':'<p class="small muted" style="margin:8px 0 0">Not installed yet? Open this page in Safari, tap Share, then <b>Add to Home Screen</b>. Sett then runs fullscreen, works offline, and keeps your data on the phone.</p>')+
+    // F59: OS-aware copy / one-tap install, shared with the Home card.
+    installGuidance()+
     '<details><summary class="small muted" style="cursor:pointer;padding:8px 0">Changelog</summary>'+
       CHANGELOG.map(clRow).join('')+'</details></div>';
   // danger zone
