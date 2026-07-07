@@ -61,12 +61,11 @@
     justify-content:space-around; padding:8px 8px calc(8px + env(safe-area-inset-bottom));
     background:color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter:blur(14px);
     border-top:1px solid var(--line);
-    /* F65 (2026-07-07): --vvpin is the live layout-vs-visual-viewport bottom
-       offset, written by the visualViewport handler (kbAdj) so the bar rides the
-       VISIBLE bottom edge whatever iOS does to the layout viewport (rubber-band
-       overscroll, URL-bar collapse, keyboard-dismissal residue). Zeroed while the
-       keyboard is up so the F20/F51 hide transform below stands alone. */
-    transform:translateY(calc(-1 * var(--vvpin,0px)));
+    /* F76 (2026-07-07): the F65 --vvpin translate is GONE. The owner's diag
+       export proved it was the remaining mover: every navPin entry was a top
+       rubber-band bounce (negative vvOffsetTop) that the pin converted into a
+       12-33px lift of the bar. position:fixed is correct now that the scroll
+       lock pins main, not body (F70); the tabbarDrift watchdog stands guard. */
     /* F51: the RE-SHOW (un-hide) direction carries a transition-delay so a
        transient .kb-open flap during iOS's scroll-driven keyboard dismissal
        never repaints the bar mid-thrash; the hide direction below zeroes it. */
@@ -321,6 +320,12 @@
      sheet slides off; .closing suppresses the entrance animation. */
   #overlay.closing{animation:none; opacity:0; transition:opacity .22s cubic-bezier(.22,.61,.36,1);}
   .sheet.closing{animation:none; transition:transform .22s cubic-bezier(.22,.61,.36,1);}
+  /* F77 (2026-07-07): stepping BACK one sheet is a light step, not a full
+     close-and-reopen. .stepback dips the outgoing sheet briefly (backdrop
+     stays); .noanim keeps the restored sheet from replaying its entrance —
+     openModal removes it so genuinely new sheets still animate in. */
+  .sheet.stepback{animation:none; transition:transform .14s ease, opacity .14s ease;}
+  .sheet.noanim{animation:none;}
   .sheet{max-width:640px; margin:8vh auto 0; background:var(--card); border:1px solid var(--line);
     border-radius:20px 20px 20px 20px; min-height:120px; padding:0 18px calc(30px + env(safe-area-inset-bottom) + var(--kb,0px));
     animation:up .28s cubic-bezier(.22,.61,.36,1);
@@ -390,10 +395,8 @@
   .banner{background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
     color:var(--accent); border-radius:12px; padding:10px 14px; font-size:13px; font-weight:600; margin:12px 0;}
   #restbar{position:fixed; left:0; right:0; z-index:31; display:none; padding:0 12px;
-    bottom:calc(84px + env(safe-area-inset-bottom)); pointer-events:none;
-    /* F65: ride the same visualViewport pin as the tabbar it stacks above */
-    transform:translateY(calc(-1 * var(--vvpin,0px)));}
-  .kb-open #restbar{transform:none;}
+    bottom:calc(84px + env(safe-area-inset-bottom)); pointer-events:none;}
+  /* F76: the F65 vv pin translate is gone here too — see .tabbar note. */
   #restbar.show{display:block; animation:up .18s ease-out;}
   #restbar .inner{max-width:616px; margin:0 auto; pointer-events:auto; display:flex; align-items:center; gap:8px;
     background:var(--card2); border:1px solid var(--accent); border-radius:14px;
@@ -521,8 +524,12 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.19';
+const APP_VERSION='0.9.20';
 const CHANGELOG=[
+  {v:'0.9.20', date:'2026-07-07', items:[
+    'The bottom bar had one mover left: our own fix from two versions ago, which nudged the bar during the little bounce at the top of a scroll. It no longer touches the bar at all.',
+    'Going back from an exercise preview no longer replays the whole sheet animation — stepping back is now a quick, quiet swap instead of a close-and-reopen.',
+  ]},
   {v:'0.9.19', date:'2026-07-07', items:[
     'The whole exercise catalog is now browsable — all 873 exercises, not just the first thirty. Just keep scrolling.',
     'Returning from an exercise preview is smoother now — the catalog keeps your place instead of jumping back to the top.',
@@ -4339,7 +4346,9 @@ function openModal(html,opts){
   if(!opts.replace&&overlayShown())pushModalFrame();
   _reopenHook=typeof opts.rewire==='function'?opts.rewire:null;
   const ov=$('overlay'),sh=$('sheet');
-  ov.classList.remove('closing','dialogmode');sh.classList.remove('closing');sh.style.transform='';
+  ov.classList.remove('closing','dialogmode');
+  /* F77: lift .noanim/.stepback so a genuinely NEW sheet gets its entrance. */
+  sh.classList.remove('closing','stepback','noanim');sh.style.transform='';sh.style.opacity='';
   sh.innerHTML='<div class="sheethead"><div class="grab" onclick="dismissModal(\'y\')"></div>'+
     '<button class="sheetclose" onclick="dismissModal(\'y\')" aria-label="Close">✕</button></div>'+html;
   wireSheetDrag(sh.querySelector('.sheethead'));
@@ -4352,7 +4361,12 @@ function popModalFrame(){
   const f=modalStack.pop();
   if(closeAnimTimer){clearTimeout(closeAnimTimer);closeAnimTimer=null;}
   const ov=$('overlay'),sh=$('sheet');
-  ov.classList.remove('closing','dialogmode');sh.classList.remove('closing');sh.style.transform='';
+  ov.classList.remove('closing','dialogmode');sh.classList.remove('closing','stepback');
+  sh.style.transform='';sh.style.opacity='';
+  /* F77: the restored sheet must NOT replay its entrance (removing .closing
+     used to restart the `up` keyframes — the owner's "jitter jump"). openModal
+     lifts .noanim so a genuinely new sheet still animates in. */
+  sh.classList.add('noanim');
   sh.innerHTML=f.html;
   restoreFields(sh,f.fields);                        /* F64: reapply typed values lost by the HTML snapshot */
   wireSheetDrag(sh.querySelector('.sheethead'));   /* the drag handle is inside the restored HTML */
@@ -4432,8 +4446,8 @@ function unlockBodyScroll(){
    the explicit-complete path (Start, Save, Delete confirmed, backdrop tap). To
    step back ONE level instead, use dismissModal (✕/grab/swipe/drag). */
 function closeModal(){const ov=$('overlay'),sh=$('sheet'),dg=$('dialog');
-  ov.classList.remove('show','closing','dialogmode');sh.classList.remove('closing');dg.classList.remove('closing');
-  sh.style.transform='';dg.style.transform='';dg.innerHTML='';_dialogOverSheet=false;clearModalStack();
+  ov.classList.remove('show','closing','dialogmode');sh.classList.remove('closing','stepback','noanim');dg.classList.remove('closing');
+  sh.style.transform='';sh.style.opacity='';dg.style.transform='';dg.innerHTML='';_dialogOverSheet=false;clearModalStack();
   unlockBodyScroll();clearInterval(visTimer);}
 /* F47 (2026-07-07) OWNER SPEC, verbatim: "Confirmation popups need to be
    stylized in the theme, or this is a web app limitation?" Answer: not a
@@ -4473,13 +4487,21 @@ function closeModalAnimated(dir){
     closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;closeDialog();},220);
     return;
   }
-  if(sh.classList.contains('closing'))return;   // already dismissing
+  if(sh.classList.contains('closing')||sh.classList.contains('stepback'))return;   // already dismissing
   sh.classList.remove('dragging');
-  sh.classList.add('closing');ov.classList.add('closing');
-  sh.style.transform=(dir==='x'?'translateX(110%)':'translateY(110%)');
   if(closeAnimTimer)clearTimeout(closeAnimTimer);
   const hasBack=modalStack.length>0;
-  closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;if(hasBack)popModalFrame();else closeModal();},240);
+  /* F77: with a frame beneath, step back lightly — short dip, backdrop stays,
+     then the pop swaps content in place (no full slide-off + re-entrance). */
+  if(hasBack){
+    sh.classList.add('stepback');
+    sh.style.transform='translateY(24px)';sh.style.opacity='.35';
+    closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;popModalFrame();},140);
+    return;
+  }
+  sh.classList.add('closing');ov.classList.add('closing');
+  sh.style.transform=(dir==='x'?'translateX(110%)':'translateY(110%)');
+  closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;closeModal();},240);
 }
 /* F55: the ✕ / grab / swipe / drag entry point. Named for clarity — it steps
    BACK one level (or closes if it's the last sheet). closeModalAnimated already
@@ -4607,14 +4629,14 @@ function isTextInput(el){
    CSS transition-delay on the un-hide direction (see .tabbar rule) is the
    belt-and-braces so even a transient class flap never paints. */
 const KB_STABLE_MS=300;
-/* F65 (2026-07-07): the nav-bar-glued-down family, 4th incident (see F20/F28/F51).
-   iOS positions a fixed element against the LAYOUT viewport while the VISUAL
-   viewport is displaced (rubber-band overscroll, URL-bar collapse in-browser,
-   keyboard-dismissal residue) — so the tabbar drifts UP from the visible bottom
-   edge, or appears to scroll away. Fix: translate the tabbar/#restbar by the live
-   layout-vs-visual bottom offset so they always hug the visible bottom edge.
-   Root cause is NOT reproducible on desktop; the math is preview-checkable, the
-   feel is UNPROVEN until the owner's iPhone confirms. */
+/* F76 (2026-07-07): the F65 pin is now INSTRUMENTATION ONLY. The owner's diag
+   export (round 17) proved the translate itself was the remaining bar-mover:
+   every navPin entry on-device was a top rubber-band bounce — innerHeight equal
+   to vvHeight, NEGATIVE vvOffsetTop — that the pin math converted into a 12-33px
+   lift. The real v0.9.16-era displacement was the body-level scroll lock, fixed
+   by F70; position:fixed is trustworthy again. We keep computing and logging so
+   a future genuine displacement is visible, and the F70b watchdog measures the
+   rendered bar — but nothing translates anything anymore. */
 let _vvDiagAt=0;
 function vvPinOffset(){
   const vv=window.visualViewport;if(!vv)return 0;
@@ -4622,14 +4644,10 @@ function vvPinOffset(){
   return Math.max(0,Math.round(window.innerHeight-vv.height-vv.offsetTop));
 }
 function applyVvPin(){
-  /* while the keyboard is up the tabbar is hidden (translateY 120%, F20/F51) and
-     --kb already lengthens the page, so the pin must be zero — otherwise the two
-     transforms fight. When the keyboard is down, pin the bar to the visible edge. */
+  /* log-only since F76: >8px computed displacement while the keyboard is down →
+     one rate-limited diag entry (max 1 / 30s), numbers only. No style writes. */
   const kbUp=document.body.classList.contains('kb-open');
   const off=kbUp?0:vvPinOffset();
-  document.documentElement.style.setProperty('--vvpin',off+'px');
-  /* F65(b): instrument >8px displacement so the on-device test CONFIRMS the
-     mechanism. One rate-limited diag entry (max 1 / 30s), numbers only. */
   if(off>8){
     const now=Date.now();
     if(now-_vvDiagAt>30000){
