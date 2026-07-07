@@ -23,7 +23,8 @@
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
     font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    overscroll-behavior-y:none;
+    /* F46: overscroll-behavior-y:none removed — iOS's native rubber-band returns
+       app-wide (F34 now satisfied by the platform, not JS). */
     /* F16: nothing may create horizontal page scroll — an off-screen sheet
        (translateX/Y 110vw) or an overflowing pill row would let iOS pan the app */
     overflow-x:clip;}
@@ -222,6 +223,13 @@
   .sheetclose{width:38px; height:38px; border-radius:50%; background:var(--card2); color:var(--text);
     font-size:17px; display:flex; align-items:center; justify-content:center; flex:none;}
   .sheetclose:active{background:var(--line);}
+  /* F43: compact exercise list inside the confirm-start sheet — dense rows, name
+     left, muscle group + set count right (muted); long lists scroll in the sheet */
+  .csrows{border-top:1px solid var(--line);}
+  .csrow{display:flex; align-items:baseline; gap:12px; padding:7px 2px;
+    border-bottom:1px solid var(--line);}
+  .csname{flex:1 1 auto; min-width:0; font-weight:600; overflow-wrap:anywhere;}
+  .cscat{flex:0 0 auto; text-align:right; white-space:nowrap;}
 
   #toast{position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom)); transform:translateX(-50%);
     z-index:60; background:var(--card2); border:1px solid var(--line); color:var(--text);
@@ -368,8 +376,15 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.8';
+const APP_VERSION='0.9.9';
 const CHANGELOG=[
+  {v:'0.9.9', date:'2026-07-07', items:[
+    'The start screen now lists every exercise in a routine — name, muscle group and set count — before you begin.',
+    'The badger cameo now matches the app icon.',
+    'Smarter "try" hints: they only appear once you\'ve matched your all-time best on a set, suggesting the next step up — and never on warmups.',
+    'Scrolling uses the phone\'s own bounce again, so it feels smooth to the edges.',
+    'Delete and discard prompts are now in-app and match your theme.',
+  ]},
   {v:'0.9.8', date:'2026-07-06', items:[
     'A set that beats your record lights up with a PR badge and shows the new best.',
     'The first empty set of an exercise suggests a small step up from last session ("▲ try 102.5").',
@@ -894,32 +909,49 @@ const ICO={
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5v.01"/>',
 };
 function ico(name,sz){return '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(sz?' style="width:'+sz+'px;height:'+sz+'px"':'')+'>'+(ICO[name]||'')+'</svg>';}
-/* F42 (2026-07-06): the mono badger peeking out of its sett burrow — appears in
-   empty states and replaces the last two emoji (app goes zero-emoji). Drawn on
-   theme vars so it works across every theme: --card2 = the earth mound, --text
-   = the light head/muzzle/ears, --bg = the dark eye stripes + nose. Purely
-   decorative (aria-hidden). sz = pixel size (default 80). */
+/* F44 (2026-07-07): the badger cameo rebuilt to MATCH the app icon (icon-512.png)
+   after the owner's "doesn't look like our mascot at all". It's the icon's badger
+   head seen front-on peeking over a horizontal ledge: a tapered face that narrows
+   to the snout, two broad dark eye-stripes running the full face framing a light
+   center blaze, small rounded ears at the top outer corners, eyes low near the
+   snout, a white muzzle with a large black nose, and two paws with thin claws
+   gripping the ledge at cheek/snout level. Recolored onto theme vars so it works
+   across every theme — the icon is light-on-dark; the cameo draws dark-on-light:
+   --text = the light face/muzzle/blaze/paws, --bg = the dark eye-stripes/nose/
+   eyes, --card2 = the ledge. Purely decorative (aria-hidden). sz = px (default 80),
+   viewBox 120x96 unchanged so every call site keeps its proportions. */
 function badgerSVG(sz){
   sz=sz||80;
   return '<svg class="badger" aria-hidden="true" viewBox="0 0 120 96" width="'+sz+'" height="'+Math.round(sz*0.8)+'" fill="none" xmlns="http://www.w3.org/2000/svg">'+
-    /* earth mound of the sett */
-    '<path d="M4 92 C10 60 40 46 60 46 C80 46 110 60 116 92 Z" fill="var(--card2)"/>'+
-    /* burrow shadow behind the head */
-    '<ellipse cx="60" cy="70" rx="30" ry="20" fill="var(--bg)" opacity="0.55"/>'+
-    /* ears */
-    '<circle cx="40" cy="34" r="9" fill="var(--text)"/><circle cx="80" cy="34" r="9" fill="var(--text)"/>'+
-    '<circle cx="40" cy="34" r="4" fill="var(--card2)"/><circle cx="80" cy="34" r="4" fill="var(--card2)"/>'+
-    /* head */
-    '<path d="M34 44 C34 26 46 16 60 16 C74 16 86 26 86 44 C86 62 74 72 60 72 C46 72 34 62 34 44 Z" fill="var(--text)"/>'+
-    /* two dark eye stripes running down the face */
-    '<path d="M50 20 C46 34 46 46 49 60 L44 60 C41 46 41 32 45 19 Z" fill="var(--bg)"/>'+
-    '<path d="M70 20 C74 34 74 46 71 60 L76 60 C79 46 79 32 75 19 Z" fill="var(--bg)"/>'+
-    /* light muzzle */
-    '<ellipse cx="60" cy="56" rx="12" ry="10" fill="var(--text)"/>'+
-    /* dark nose */
-    '<ellipse cx="60" cy="52" rx="5" ry="4" fill="var(--bg)"/>'+
-    /* eyes (dark dots on the light between the stripes) */
-    '<circle cx="53" cy="40" r="2.6" fill="var(--bg)"/><circle cx="67" cy="40" r="2.6" fill="var(--bg)"/>'+
+    /* the horizontal ledge/burrow lip the badger peeks over */
+    '<rect x="8" y="80" width="104" height="9" rx="4.5" fill="var(--card2)"/>'+
+    /* ears — small rounded caps at the top outer corners of the eye-stripes */
+    '<path d="M40 26 C31 22 26 27 27 35 C28 42 34 44 39 40 Z" fill="var(--text)"/>'+
+    '<path d="M80 26 C89 22 94 27 93 35 C92 42 86 44 81 40 Z" fill="var(--text)"/>'+
+    /* light face — wide at the brow, tapering to the snout */
+    '<path d="M35 30 C42 25 50 24 60 24 C70 24 78 25 85 30 '+
+            'C87 46 84 64 73 76 C68 81 65 82 60 82 C55 82 52 81 47 76 '+
+            'C36 64 33 46 35 30 Z" fill="var(--text)"/>'+
+    /* two broad dark eye-stripes, full face, tapering with it; a light blaze between */
+    '<path d="M50 28 C47 44 47 60 51 73 C49 76 46 77 44 74 '+
+            'C39 60 39 42 41 29 C44 28 47 28 50 28 Z" fill="var(--bg)"/>'+
+    '<path d="M70 28 C73 44 73 60 69 73 C71 76 74 77 76 74 '+
+            'C81 60 81 42 79 29 C76 28 73 28 70 28 Z" fill="var(--bg)"/>'+
+    /* eyes — small light dots low in the dark stripes, near the snout */
+    '<circle cx="46.5" cy="58" r="3.4" fill="var(--text)"/>'+
+    '<circle cx="73.5" cy="58" r="3.4" fill="var(--text)"/>'+
+    /* white muzzle at the snout with the large black nose */
+    '<ellipse cx="60" cy="72" rx="9" ry="7" fill="var(--text)"/>'+
+    '<ellipse cx="60" cy="72" rx="5.5" ry="4" fill="var(--bg)"/>'+
+    /* paws gripping the ledge at cheek/snout level, with thin claws */
+    '<g fill="var(--text)">'+
+      '<path d="M30 80 C30 74 42 74 42 80 Z"/>'+
+      '<path d="M78 80 C78 74 90 74 90 80 Z"/>'+
+    '</g>'+
+    '<g stroke="var(--card2)" stroke-width="1.3" stroke-linecap="round">'+
+      '<line x1="33" y1="76" x2="33" y2="80"/><line x1="36" y1="75" x2="36" y2="80"/><line x1="39" y1="76" x2="39" y2="80"/>'+
+      '<line x1="81" y1="76" x2="81" y2="80"/><line x1="84" y1="75" x2="84" y2="80"/><line x1="87" y1="76" x2="87" y2="80"/>'+
+    '</g>'+
     '</svg>';
 }
 /* F42: a centered empty-state block — the badger over house copy */
@@ -1157,8 +1189,9 @@ function editRoutineById(id){const r=store.routines.find(x=>x.id===id);if(!r)ret
   state.editRoutine=JSON.parse(JSON.stringify(r));render();playViewAnim('up');}
 function cancelRoutineEdit(){state.editRoutine=null;render();playViewAnim('up');}
 function deleteRoutine(id){const r=store.routines.find(x=>x.id===id);if(!r)return;
-  if(!confirm('Delete routine “'+r.name+'”? This cannot be undone.'))return;
-  store.routines=store.routines.filter(x=>x.id!==id);save();render();}
+  confirmDialog({title:'Delete routine?',message:'“'+r.name+'” will be removed. This cannot be undone.',
+    confirmLabel:'Delete routine',onYes:()=>{
+      store.routines=store.routines.filter(x=>x.id!==id);save();render();}});}
 function addTgtSet(xi){const ex=state.editRoutine.exercises[xi];const p=ex.sets[ex.sets.length-1];
   ex.sets.push(p?{...p}:{tw:null,rlo:null,rhi:null});render();}
 function removeTgtSet(xi,si){state.editRoutine.exercises[xi].sets.splice(si,1);render();}
@@ -1240,20 +1273,37 @@ function startPopular(i){
    "finish or discard current workout first" guard fires BEFORE the confirm
    (no point confirming what can't start). Dataset pattern keeps the
    apostrophe foot-gun out of the Start handler. */
+/* F43 (2026-07-07) OWNER SPEC, verbatim: "Start workout screen doesn't show
+   what type of routine/exercises it has." Fork SETTLED (variant A): each row is
+   the exercise name (left) and its muscle group + set count (right, muted). No
+   last-time numbers. Sourced per kind: routine → r.exercises (name, sets.length);
+   popular → POPULAR_ROUTINES[i].ex (one set each); repeat → w.entries. Every name
+   escaped; muscle group from store.ex[name].cat with an 'Other' fallback. The
+   modal system scrolls, so a long list scrolls inside the sheet. Returns
+   {name, rows:[{name,cat,sets}]} — pure, so it's directly testable. */
+function confirmStartInfo(kind,arg){
+  if(kind==='routine'){const r=store.routines.find(x=>x.id===arg);if(!r)return null;
+    return {name:r.name,rows:r.exercises.map(e=>({name:e.name,cat:(store.ex[e.name]||{}).cat||'Other',sets:e.sets.length}))};}
+  if(kind==='popular'){const r=POPULAR_ROUTINES[arg];if(!r)return null;
+    return {name:r.name,rows:r.ex.map(n=>({name:n,cat:(store.ex[n]||{}).cat||'Other',sets:1}))};}
+  if(kind==='repeat'){const w=store.workouts.find(x=>x.id===arg);if(!w)return null;
+    return {name:w.routine||'Workout',rows:w.entries.map(e=>({name:e.name,cat:(store.ex[e.name]||{}).cat||'Other',sets:e.sets.length}))};}
+  return null;
+}
+function confirmStartRows(rows){
+  return '<div class="csrows">'+rows.map(x=>
+    '<div class="csrow"><span class="csname">'+esc(x.name)+'</span>'+
+    '<span class="cscat tiny muted">'+esc(x.cat)+' · '+x.sets+' set'+(x.sets===1?'':'s')+'</span></div>').join('')+'</div>';
+}
 function confirmStart(kind,arg){
   if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}
-  let name='',nex=0,nsets=0;
-  if(kind==='routine'){const r=store.routines.find(x=>x.id===arg);if(!r)return;
-    name=r.name;nex=r.exercises.length;nsets=r.exercises.reduce((n,e)=>n+e.sets.length,0);}
-  else if(kind==='popular'){const r=POPULAR_ROUTINES[arg];if(!r)return;
-    name=r.name;nex=r.ex.length;nsets=r.ex.length;}
-  else if(kind==='repeat'){const w=store.workouts.find(x=>x.id===arg);if(!w)return;
-    name=w.routine||'Workout';nex=w.entries.length;nsets=w.entries.reduce((n,e)=>n+e.sets.length,0);}
-  else return;
-  openModal('<h2 style="word-break:break-word">'+esc(name)+'</h2>'+
-    '<p class="muted small" style="margin:6px 0 14px">'+nex+' exercise'+(nex===1?'':'s')+' · '+nsets+' set'+(nsets===1?'':'s')+
+  const info=confirmStartInfo(kind,arg);if(!info)return;
+  const nex=info.rows.length,nsets=info.rows.reduce((n,x)=>n+x.sets,0);
+  openModal('<h2 style="word-break:break-word">'+esc(info.name)+'</h2>'+
+    '<p class="muted small" style="margin:6px 0 12px">'+nex+' exercise'+(nex===1?'':'s')+' · '+nsets+' set'+(nsets===1?'':'s')+
       (kind==='repeat'?' · last time\'s numbers shown as hints':'')+'</p>'+
-    '<button class="btn primary wide" data-cs-kind="'+kind+'" data-cs-arg="'+esc(String(arg))+'" onclick="doConfirmedStart(this.dataset.csKind,this.dataset.csArg)">Start workout</button>');
+    confirmStartRows(info.rows)+
+    '<button class="btn primary wide" style="margin-top:14px" data-cs-kind="'+kind+'" data-cs-arg="'+esc(String(arg))+'" onclick="doConfirmedStart(this.dataset.csKind,this.dataset.csArg)">Start workout</button>');
 }
 function doConfirmedStart(kind,arg){
   closeModal();
@@ -1334,12 +1384,12 @@ function renderActive(){
       '</div></div></div>';
     if(e.note)h+='<div class="tiny muted" style="margin-top:6px">'+ico('note')+' '+esc(e.note)+'</div>';
     const prm=a.editing?null:prMoment(ei);        // F36: PR-beating set (never while editing)
-    const hintSi=a.editing?-1:firstUntouchedSet(e);// F37: first untouched set index (live only)
+    const bh=a.editing?null:beatHint(e);          // F45: all-time-best beat hint (live only)
     e.sets.forEach((s,si)=>{
       const twPh=s.tgt&&s.tgt.tw!=null?' placeholder="'+s.tgt.tw+'"':' placeholder="—"';
       const rPh=s.tgt&&repRange(s.tgt)?' placeholder="'+repRange(s.tgt)+'"':' placeholder="—"';
       const isPr=prm&&prm.si===si;                 // F36
-      const hint=si===hintSi?beatLastHint(e.name,si):'';   // F37
+      const hint=(bh&&bh.si===si&&!isPr)?bh.text:'';   // F45 (PR wins on the same row)
       h+='<div class="swipe'+(isPr?' pr':'')+'" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
         '<button class="swipe-act copy" aria-label="Copy set" title="Copy" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'</button>'+
         '<button class="swipe-act del" aria-label="Remove set" title="Remove" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'</button>'+
@@ -1354,9 +1404,9 @@ function renderActive(){
         '<button class="wtog'+(s.warmup?' on':'')+'" title="'+(s.warmup?'Warmup — tap to unmark':'Mark as warmup')+'" aria-pressed="'+(!!s.warmup)+'" onclick="toggleWarmup('+ei+','+si+')">W</button>'+
         '<button class="setmenu" title="Set options" onclick="setMenu('+ei+','+si+')">⋯</button>'+
         '</div>'+
-        /* F36 PR chip + F37 hint on a micro-line under the inputs — keeps the set
-           row itself from ever overflowing at 375px (they're mutually exclusive:
-           a PR needs values, a hint only shows on an untouched empty row). */
+        /* F36 PR chip + F45 beat hint on a micro-line under the inputs — keeps the
+           set row itself from ever overflowing at 375px. One row keeps at most one
+           chip: PR wins on the same row; the hint only lands on an empty row. */
         ((isPr||hint)?'<div class="setextra">'+
           (isPr?'<span class="prchip">PR</span>':'')+
           (hint?'<span class="hintchip">'+hint+'</span>':'')+'</div>':'')+
@@ -1473,27 +1523,48 @@ function prLineHtml(ei){
     return '<div class="prline">New e1RM record — '+fmtW(m.val)+' kg'+(m.prev!=null?', was '+fmtW(m.prev):'')+'</div>';
   return '<div class="prline">New reps record — '+m.val+' reps'+(m.prev!=null?', was '+m.prev:'')+'</div>';
 }
-/* F37 (2026-07-06): beat-last-time hint. On the FIRST untouched set row of an
-   exercise in a LIVE workout, if the previous session's same-index set exists
-   and is complete, suggest a small step up: weighted lifts → prev w + 2.5 kg;
-   bodyweight/rep-based (prev w null or 0) → prev r + 1 rep. Display-only, a
-   sibling of the ghost tgt (which stays as-is). Disappears once the user types
-   (the row is no longer "untouched", so no row is the first-untouched one). */
-function firstUntouchedSet(e){
-  for(let i=0;i<e.sets.length;i++){const s=e.sets[i];if(s.w==null&&s.r==null)return i;}
-  return -1;
+/* F45 (2026-07-07) OWNER SPEC, verbatim: "the try 'x' kg only shows on set 1,
+   this should realistically only show on your current best weight… if i do a
+   warmup set, it shouldn't show at all, now if i do my current highest weight on
+   set 2, it should pop up on set 3 telling me to try that weight." Fork SETTLED:
+   trigger = ALL-TIME best (history, this live session excluded). During a LIVE
+   workout only: when a logged WORKING set (warmups never trigger and never carry
+   the chip) reaches or beats the all-time best working weight for that exercise,
+   the NEXT empty non-warmup set on the same card shows "▲ try <that weight+2.5>".
+   Rep-based/bodyweight lifts (weight null, reps only): trigger when logged reps ≥
+   all-time best reps → "▲ try <reps+1> reps". Set 1 stays clean before anything
+   is logged. The latest triggering set wins (its weight/reps drive the target).
+   Baseline excludes store.active exactly like prMoment (F36) — history only.
+   Returns {si, text} for the row that should carry the chip, or null. Pure. */
+function histBestWorkingW(name){
+  let best=null;
+  for(const {s} of allSetsOf(name,true))          // exclActive → history only; statSet drops warmups
+    if(s.w!=null&&s.w>0&&(best==null||s.w>best))best=s.w;
+  return best;
 }
-function beatLastHint(name,idx){
-  const prev=prevSessionSet(name,idx);            // {tw,rlo,rhi} from previous SESSION's same-index set
-  if(!prev)return '';
-  const pw=prev.tw, pr=prev.rlo;                  // rlo carries the logged rep count (see prevSessionSet)
-  if(pw!=null&&pw>0){
-    if(pr==null)return '';                        // set incomplete last time — no honest step-up
-    return '▲ try '+fmtW(pw+2.5);
+function beatHint(e){
+  if(!e||!e.sets)return null;
+  const histW=histBestWorkingW(e.name);           // all-time best working weight (history)
+  const histR=histBestReps(e.name);               // all-time best bodyweight reps (history)
+  let trigWeight=null,trigReps=null,trigIdx=-1;
+  e.sets.forEach((s,si)=>{
+    if(s.warmup)return;                            // warmups never trigger
+    if(s.w!=null&&s.w>0){                          // logged working (weighted) set
+      if(histW!=null&&s.w>=histW){trigWeight=s.w;trigReps=null;trigIdx=si;}
+    }else if(s.r!=null&&s.r>0){                    // logged rep-based / bodyweight set
+      if(histR!=null&&s.r>=histR){trigReps=s.r;trigWeight=null;trigIdx=si;}
+    }
+  });
+  if(trigIdx<0)return null;                        // nothing at/above the all-time best yet
+  /* the NEXT empty non-warmup set after the trigger carries the chip */
+  for(let i=trigIdx+1;i<e.sets.length;i++){
+    const s=e.sets[i];
+    if(s.warmup)continue;                          // skip warmup rows when picking the hint row
+    if(s.w==null&&s.r==null)
+      return {si:i,text:trigWeight!=null?'▲ try '+fmtW(trigWeight+2.5):'▲ try '+(trigReps+1)+' reps'};
+    return null;                                   // next working row already logged — no hint
   }
-  /* bodyweight / rep-based last time */
-  if(pr==null)return '';
-  return '▲ try '+(pr+1)+' reps';
+  return null;                                     // no empty row after the trigger
 }
 /* F38 (2026-07-06): superset flow chip. Inside a linked ss group, once a set on
    this entry is filled, show "Next: <partner>" — the next entry in the SAME ss
@@ -1540,13 +1611,13 @@ function updateLiveCues(ei){
   if(!card)return;
   const e=a.entries[ei];
   const prm=prMoment(ei);
-  const hintSi=firstUntouchedSet(e);              // F37: only this row keeps its hint
+  const bh=beatHint(e);                           // F45: recomputed live from the typed values
   card.querySelectorAll('[data-swipe="set"]').forEach(row=>{
     const si=+row.dataset.si;const isPr=!!prm&&prm.si===si;
     row.classList.toggle('pr',isPr);              // F36 glow + border
     const fg=row.querySelector('.swipe-fg');if(!fg)return;
     let extra=fg.querySelector('.setextra');
-    const hint=si===hintSi?beatLastHint(e.name,si):'';   // F37 (empty once touched)
+    const hint=(bh&&bh.si===si&&!isPr)?bh.text:'';   // F45 (empty until a set hits the all-time best)
     if(isPr||hint){
       let html='';
       if(isPr)html+='<span class="prchip">PR</span>';
@@ -1856,9 +1927,12 @@ function onDragEnd(){
 }
 function discardWorkout(){
   const editing=store.active&&store.active.editing;
-  if(!confirm(editing?'Cancel editing? Your changes will be lost.':'Discard this workout? Nothing will be saved.'))return;
-  store.active=null;save();clearInterval(tick);
-  if(editing)render();else setView('routines');
+  confirmDialog({
+    title:editing?'Cancel editing?':'Discard workout?',
+    message:editing?'Your changes will be lost.':'Nothing from this workout will be saved.',
+    confirmLabel:editing?'Cancel editing':'Discard workout',
+    onYes:()=>{store.active=null;save();clearInterval(tick);
+      if(editing)render();else setView('routines');}});
 }
 function finishWorkout(){
   const a=store.active;
@@ -1987,8 +2061,9 @@ function editWorkout(id){
   save();closeModal();state.view='log';render();
 }
 function deleteWorkout(id){
-  if(!confirm('Delete this workout permanently?'))return;
-  store.workouts=store.workouts.filter(w=>w.id!==id);save();closeModal();render();
+  confirmDialog({title:'Delete workout?',message:'This workout will be permanently removed.',
+    confirmLabel:'Delete workout',onYes:()=>{
+      store.workouts=store.workouts.filter(w=>w.id!==id);save();closeModal();render();}});
 }
 
 /* ============================== EXERCISES view ============================== */
@@ -2548,9 +2623,12 @@ function exportCsv(){
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
 function wipeAll(){
-  if(!confirm('Delete ALL workouts and exercises stored on this device? This cannot be undone.'))return;
-  if(!confirm('Really sure? Export a backup first if in doubt.'))return;
-  store=freshStore();save();toast('All data deleted');render();
+  confirmDialog({title:'Delete everything?',
+    message:'All workouts and exercises stored on this device will be deleted. This cannot be undone.',
+    confirmLabel:'Delete everything',onYes:()=>{
+      confirmDialog({title:'Really sure?',message:'Export a backup first if in doubt.',
+        confirmLabel:'Delete everything',onYes:()=>{
+          store=freshStore();save();toast('All data deleted');render();}});}});
 }
 
 /* ============================== modal & wiring ============================== */
@@ -2588,6 +2666,23 @@ function unlockBodyScroll(){
 function closeModal(){const ov=$('overlay'),sh=$('sheet');
   ov.classList.remove('show','closing');sh.classList.remove('closing');
   sh.style.transform='';unlockBodyScroll();clearInterval(visTimer);}
+/* F47 (2026-07-07) OWNER SPEC, verbatim: "Confirmation popups need to be
+   stylized in the theme, or this is a web app limitation?" Answer: not a
+   limitation — the browser-native confirm() was the cause. This is an in-app
+   confirm on the existing sheet system: a title, the message, then the
+   destructive action in danger red and a plain Cancel. The action is held in
+   module-level state (never string-interpolated into onclick — house law 4, the
+   apostrophe trap), so a message may safely contain a routine name with quotes.
+   Cancel / any sheet dismissal simply drops the pending action. */
+let _confirmAction=null;
+function confirmDialog(opts){
+  _confirmAction=typeof opts.onYes==='function'?opts.onYes:null;
+  openModal('<h2 style="word-break:break-word">'+esc(opts.title||'Are you sure?')+'</h2>'+
+    (opts.message?'<p class="muted small" style="margin:6px 0 16px">'+esc(opts.message)+'</p>':'<div style="height:8px"></div>')+
+    '<button class="btn danger wide" onclick="confirmDialogYes()">'+esc(opts.confirmLabel||'Confirm')+'</button>'+
+    '<button class="btn wide ghost" style="margin-top:10px" onclick="closeModal()">'+esc(opts.cancelLabel||'Cancel')+'</button>');
+}
+function confirmDialogYes(){const fn=_confirmAction;_confirmAction=null;closeModal();if(fn)fn();}
 /* F23 (2026-07-06): smooth, consistent dismissal everywhere. The sheet slides
    off-screen (right for a swipe-right, down for drag-down / taps) while the
    overlay fades, THEN the real closeModal() lands. Programmatic closes after an
@@ -2902,68 +2997,13 @@ function wireEditorExit(){
   m.addEventListener('touchcancel',()=>{armed=false;x0=null;axis=0;});
 }
 
-/* F34 (2026-07-06) OWNER SPEC, verbatim: "Add a little bungee animation when
-   you scroll all the way up or down app wide." Rubber-band on VERTICAL
-   overscroll — drag past the top/bottom of a scroller with resistance
-   (translateY of the content, ~0.35 damping, capped ~80px) and spring back on
-   release. Touch-only (no wheel). Engages ONLY on a clearly-vertical drag that
-   is already at the scroll edge and pulling further outward, so it can't fight
-   row swipes (horizontal, F1/F8), the sheet's own drag-down (owned by the
-   sheethead) or swipe-right exit (horizontal). Applied to the main page
-   (window scroll → translate #main) and to open-sheet content (#overlay scroll
-   → translate #sheet). Does NOT touch --kb / .kb-open (F28) or the body scroll
-   lock (F30 sets position:fixed, which suspends main-page bungee while a sheet
-   is open — correct, the sheet's own bungee takes over). */
-const BUNGEE_DAMP=0.35, BUNGEE_MAX=80;
-function wireBungee(scroller,content,scrollTopOf){
-  if(!content||content._bungeeWired)return;content._bungeeWired=true;
-  let y0=null,x0=null,active=0,axis=0,dy=0;
-  const top=()=>scrollTopOf();
-  const bottom=()=>{
-    const el=scroller===window?document.scrollingElement||document.documentElement:scroller;
-    return el.scrollHeight-el.clientHeight-scrollTopOf();
-  };
-  const busy=()=>content.classList.contains('closing')||content.classList.contains('dragging');
-  content.addEventListener('touchstart',e=>{
-    if(e.touches.length!==1||busy()){y0=null;return;}
-    y0=e.touches[0].clientY;x0=e.touches[0].clientX;active=0;axis=0;dy=0;
-    if(!active)content.style.transition='';
-  },{passive:true});
-  content.addEventListener('touchmove',e=>{
-    if(y0==null||busy())return;
-    const y=e.touches[0].clientY,x=e.touches[0].clientX;
-    const ddy=y-y0,ddx=x-x0;
-    if(!axis){
-      const ax=Math.abs(ddx),ay=Math.abs(ddy);
-      if(ax<8&&ay<8)return;
-      if(ay<=ax*1.4){axis='x';return;}   // horizontal — leave it to swipe gestures / do nothing
-      axis='y';
-    }
-    if(axis!=='y')return;
-    if(!active){
-      // only engage at the matching edge, pulling further past it (~2px slack)
-      if(ddy>0&&top()<=1)active=1;         // pulling down at the top
-      else if(ddy<0&&bottom()<=1)active=-1;// pulling up at the bottom
-      else return;
-    }
-    const raw=(y-y0);                       // signed overshoot from where the pull began
-    let d=raw*BUNGEE_DAMP;
-    if(active>0)d=Math.max(0,Math.min(BUNGEE_MAX,d));
-    else d=Math.min(0,Math.max(-BUNGEE_MAX,d));
-    dy=d;content.style.transform='translateY('+d+'px)';
-    e.preventDefault();                     // we own this gesture now
-  },{passive:false});
-  const end=()=>{
-    if(y0==null)return;y0=null;
-    if(!active){content.style.transform='';return;}
-    active=0;
-    content.style.transition='transform .3s cubic-bezier(.22,.61,.36,1)';
-    content.style.transform='';
-    setTimeout(()=>{if(content.style.transform==='')content.style.transition='';},320);
-  };
-  content.addEventListener('touchend',end);
-  content.addEventListener('touchcancel',end);
-}
+/* F34's spec ("a little bungee animation when you scroll all the way up or down
+   app wide") is now satisfied NATIVELY (R7/F46, owner pick 2026-07-07). The JS
+   rubber-band (a passive:false touchmove that preventDefaulted at the scroll
+   edges) fought Safari's own scroller and read as choppy on-device, so it was
+   deleted and iOS's native rubber-band restored — `overscroll-behavior-y:none`
+   removed from html/body. Sheets keep `overscroll-behavior:contain` (F30) so
+   the page behind doesn't scroll-chain; their local bounce still works. */
 
 /* F2 auto-stop — OWNER SPEC, verbatim (2026-07-06): "Workouts should have an
    auto stop and also not put you back in it when you leave." A closed PWA
@@ -3000,10 +3040,6 @@ autoStopStale();
 render();
 wireSwipe();
 wireEditorExit();
-/* F34: main-page bungee (window scroll → translate #main) and sheet-content
-   bungee (#overlay scroll → translate #sheet). Both wire-once and idempotent. */
-wireBungee(window,$('main'),()=>window.scrollY||window.pageYOffset||0);
-wireBungee($('overlay'),$('sheet'),()=>$('overlay').scrollTop);
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */

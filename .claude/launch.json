@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sett-source",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/home/orio/Desktop/projects/Sett/scripts/serve.js"],
+      "port": 8807,
+      "autoPort": true
+    }
+  ]
+}
