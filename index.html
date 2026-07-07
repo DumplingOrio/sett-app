@@ -118,12 +118,38 @@
     border-radius:var(--r); padding:14px 14px; cursor:pointer; text-align:left;}
   .mgtile:active{background:var(--card2);}
   .mgtile .dot{width:12px; height:12px; border-radius:50%; flex:none;}
-  .mgtile .nm{font-weight:700; font-size:15px; letter-spacing:-.01em; line-height:1.1;}
-  .mgtile .ct{font-size:12px; color:var(--muted); font-weight:600; margin-top:2px;}
+  /* F56: stacked name/count, each on its own line; both truncate rather than
+     overflow the tile at 375px. */
+  .mgtile .mgtxt{display:flex; flex-direction:column; min-width:0;}
+  .mgtile .nm{font-weight:700; font-size:15px; letter-spacing:-.01em; line-height:1.15;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .mgtile .ct{font-size:12px; color:var(--muted); font-weight:600; margin-top:2px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  /* F57: the muted "+N secondary" line under a tile's primary count */
+  .mgtile .ct2{font-size:11px; color:var(--faint); font-weight:600; margin-top:1px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   /* F52: back-to-tiles header row above a selected group's list */
   .mgback{display:flex; align-items:center; gap:8px; padding:8px 2px 2px; cursor:pointer; color:var(--text);}
   .mgback .ico{width:20px; height:20px; color:var(--muted);}
   .mgback h3{margin:0; font-size:17px;}
+  /* F54: review-sheet row — name on its own line; chips + Keep/Accept on a
+     second line that wraps the buttons below the chips when tight (375px). */
+  .mgrev{padding:8px 0; border-bottom:1px solid var(--line);}
+  .mgrev:last-child{border-bottom:0;}
+  .mgrev-name{font-weight:600; margin-bottom:6px;}
+  .mgrev-line{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .mgrev-chips{display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:wrap;}
+  .mgrev-acts{display:flex; gap:6px; flex:none; margin-left:auto;}
+  .mgrev-also{margin-top:5px;}
+  /* F57: editable secondary-group row on the exercise sheet + the "2nd" marker
+     on secondary drill-in rows. All wrap; nothing bleeds at 375px. */
+  .cats2row{display:flex; flex-wrap:wrap; gap:6px; align-items:center;}
+  .cat2chip{display:inline-flex; align-items:center; gap:5px; cursor:pointer;}
+  .cat2chip .x{color:var(--faint); font-weight:700; margin-left:1px;}
+  .cat2chip:active{background:var(--card);}
+  .cat2add{padding:6px 8px; font-size:16px; border-radius:999px; max-width:130px;}
+  .chip.sec2{background:transparent; border:1px solid var(--line); color:var(--faint);
+    font-size:10px; padding:1px 6px; vertical-align:middle;}
 
   .hero{padding:26px 18px; text-align:center;}
   .hero .big{font-size:26px; font-weight:800; letter-spacing:-.03em;}
@@ -193,6 +219,7 @@
 
   .spark{width:100%; height:56px;}
   .bigchart{width:100%; height:190px;}
+  .barchart{width:100%; height:180px; display:block;}
   .datebadge{width:48px; flex:none; text-align:center; background:var(--card2);
     border-radius:10px; padding:5px 0 6px;}
   .datebadge .dow{font-size:10px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
@@ -404,7 +431,7 @@
 <main id="main"></main>
 <div id="restbar"></div>
 <nav class="tabbar" id="tabbar"></nav>
-<div id="overlay" onclick="if(event.target===this)closeModalAnimated('y')"><div class="sheet" id="sheet"></div><div class="dialog" id="dialog"></div></div>
+<div id="overlay" onclick="if(event.target===this)backdropClose()"><div class="sheet" id="sheet"></div><div class="dialog" id="dialog"></div></div>
 <div id="toast"></div>
 
 <script src="exercises.js" onerror="window.SETT_CATALOG=[];window.SETT_ALIAS={}"></script>
@@ -412,8 +439,19 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.11';
+const APP_VERSION='0.9.13';
 const CHANGELOG=[
+  {v:'0.9.13', date:'2026-07-07', items:[
+    'Four new muscle groups — Forearms, Glutes, Calves and Traps — with primary and secondary groups drawn factually from the exercise database.',
+    'The muscle-group review is smarter: it no longer flags a group that is factually correct, and suggests the primary group with the full muscle set for context.',
+    'The Statistics tab is rebuilt as a weekly dashboard with readable, labelled charts instead of hard-to-interpret line squiggles.',
+    'Every stat now explains itself with real facts — typical session length, best month, per-group splits — not a generic three-number summary.',
+  ]},
+  {v:'0.9.12', date:'2026-07-07', items:[
+    'The muscle-group review list no longer overlaps its Keep and Accept buttons.',
+    'Closing a submenu now goes back one step instead of exiting everything — editing flows are much less of a chore.',
+    'Formatting polish across the app so nothing bleeds outside its box.',
+  ]},
   {v:'0.9.11', date:'2026-07-07', items:[
     'The Exercises tab now opens on muscle-group tiles with counts, plus a Recent row for quick jumps — tap a group to see just its exercises.',
     'A new review step flags imported exercises whose muscle group doesn\'t match their linked visual, so you can fix them in a tap.',
@@ -595,9 +633,30 @@ function applyTheme(id){
   r.setProperty('--card2',t.card2);r.setProperty('--line',t.line);
   const meta=document.querySelector('meta[name=theme-color]');if(meta)meta.content=t.bg;
 }
-const CATS=['Chest','Back','Legs','Shoulders','Biceps','Triceps','Abs','Cardio','Other'];
+/* F57 (2026-07-07): 9→13 groups. The four new ones (Forearms/Glutes/Calves/Traps)
+   land after the classic six so existing tile/chip order is undisturbed; Abs/Cardio/
+   Other stay last as the catch-alls. Each new group gets a fixed hex in the palette's
+   language (warm/cool distinct from the current nine — no CAT_COLORS collision). */
+const CATS=['Chest','Back','Legs','Shoulders','Biceps','Triceps','Forearms','Glutes','Calves','Traps','Abs','Cardio','Other'];
 const CAT_COLORS={Chest:'#ff7a3c',Back:'#4cc2ff',Legs:'#7ee081',Shoulders:'#ffd166',
-  Biceps:'#c792ea',Triceps:'#f47fb2',Abs:'#6ee7d8',Cardio:'#ff5c5c',Other:'#8b93a3'};
+  Biceps:'#c792ea',Triceps:'#f47fb2',Forearms:'#e0b088',Glutes:'#ff9ecb',Calves:'#8fd6b0',
+  Traps:'#9fb4ff',Abs:'#6ee7d8',Cardio:'#ff5c5c',Other:'#8b93a3'};
+/* F57: the 17 free-exercise-db muscle values → Sett's 13 groups. The bundled
+   catalog carries factual .p (primary) and .s (secondary) muscle arrays per
+   exercise; this map is the ONLY bridge from those muscles to display groups. */
+const MUSCLE_GROUP={
+  abdominals:'Abs',
+  abductors:'Legs',adductors:'Legs',hamstrings:'Legs',quadriceps:'Legs',
+  biceps:'Biceps',
+  calves:'Calves',
+  chest:'Chest',
+  forearms:'Forearms',
+  glutes:'Glutes',
+  lats:'Back','lower back':'Back','middle back':'Back',
+  neck:'Other',
+  shoulders:'Shoulders',
+  traps:'Traps',
+  triceps:'Triceps'};
 
 /* Liftoff-style tiers. Thresholds are estimated-1RM : bodyweight ratios needed
    to REACH each tier (Iron is where everyone starts). Male standards, roughly
@@ -759,6 +818,42 @@ function migrateVisuals(){
   let changed=false;
   for(const [n,m] of Object.entries(store.ex))
     if(m.vid===undefined){m.vid=autoVisual(n);changed=true;}
+  if(changed)save();
+}
+/* F57 (2026-07-07): factual primary + secondary muscle groups from the bundled
+   catalog. catalogPrimaryGroup maps the FIRST primary muscle (.p[0]) to a group,
+   falling back to the legacy .c when .p is empty. catalogGroups maps EVERY .p+.s
+   muscle to its group and returns the unique set. Pure — no store reads — so the
+   test shim can drive them on synthetic catalog entries. */
+function catalogPrimaryGroup(vid){
+  const c=CAT_BY_ID[vid];if(!c)return null;
+  const p0=(c.p&&c.p[0])||null;
+  const g=p0?MUSCLE_GROUP[p0]:null;
+  return g||(CATS.includes(c.c)?c.c:'Other');
+}
+function catalogGroups(vid){
+  const c=CAT_BY_ID[vid];if(!c)return [];
+  const out=[];const seen=new Set();
+  for(const mus of [...(c.p||[]),...(c.s||[])]){
+    const g=MUSCLE_GROUP[mus];
+    if(g&&!seen.has(g)){seen.add(g);out.push(g);}
+  }
+  if(!out.length&&CATS.includes(c.c))out.push(c.c);   // no mapped muscles → fall back to legacy .c
+  return out;
+}
+/* F57: one-time backfill of ex.cats2 (secondary groups). For every library
+   exercise with a linked vid and no cats2 field yet, set cats2 = catalogGroups
+   minus the CURRENTLY-stored primary (ex.cat is the owner's — never touched here;
+   the review sheet handles primary disagreements). cats2 rides whole objects
+   through save/export/restore, so it survives backup round-trips untouched. */
+function migrateGroups(){
+  let changed=false;
+  for(const m of Object.values(store.ex)){
+    if(m.cats2!==undefined)continue;
+    if(!m.vid||!CAT_BY_ID[m.vid]){m.cats2=[];changed=true;continue;}
+    m.cats2=catalogGroups(m.vid).filter(g=>g!==m.cat);
+    changed=true;
+  }
   if(changed)save();
 }
 
@@ -1118,7 +1213,10 @@ function recapCardHtml(){
   }
   return '<div class="card" style="background:var(--accent-soft);border-color:color-mix(in srgb, var(--accent) 35%, var(--line))">'+
     '<div class="row" style="align-items:flex-start"><h3 class="grow" style="margin:0">Your '+esc(r.monthName)+'</h3>'+
-    '<button class="iconbtn" title="Dismiss" aria-label="Dismiss recap" data-mk="'+esc(r.mk)+'" onclick="dismissRecap(this.dataset.mk)" style="width:28px;height:28px;margin:-4px -4px 0 0">✕</button></div>'+
+    /* F56 (2026-07-07): the old margin:-4px -4px pulled the ✕ 4px outside the
+       card. Keep it inside the padding box (small top nudge only, no negative
+       right margin). */
+    '<button class="iconbtn" title="Dismiss" aria-label="Dismiss recap" data-mk="'+esc(r.mk)+'" onclick="dismissRecap(this.dataset.mk)" style="width:28px;height:28px;margin:-2px 0 0 6px;flex:none">✕</button></div>'+
     '<div class="statgrid" style="margin-top:10px">'+
       '<div class="stat"><div class="v">'+r.sessions+'</div><div class="l">sessions</div></div>'+
       '<div class="stat"><div class="v">'+tonnes+'</div><div class="l">volume</div></div>'+
@@ -1767,7 +1865,13 @@ function openReorder(){
       '</div>';
   });
   h+='</div><button class="btn primary wide" style="margin-top:12px" onclick="closeModal()">Done</button>';
-  openModal(h);
+  /* F55: the reorder sheet wires live pointer listeners onto its rows AFTER the
+     HTML is in the DOM — those can't survive an innerHTML restore from the
+     back-stack. Pass wireRoList as opts.rewire so a pop re-attaches them. */
+  openModal(h,{rewire:wireRoList});
+  wireRoList();
+}
+function wireRoList(){
   // ⠿ handle: drag immediately. Row body: hold ~200ms to arm (scroll wins otherwise).
   document.querySelectorAll('#rolist [data-rodrag]').forEach(hd=>
     hd.addEventListener('pointerdown',e=>{e.stopPropagation();startRoDrag(e,hd.closest('[data-ro]'),hd);}));
@@ -1896,8 +2000,8 @@ function exMenu(ei){
     '<textarea class="howto" placeholder="Notes for this exercise (grip, tempo, machine setting…)" oninput="setEntryNote('+ei+',this.value)" style="margin-bottom:8px">'+esc(e.note||'')+'</textarea>'+
     '<div class="menu">'+
     (ei>0?'<button onclick="toggleSS('+ei+');closeModal()">'+ico('link')+(e.ss!=null?'Unlink from superset':'Superset with exercise above')+'</button>':'')+
-    '<button onclick="closeModal();openPicker(\'replace:'+ei+'\')">'+ico('repeat')+'Replace exercise</button>'+
-    (a.entries.length>1?'<button onclick="closeModal();openReorder()">'+ico('sort')+'Reorder exercises</button>':'')+
+    '<button onclick="openPicker(\'replace:'+ei+'\')">'+ico('repeat')+'Replace exercise</button>'+
+    (a.entries.length>1?'<button onclick="openReorder()">'+ico('sort')+'Reorder exercises</button>':'')+
     '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+'Remove exercise</button>'+
     '</div>');
 }
@@ -2085,7 +2189,7 @@ function createExercise(name){
 }
 function saveNewExercise(){
   const name=$('newname').value.trim();if(!name)return;
-  store.ex[name]={cat:$('newcat').value,howto:$('newhow').value.trim(),custom:true,vid:autoVisual(name)};
+  store.ex[name]={cat:$('newcat').value,cats2:[],howto:$('newhow').value.trim(),custom:true,vid:autoVisual(name)};
   if(String(state.pickTarget).startsWith('replace:')){
     replaceEntryExercise(+String(state.pickTarget).slice(8),name);
     state.pickTarget='active';toast('Replaced with “'+name+'”');
@@ -2120,7 +2224,7 @@ function openWorkout(id){
     h+='</div>';
   }
   h+='<div class="row" style="margin-top:8px">'+
-    '<button class="btn grow" data-id="'+esc(w.id)+'" onclick="closeModal();confirmStart(\'repeat\',this.dataset.id)">Repeat</button>'+   /* F33: confirm before starting */
+    '<button class="btn grow" data-id="'+esc(w.id)+'" onclick="confirmStart(\'repeat\',this.dataset.id)">Repeat</button>'+   /* F33/F55: pushes over the workout sheet; cancel returns here */
     '<button class="btn grow" onclick="saveWorkoutAsRoutine(\''+esc(w.id)+'\')">Save as routine</button></div>'+
     '<div class="row" style="margin-top:8px">'+
     '<button class="btn danger" onclick="deleteWorkout(\''+esc(w.id)+'\')">Delete</button>'+
@@ -2144,12 +2248,13 @@ function deleteWorkout(id){
 /* ============================== EXERCISES view ============================== */
 /* F52: the shared exercise list row (thumb, name, sessions/best line, rank badge).
    [data-ex] rows are click-wired globally in wireInputs → openExercise. */
-function exListRow(n){
+function exListRow(n,secondary){
   const m=store.ex[n];const pr=prFor(n);const rk=showRanks()?rankFor(n):null;
   return '<div class="listrow" data-ex="'+esc(n)+'">'+
     (m.vid?'<img class="thumb" loading="lazy" src="exercises/'+esc(m.vid)+'/0.jpg" alt="">':
       '<span class="thumb" style="background:var(--card2);display:inline-flex;align-items:center;justify-content:center;color:'+(CAT_COLORS[m.cat]||CAT_COLORS.Other)+';font-weight:800">'+esc(n[0])+'</span>')+
-    '<div class="grow"><div style="font-weight:600">'+esc(n)+'</div>'+
+    '<div class="grow"><div style="font-weight:600">'+esc(n)+
+      (secondary?' <span class="chip sec2">2nd</span>':'')+'</div>'+   /* F57: muted marker on secondary-group members */
     '<div class="tiny muted">'+(pr.sessions?pr.sessions+' sessions'+(pr.bestE1?' · best e1RM '+fmtW(pr.bestE1)+' kg':''):'never logged')+'</div></div>'+
     (rk&&!rk.locked?rankBadge(rk.tier):'')+'</div>';
 }
@@ -2188,13 +2293,22 @@ function renderExercises(){
     return h+'<div class="card">'+emptyState('No exercises yet',
       'Browse the catalog or add your own with the buttons above.',64)+'</div>';
 
-  /* A group tile is selected → that group's rows with a back-to-tiles header. */
+  /* A group tile is selected → that group's rows with a back-to-tiles header.
+     F57: PRIMARY members first, then SECONDARY members (exercises whose cats2
+     contains this group) marked with a muted "2nd" chip. The tile count stays
+     primary-only, so this drill-in can show more rows than the tile said — the
+     header spells out the split honestly. */
   if(state.exGroup&&CATS.includes(state.exGroup)){
     const g=state.exGroup;
-    const rows=names.filter(n=>store.ex[n].cat===g);
+    const primaryRows=names.filter(n=>store.ex[n].cat===g);
+    const secondaryRows=names.filter(n=>store.ex[n].cat!==g&&Array.isArray(store.ex[n].cats2)&&store.ex[n].cats2.includes(g));
     h+='<div class="mgback" onclick="state.exGroup=null;render()">'+ico('back')+'<h3>'+esc(g)+'</h3>'+
-       '<span class="tiny muted" style="margin-left:auto">'+rows.length+' exercise'+(rows.length===1?'':'s')+'</span></div>';
-    if(rows.length)h+='<div class="card" style="padding:4px 14px">'+rows.map(exListRow).join('')+'</div>';
+       '<span class="tiny muted" style="margin-left:auto">'+primaryRows.length+' exercise'+(primaryRows.length===1?'':'s')+
+       (secondaryRows.length?' · +'+secondaryRows.length+' secondary':'')+'</span></div>';
+    if(primaryRows.length||secondaryRows.length)
+      h+='<div class="card" style="padding:4px 14px">'+
+        primaryRows.map(exListRow).join('')+
+        secondaryRows.map(n=>exListRow(n,true)).join('')+'</div>';
     else h+='<div class="card">'+emptyState('Nothing here','No exercises in this group yet.',64)+'</div>';
     return h;
   }
@@ -2208,11 +2322,21 @@ function renderExercises(){
       return '<button class="chip" data-ex="'+esc(n)+'"><span class="dot" style="background:'+c+'"></span>'+esc(n)+'</button>';
     }).join('')+'</div>';
   }
-  const counts={};for(const n of names){const c=store.ex[n].cat;counts[c]=(counts[c]||0)+1;}
-  h+='<div class="mgrid">'+CATS.filter(c=>counts[c]).map(c=>
+  const counts={},sec={};
+  for(const n of names){
+    const m=store.ex[n];counts[m.cat]=(counts[m.cat]||0)+1;
+    if(Array.isArray(m.cats2))for(const g of m.cats2)if(g!==m.cat)sec[g]=(sec[g]||0)+1;   /* F57: secondary members per group */
+  }
+  /* F57: a tile shows if it has PRIMARY members OR secondary members. Count stays
+     primary-only (no double counting); a muted "+N secondary" line keeps the
+     numbers honest against the drill-in, which lists secondary members too. */
+  h+='<div class="mgrid">'+CATS.filter(c=>counts[c]||sec[c]).map(c=>
     '<button class="mgtile" onclick="state.exGroup=\''+c+'\';render()">'+
     '<span class="dot" style="background:'+(CAT_COLORS[c]||CAT_COLORS.Other)+'"></span>'+
-    '<span><span class="nm">'+c+'</span><span class="ct">'+counts[c]+' exercise'+(counts[c]===1?'':'s')+'</span></span></button>').join('')+'</div>';
+    /* F56 (2026-07-07): name and count as two STACKED lines so the count never
+       wraps mid-phrase under the name (owner: "count text wraps awkwardly"). */
+    '<span class="mgtxt"><span class="nm">'+c+'</span><span class="ct">'+(counts[c]||0)+' exercise'+((counts[c]||0)===1?'':'s')+'</span>'+
+      (sec[c]?'<span class="ct2">+'+sec[c]+' secondary</span>':'')+'</span></button>').join('')+'</div>';
   return h;
 }
 let visTimer=null;
@@ -2235,12 +2359,15 @@ function rankCardHtml(rk){
     (next?'<div class="tiny muted" style="margin-top:6px">'+Math.round(rk.prog*100)+'% of the way to '+next.name+' ('+goal+')</div>':'<div class="tiny muted" style="margin-top:6px">Top tier reached. Monster.</div>')+
     '</div>';
 }
-function openExercise(name){
+function openExercise(name,replace){
   const m=store.ex[name];if(!m)return;
   const pr=prFor(name);const rk=showRanks()?rankFor(name):null;
   const sessions=exSessions(name);
   const cat=m.vid?CAT_BY_ID[m.vid]:null;
-  let h='<h2>'+esc(name)+'</h2><div class="row" style="margin:8px 0 4px">'+catChip(m.cat)+(m.custom?'<span class="chip">custom</span>':'')+'</div>';
+  const cats2=Array.isArray(m.cats2)?m.cats2:[];
+  let h='<h2>'+esc(name)+'</h2><div class="row" style="margin:8px 0 4px">'+catChip(m.cat)+
+    cats2.map(g=>catChip(g)).join('')+                              /* F57: secondary group chips */
+    (m.custom?'<span class="chip">custom</span>':'')+'</div>';
   if(cat){
     h+='<div class="visual" id="visual"><img src="exercises/'+esc(m.vid)+'/0.jpg" alt="How to perform '+esc(name)+'"></div>'+
       '<div class="musclegrid">'+
@@ -2269,10 +2396,25 @@ function openExercise(name){
   if(pts.length>1)h+='<div class="card"><h3>e1RM trend</h3>'+sparkSvg(pts,'spark')+'</div>';
   if(cat&&cat.t&&cat.t.length)h+='<div class="card"><h3>Instructions</h3><ol class="instructions">'+
     cat.t.map(step=>'<li>'+esc(step)+'</li>').join('')+'</ol></div>';
+  /* F57: primary select (13 groups) + a petite editable SECONDARY row — the
+     exercise's cats2 as removable chips plus a compact add-picker of the other
+     groups (never the primary, never a dup). Judgment call (flagged): a small
+     <select> add control over a chip-picker — it stays a single 375px-safe line
+     and reuses the native picker the rest of the app uses. Both edits mutate the
+     store live and re-render the sheet in place (replace, no stack churn). */
+  const avail=CATS.filter(g=>g!==m.cat&&!cats2.includes(g));
   h+='<div class="card"><h3>Your own notes</h3>'+
     '<textarea class="howto" id="howto" placeholder="Your own cues: setup, grip, seat height, tempo…">'+esc(m.howto)+'</textarea>'+
-    '<div class="row" style="margin-top:10px"><select id="excat">'+CATS.map(c=>'<option'+(c===m.cat?' selected':'')+'>'+c+'</option>').join('')+'</select>'+
-    '<button class="btn primary grow" data-n="'+esc(name)+'" onclick="saveExercise(this.dataset.n)">Save</button></div></div>';
+    '<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 4px">Primary muscle group</div>'+
+    '<div class="row"><select id="excat" class="grow">'+CATS.map(c=>'<option'+(c===m.cat?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'+
+    '<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 4px">Also works (secondary)</div>'+
+    '<div class="cats2row">'+
+      cats2.map(g=>'<button class="chip cat2chip" data-n="'+esc(name)+'" data-g="'+esc(g)+'" onclick="removeCat2(this.dataset.n,this.dataset.g)">'+
+        '<span class="dot" style="background:'+(CAT_COLORS[g]||CAT_COLORS.Other)+'"></span>'+esc(g)+'<span class="x">×</span></button>').join('')+
+      (avail.length?'<select class="cat2add" data-n="'+esc(name)+'" onchange="addCat2(this.dataset.n,this.value)"><option value="">＋ add…</option>'+
+        avail.map(g=>'<option>'+g+'</option>').join('')+'</select>':'')+
+    '</div>'+
+    '<div class="row" style="margin-top:12px"><button class="btn primary grow" data-n="'+esc(name)+'" onclick="saveExercise(this.dataset.n)">Save</button></div></div>';
   if(sessions.length){
     h+='<div class="card"><h3>Recent sessions</h3>';
     for(const s of sessions.slice(0,8)){
@@ -2282,10 +2424,10 @@ function openExercise(name){
     }
     h+='</div>';
   }
-  openModal(h);
+  openModal(h,{replace:!!replace});   /* F55: re-opens after link/unlink replace in place, no stack churn */
   if(cat)startVisual(m.vid);
 }
-function unlinkVisual(name){store.ex[name].vid=null;save();openExercise(name);}
+function unlinkVisual(name){store.ex[name].vid=null;save();openExercise(name,1);}
 /* visual picker: link any catalog visual to any exercise (incl. custom ones) */
 function openVisualPicker(name){
   openModal('<h2>Choose a visual</h2><p class="tiny muted">for '+esc(name)+'</p>'+
@@ -2303,7 +2445,8 @@ function renderVisualList(name){
     '<div class="tiny muted">'+esc(c.p.join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div></div>').join('')
     ||'<p class="muted small">No match.</p>';
   $('vplist').querySelectorAll('[data-vpick]').forEach(el=>el.onclick=()=>{
-    store.ex[name].vid=el.dataset.vpick;save();openExercise(name);toast('Visual linked');
+    store.ex[name].vid=el.dataset.vpick;save();
+    dropModalFrame();openExercise(name,1);toast('Visual linked');   /* F55: return to the exercise, no duplicate back-step */
   });
 }
 /* catalog browser: add brand-new exercises from the 873-exercise catalog */
@@ -2325,13 +2468,32 @@ function renderCatalogList(){
     ||'<p class="muted small">No match.</p>';
   $('cblist').querySelectorAll('[data-cadd]').forEach(el=>el.onclick=()=>{
     const c=CAT_BY_ID[el.dataset.cadd];
-    if(!store.ex[c.n])store.ex[c.n]={cat:c.c,howto:'',custom:false,vid:c.i};
+    if(!store.ex[c.n]){
+      /* F57: a fresh catalog add takes the factual primary + secondary set. */
+      const primary=catalogPrimaryGroup(c.i)||(CATS.includes(c.c)?c.c:'Other');
+      store.ex[c.n]={cat:primary,cats2:catalogGroups(c.i).filter(g=>g!==primary),howto:'',custom:false,vid:c.i};
+    }
     save();openExercise(c.n);toast('Added to your library');
   });
 }
 function saveExercise(name){
   const m=store.ex[name];m.howto=$('howto').value.trim();m.cat=$('excat').value;
+  /* F57: the primary must never also appear in cats2 (it can if the select was
+     changed to a group that was a secondary). Keep the invariant on save. */
+  if(Array.isArray(m.cats2))m.cats2=m.cats2.filter(g=>g!==m.cat);
   save();toast('Saved');closeModal();render();
+}
+/* F57: live secondary-group edits — mutate the store and re-render the sheet in
+   place (replace → no back-stack churn). addCat2 ignores the primary/dupes. */
+function addCat2(name,g){
+  const m=store.ex[name];if(!m||!g||!CATS.includes(g))return;
+  if(!Array.isArray(m.cats2))m.cats2=[];
+  if(g===m.cat||m.cats2.includes(g))return;
+  m.cats2.push(g);save();openExercise(name,1);
+}
+function removeCat2(name,g){
+  const m=store.ex[name];if(!m||!Array.isArray(m.cats2))return;
+  m.cats2=m.cats2.filter(x=>x!==g);save();openExercise(name,1);
 }
 
 /* ===================== F53: muscle-group review (data hygiene) =====================
@@ -2341,6 +2503,12 @@ function saveExercise(name){
    review sheet lets the owner Accept (take the catalog's group), Keep (persist his
    own, never nag again) or Accept all. catRev:true marks a row reviewed so it's
    never surfaced again regardless of which choice was made. */
+/* F57 REVIEW CHECK v2 (2026-07-07): the v1 rule (stored ≠ catalog's single .c)
+   flagged Reverse Flyes stored as Back even though Back is one of its factual
+   groups. New rule: an exercise disagrees ONLY when its stored primary matches
+   NEITHER catalogPrimaryGroup(vid) NOR anything in catalogGroups(vid) — i.e. the
+   stored group is nowhere in the exercise's factual muscle set. The suggestion is
+   the factual PRIMARY; the full set rides along as context ("also: Back"). */
 function groupDisagreements(){
   const out=[];
   for(const n of Object.keys(store.ex)){
@@ -2348,16 +2516,21 @@ function groupDisagreements(){
     if(!m||!m.vid||m.catRev)continue;              // no visual linked, or already reviewed
     const c=CAT_BY_ID[m.vid];                       // catalog entry for the linked visual
     if(!c)continue;                                 // stale/invalid vid → nothing to compare
-    const cat=c.c;                                  // catalog's muscle group (the .c field)
-    if(!CATS.includes(cat))continue;                // guard against an out-of-set catalog value
-    if(cat!==m.cat)out.push({name:n,stored:m.cat,catalog:cat});
+    const primary=catalogPrimaryGroup(m.vid);
+    const set=catalogGroups(m.vid);
+    if(!primary&&!set.length)continue;              // nothing factual to compare against
+    if(m.cat===primary||set.includes(m.cat))continue;   // stored group IS factual → no flag
+    out.push({name:n,stored:m.cat,catalog:primary,set});
   }
   return out.sort((a,b)=>a.name.localeCompare(b.name));
 }
 function acceptGroup(name){
   const m=store.ex[name];if(!m)return;
-  const c=m.vid?CAT_BY_ID[m.vid]:null;
-  if(c&&CATS.includes(c.c))m.cat=c.c;
+  const primary=m.vid?catalogPrimaryGroup(m.vid):null;
+  if(primary&&CATS.includes(primary)){
+    m.cat=primary;
+    m.cats2=catalogGroups(m.vid).filter(g=>g!==primary);   // refresh secondaries around the new primary
+  }
   m.catRev=true;save();renderReviewSheet();
 }
 function keepGroup(name){
@@ -2367,7 +2540,11 @@ function keepGroup(name){
 function acceptAllGroups(){
   for(const d of groupDisagreements()){
     const m=store.ex[d.name];if(!m)continue;
-    m.cat=d.catalog;m.catRev=true;
+    if(d.catalog&&CATS.includes(d.catalog)){
+      m.cat=d.catalog;
+      m.cats2=catalogGroups(m.vid).filter(g=>g!==d.catalog);
+    }
+    m.catRev=true;
   }
   save();renderReviewSheet();
 }
@@ -2384,14 +2561,29 @@ function renderReviewSheet(){
   box.innerHTML='<h2>Review muscle groups</h2>'+
     '<p class="tiny muted" style="margin:0 0 8px">'+rows.length+' exercise'+(rows.length===1?'':'s')+' disagree with the linked visual’s group. Accept the catalog’s group, or keep yours.</p>'+
     '<button class="btn primary wide" style="margin-bottom:12px" onclick="acceptAllGroups()">Accept all ('+rows.length+')</button>'+
-    '<div class="card" style="padding:6px 14px">'+rows.map(d=>
-      '<div class="listrow" style="cursor:default;flex-wrap:wrap">'+
-        '<div class="grow" style="min-width:0"><div style="font-weight:600">'+esc(d.name)+'</div>'+
-        '<div class="row" style="gap:6px;margin-top:4px">'+catChip(d.stored)+'<span class="tiny muted">→</span>'+catChip(d.catalog)+'</div></div>'+
-        '<div class="row" style="gap:6px;flex:none">'+
-          '<button class="btn small" data-n="'+esc(d.name)+'" onclick="keepGroup(this.dataset.n)">Keep</button>'+
-          '<button class="btn primary small" data-n="'+esc(d.name)+'" onclick="acceptGroup(this.dataset.n)">Accept</button>'+
-        '</div></div>').join('')+'</div>';
+    /* F54 (2026-07-07) OWNER SPEC, verbatim: "categories bleed into the keep and
+       accept buttons." Root cause: the old .listrow packed name+chips into a
+       .grow (measured 126px at 375px) with the buttons in a flex:none row — the
+       stored→catalog chips overflowed the column by up to 57px into the buttons.
+       Fix: name on its own full-width line; a second line with the chips left and
+       Keep/Accept right, wrapping the buttons below the chips when tight. No
+       child ever exceeds its parent's box (F56 sweep asserts it at 375px). */
+    '<div class="card" style="padding:6px 14px">'+rows.map(d=>{
+      /* F57: the factual set beyond the suggested primary, as muted context
+         ("also: Back") so the owner can see WHY the catalog groups it there. */
+      const extra=(d.set||[]).filter(g=>g!==d.catalog);
+      return '<div class="mgrev">'+
+        '<div class="mgrev-name">'+esc(d.name)+'</div>'+
+        '<div class="mgrev-line">'+
+          '<div class="mgrev-chips">'+catChip(d.stored)+'<span class="tiny muted">→</span>'+catChip(d.catalog)+'</div>'+
+          '<div class="mgrev-acts">'+
+            '<button class="btn small" data-n="'+esc(d.name)+'" onclick="keepGroup(this.dataset.n)">Keep</button>'+
+            '<button class="btn primary small" data-n="'+esc(d.name)+'" onclick="acceptGroup(this.dataset.n)">Accept</button>'+
+          '</div>'+
+        '</div>'+
+        (extra.length?'<div class="mgrev-also tiny muted">also: '+esc(extra.join(', '))+'</div>':'')+
+      '</div>';
+    }).join('')+'</div>';
 }
 /* line chart with axis labels; pts=[{t:label, y:number}] ascending in time */
 function lineChart(pts,fmtY){
@@ -2413,6 +2605,40 @@ function lineChart(pts,fmtY){
   else s+='<circle cx="'+nx(pts.length-1)+'" cy="'+ny(pts[pts.length-1].y)+'" r="4" fill="var(--accent)"/>';
   s+='<text x="'+L+'" y="'+(H-8)+'" font-size="11" fill="var(--faint)">'+esc(pts[0].t)+'</text>'+
      '<text x="'+(W-R)+'" y="'+(H-8)+'" font-size="11" fill="var(--faint)" text-anchor="end">'+esc(pts[pts.length-1].t)+'</text></svg>';
+  return s;
+}
+/* F58 (2026-07-07): labeled BAR chart. bars=[{label, val, current}]; fmtV formats
+   value labels. Real x-axis labels under the bars (sparse: first/middle/current so
+   they never collide at 375px); value labels sit on the tallest bar and the current
+   bar only. Current bar is accented; the rest are muted. SVG on palette vars,
+   viewBox-scaled so it never overflows its card. The line-squiggle era is over. */
+function barChart(bars,fmtV){
+  fmtV=fmtV||(v=>fmtNum(v));
+  if(!bars.length)return '<p class="muted small">No data in this range.</p>';
+  const W=560,H=180,L=8,R=8,T=22,B=26;
+  const max=Math.max(1,...bars.map(b=>b.val));
+  const n=bars.length,gap=6;
+  const bw=(W-L-R-gap*(n-1))/n;
+  const bx=i=>L+i*(bw+gap);
+  const bh=v=>Math.max(1,(H-T-B)*(v/max));
+  const by=v=>H-B-bh(v);
+  let maxI=0;bars.forEach((b,i)=>{if(b.val>bars[maxI].val)maxI=i;});
+  const curI=bars.reduce((acc,b,i)=>b.current?i:acc,-1);
+  let s='<svg class="barchart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">';
+  bars.forEach((b,i)=>{
+    const on=b.current;
+    const col=on?'var(--accent)':'var(--card2)';
+    const stroke=on?'var(--accent)':'var(--line)';
+    s+='<rect x="'+bx(i).toFixed(1)+'" y="'+by(b.val).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh(b.val).toFixed(1)+
+      '" rx="3" fill="'+col+'" stroke="'+stroke+'" stroke-width="1"/>';
+    if(i===maxI||i===curI){
+      s+='<text x="'+(bx(i)+bw/2).toFixed(1)+'" y="'+(by(b.val)-6).toFixed(1)+'" font-size="12" font-weight="700" fill="'+(on?'var(--accent)':'var(--text)')+'" text-anchor="middle">'+esc(String(fmtV(b.val)))+'</text>';
+    }
+    // sparse x labels: first, middle, and the current bar
+    if(i===0||i===curI||(curI<0&&i===n-1)||(i===Math.floor((n-1)/2)&&i!==0&&i!==curI))
+      s+='<text x="'+(bx(i)+bw/2).toFixed(1)+'" y="'+(H-8)+'" font-size="11" fill="var(--faint)" text-anchor="middle">'+esc(b.label)+'</text>';
+  });
+  s+='</svg>';
   return s;
 }
 function dateBadge(s){const d=toDate(s);
@@ -2438,7 +2664,7 @@ function openExHistory(name){
 const exChart={metric:'e1',range:'all'};
 const CHART_METRICS={e1:'Est. 1RM',vol:'Volume',maxw:'Max weight',reps:'Total reps'};
 const CHART_RANGES={'3m':'3M','6m':'6M','1y':'1Y',all:'All'};
-function openExCharts(name){
+function openExCharts(name,replace){
   const cutoff={'3m':90,'6m':182,'1y':365}[exChart.range];
   let sessions=exSessions(name).slice().reverse();
   if(cutoff)sessions=sessions.filter(s=>toDate(s.date)>Date.now()-cutoff*86400000);
@@ -2447,12 +2673,12 @@ function openExCharts(name){
     .filter(p=>p.y!=null&&p.y>0);
   let h='<h2>Charts</h2><p class="tiny muted">'+esc(name)+'</p>'+
     '<div class="seg">'+Object.entries(CHART_METRICS).map(([k,v])=>
-      '<button class="'+(exChart.metric===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.metric=\''+k+'\';openExCharts(this.dataset.n)">'+v+'</button>').join('')+'</div>'+
+      '<button class="'+(exChart.metric===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.metric=\''+k+'\';openExCharts(this.dataset.n,1)">'+v+'</button>').join('')+'</div>'+
     '<div class="seg">'+Object.entries(CHART_RANGES).map(([k,v])=>
-      '<button class="'+(exChart.range===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.range=\''+k+'\';openExCharts(this.dataset.n)">'+v+'</button>').join('')+'</div>'+
+      '<button class="'+(exChart.range===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.range=\''+k+'\';openExCharts(this.dataset.n,1)">'+v+'</button>').join('')+'</div>'+
     '<div class="card">'+lineChart(pts,v=>fmtW(v))+'</div>'+
     '<p class="tiny muted">One point per session'+(exChart.metric==='e1'?' (best set, Epley formula)':'')+'.</p>';
-  openModal(h);
+  openModal(h,{replace:!!replace});   /* F55: segment re-renders replace in place; fresh open pushes */
 }
 /* personal records incl. rep-max frontier */
 function repRecords(name){
@@ -2512,6 +2738,137 @@ function sparkSvg(pts,cls){
     '<circle cx="'+nx(pts.length-1)+'" cy="'+ny(pts[pts.length-1])+'" r="4" fill="var(--accent)"/></svg>';
 }
 
+/* ============================== STATS: F58 pure math ==============================
+   Dashboard modules + honest per-metric detail pages (option A). Every figure the
+   Stats tab shows comes from one of these pure, exported-to-the-test-shim helpers,
+   red-proven against synthetic stores. All route through statWorkouts() (live
+   workout counts, F24) and statSet() (warmups excluded unless the setting counts
+   them, F26). store.workouts is newest-first; these functions never re-sort it. */
+
+/* Monday-start boundary of the week that contains a given ms timestamp. */
+function weekStartOf(ms){const d=new Date(ms);const day=(d.getDay()+6)%7;d.setHours(0,0,0,0);d.setDate(d.getDate()-day);return d.getTime();}
+/* "19 May" style short label for a week's Monday. */
+function weekLabel(ms){const d=new Date(ms);return d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3);}
+
+/* n weekly volume buckets ending with THIS week, oldest→newest.
+   Each: {ms, label, vol, current}. current flags the live week (last bucket). */
+function weeklyVolumes(n){
+  n=n||8;
+  const thisMon=weekStart().getTime();
+  const buckets=[];
+  for(let i=n-1;i>=0;i--){
+    const ms=thisMon-i*7*86400000;
+    buckets.push({ms,label:weekLabel(ms),vol:0,current:i===0});
+  }
+  const byMs={};buckets.forEach(b=>byMs[b.ms]=b);
+  for(const w of statWorkouts()){
+    const wm=weekStartOf(toDate(w.start).getTime());
+    const b=byMs[wm];if(!b)continue;
+    for(const e of w.entries)for(const s of e.sets)if(statSet(s))b.vol+=setVol(s);
+  }
+  return buckets;
+}
+
+/* This-week strip: workouts count, total volume, records set this week. */
+function thisWeekStats(){
+  const mon=weekStart().getTime();
+  let workouts=0,vol=0;
+  for(const w of statWorkouts()){
+    if(toDate(w.start).getTime()<mon)continue;
+    workouts++;
+    for(const e of w.entries)for(const s of e.sets)if(statSet(s))vol+=setVol(s);
+  }
+  return {workouts,vol,records:weekRecordCount()};
+}
+
+/* Record EVENTS across all lifts, oldest→newest. Walk every set in chronological
+   order; a set is a record the first time it beats the standing best for its
+   exercise — e1RM for weighted sets, reps for bodyweight/rep-based sets. Returns
+   [{name, kind:'e1'|'reps', val, prev, date}] (prev = the beaten best, or null for
+   the very first). Pure; the source of both recentRecords and weekRecordCount. */
+function recordEvents(){
+  const chron=statWorkouts().slice().sort((a,b)=>a.start<b.start?-1:a.start>b.start?1:0);
+  const bestE1={},bestReps={};const out=[];
+  for(const w of chron){
+    for(const e of w.entries){
+      const nm=e.name;
+      for(const s of e.sets){
+        if(!statSet(s))continue;
+        if(s.w!=null&&s.w>0){
+          const v=epley(s.w,s.r);
+          if(v!=null&&v>0&&(bestE1[nm]==null||v>bestE1[nm])){
+            out.push({name:nm,kind:'e1',val:v,prev:bestE1[nm]??null,date:w.start});bestE1[nm]=v;
+          }
+        }else if(s.r){
+          if(bestReps[nm]==null||s.r>bestReps[nm]){
+            out.push({name:nm,kind:'reps',val:s.r,prev:bestReps[nm]??null,date:w.start});bestReps[nm]=s.r;
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+/* The last n record events, newest-first. */
+function recentRecords(n){n=n||5;return recordEvents().slice(-n).reverse();}
+/* How many records were set this week (Monday-start). */
+function weekRecordCount(){
+  const mon=weekStart().getTime();
+  return recordEvents().filter(r=>toDate(r.date).getTime()>=mon).length;
+}
+
+/* Per-session durations in minutes (0<m<360), chronological. */
+function sessionDurations(){
+  const out=[];
+  for(const w of statWorkouts()){
+    if(!w.start||!w.end)continue;
+    const m=(toDate(w.end)-toDate(w.start))/60000;
+    if(m>0&&m<360)out.push({m,start:w.start,routine:w.routine||''});
+  }
+  return out;
+}
+/* Typical session range = 25th–75th percentile of durations, plus the longest
+   session (value, date, routine). {lo, hi, median, longest:{m,date,routine}} or null. */
+function typicalDurationRange(){
+  const ds=sessionDurations();if(!ds.length)return null;
+  const mins=ds.map(d=>d.m).sort((a,b)=>a-b);
+  const pct=p=>{const idx=(mins.length-1)*p;const lo=Math.floor(idx),hi=Math.ceil(idx);
+    return mins[lo]+(mins[hi]-mins[lo])*(idx-lo);};
+  let longest=ds[0];for(const d of ds)if(d.m>longest.m)longest=d;
+  return {lo:pct(0.25),hi:pct(0.75),median:pct(0.5),
+    longest:{m:longest.m,date:longest.start,routine:longest.routine}};
+}
+
+/* Best (highest-volume) calendar month. {mk, label, vol} or null. */
+function bestMonth(){
+  const agg={};
+  for(const w of statWorkouts()){
+    const mk=monthKey(w.start);let v=0;
+    for(const e of w.entries)for(const s of e.sets)if(statSet(s))v+=setVol(s);
+    agg[mk]=(agg[mk]||0)+v;
+  }
+  const keys=Object.keys(agg);if(!keys.length)return null;
+  let best=keys[0];for(const k of keys)if(agg[k]>agg[best])best=k;
+  return {mk:best,label:MONTHS[+best.slice(5)-1].slice(0,3)+' '+best.slice(2,4),vol:agg[best]};
+}
+
+/* Primary-group VOLUME split for a timeframe (reuses the F39 MG_FRAMES/mgCutoff).
+   Returns [{group, vol, pct}] sorted desc; primary-group only (ex.cat), so it
+   agrees with muscleCounts and never double-counts secondary groups. */
+function groupSplit(frame){
+  const cutoff=mgCutoff(frame);const byGroup={};let total=0;
+  for(const w of statWorkouts()){
+    if(cutoff&&toDate(w.start).getTime()<cutoff)continue;
+    for(const e of w.entries){
+      const c=(store.ex[e.name]||{}).cat||'Other';
+      let v=0;for(const s of e.sets)if(statSet(s))v+=setVol(s);
+      if(v){byGroup[c]=(byGroup[c]||0)+v;total+=v;}
+    }
+  }
+  return Object.entries(byGroup).map(([group,vol])=>({group,vol,pct:total?vol/total*100:0}))
+    .sort((a,b)=>b.vol-a.vol);
+}
+
 /* ============================== STATS view ============================== */
 function renderStats(){
   const sw=statWorkouts();const nw=sw.length;                        // F24 + F26
@@ -2534,26 +2891,46 @@ function renderStats(){
       h+='<div class="banner">Log your bodyweight in a workout to unlock strength ranks.</div>';
     }
   }
-  h+='<div class="statgrid" style="margin:12px 0">'+
-    '<div class="stat"><div class="v">'+nw+'</div><div class="l">workouts</div></div>'+
-    '<div class="stat"><div class="v">'+fmtNum(nsets)+'</div><div class="l">sets</div></div>'+
-    '<div class="stat"><div class="v">'+(vol>=1e6?(vol/1e6).toFixed(1)+' M':fmtNum(vol))+'</div><div class="l">kg lifted</div></div>'+
-    '<div class="stat"><div class="v">'+fmtNum(nreps)+'</div><div class="l">total reps</div></div>'+
-    '<div class="stat"><div class="v">'+(nsets?(nreps/nsets).toFixed(1):'—')+'</div><div class="l">reps per set</div></div>'+
-    '<div class="stat"><div class="v">'+(durN?Math.round(durMin/durN)+' min':'—')+'</div><div class="l">avg duration</div></div></div>';
-  // overall statistics — tap a row for its trend over time
-  const rowsDef=[
-    ['dur','Workout duration',(durN?Math.round(durMin/durN)+' min avg':'—')],
-    ['vol','Volume',fmtNum(vol)+' kg'],
-    ['sets','Total sets',fmtNum(nsets)],
-    ['reps','Total reps',fmtNum(nreps)],
-    ['rps','Reps per set',nsets?(nreps/nsets).toFixed(1):'—'],
-    ['bw','Bodyweight',latestBW()?fmtW(latestBW())+' kg':'—'],
-    ['nw','Number of workouts',nw],
-  ];
-  h+='<div class="card" style="padding:4px 14px">'+rowsDef.map(([k,l,v])=>
-    '<div class="listrow" onclick="openStatChart(\''+k+'\')"><div class="grow" style="font-weight:600">'+l+'</div>'+
-    '<span class="small muted">'+v+'</span><span class="muted">›</span></div>').join('')+'</div>';
+  /* MODULE 2 — THIS WEEK strip: workouts · volume (tonnes) · records this week. */
+  const tw=thisWeekStats();
+  h+='<div class="card"><div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">This week</div>'+
+    '<div class="statgrid">'+
+    '<div class="stat"><div class="v">'+tw.workouts+'</div><div class="l">workouts</div></div>'+
+    '<div class="stat"><div class="v">'+(tw.vol/1000).toFixed(1)+' t</div><div class="l">volume</div></div>'+
+    '<div class="stat"><div class="v">'+tw.records+'</div><div class="l">record'+(tw.records===1?'':'s')+'</div></div></div></div>';
+
+  /* MODULE 3 — VOLUME · LAST 8 WEEKS: labeled bars, current week accented. Tap → volume detail. */
+  const wv=weeklyVolumes(8);
+  h+='<div class="card" data-stat="vol" onclick="openStatChart(\'vol\')" style="cursor:pointer">'+
+    '<div class="row" style="margin-bottom:6px"><div class="l grow" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Volume · last 8 weeks</div><span class="muted">›</span></div>'+
+    barChart(wv.map(b=>({label:b.label,val:b.vol,current:b.current})),v=>v>=1000?(v/1000).toFixed(1)+'t':fmtNum(v))+'</div>';
+
+  /* MODULE 4 — MUSCLE BALANCE: primary-group volume share for a timeframe (F39 select). */
+  h+=muscleBalanceCard();
+
+  /* MODULE 5 — RECENT RECORDS: last ~5 records with what/value/date. */
+  const rr=recentRecords(5);
+  if(rr.length){
+    h+='<div class="card"><h3 style="margin:0 0 6px">Recent records</h3>';
+    for(const r of rr){
+      const what=r.kind==='e1'?'e1RM '+fmtW(r.val)+' kg':r.val+' reps';
+      h+='<div class="listrow" style="cursor:default;padding:7px 0"><div class="grow"><div class="small" style="font-weight:600">'+esc(r.name)+'</div>'+
+        '<div class="tiny muted">'+what+(r.prev!=null?' · was '+(r.kind==='e1'?fmtW(r.prev)+' kg':r.prev):' · first')+'</div></div>'+
+        '<span class="tiny" style="color:var(--faint);flex:none">'+fmtDay(r.date)+'</span></div>';
+    }
+    h+='</div>';
+  }
+
+  /* MODULE 6 — compact all-time line (condensed). Tap a metric → its detail page. */
+  h+='<div class="card"><div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">All time</div>'+
+    '<div class="statgrid">'+
+    '<div class="stat" onclick="openStatChart(\'nw\')" style="cursor:pointer"><div class="v">'+nw+'</div><div class="l">workouts ›</div></div>'+
+    '<div class="stat" onclick="openStatChart(\'sets\')" style="cursor:pointer"><div class="v">'+fmtNum(nsets)+'</div><div class="l">sets ›</div></div>'+
+    '<div class="stat" onclick="openStatChart(\'vol\')" style="cursor:pointer"><div class="v">'+(vol>=1e6?(vol/1e6).toFixed(1)+' M':fmtNum(vol))+'</div><div class="l">kg lifted ›</div></div>'+
+    '<div class="stat" onclick="openStatChart(\'reps\')" style="cursor:pointer"><div class="v">'+fmtNum(nreps)+'</div><div class="l">reps ›</div></div>'+
+    '<div class="stat" onclick="openStatChart(\'dur\')" style="cursor:pointer"><div class="v">'+(durN?Math.round(durMin/durN)+'m':'—')+'</div><div class="l">avg length ›</div></div>'+
+    '<div class="stat" onclick="openStatChart(\'bw\')" style="cursor:pointer"><div class="v">'+(latestBW()?fmtW(latestBW()):'—')+'</div><div class="l">bodyweight ›</div></div>'+
+    '</div></div>';
   // lifts ranks
   const ranked=showRanks()?Object.keys(STD()).map(n=>({n,r:rankFor(n)})).filter(x=>x.r&&!x.r.locked)
     .sort((a,b)=>(b.r.tier+b.r.prog)-(a.r.tier+a.r.prog)):[];
@@ -2571,8 +2948,38 @@ function renderStats(){
     }
     h+='<p class="tiny muted" style="margin:10px 0 0">Only lifts with published strength standards are ranked — barbell and dumbbell lifts by weight relative to bodyweight, pull-ups/dips/push-ups by reps. Machine and cable exercises stay unranked because weight stacks differ between gym equipment brands. Change the standard (male / female / unisex) or hide ranks entirely under Settings.</p></div>';
   }
-  // F39: sets by muscle group, with a timeframe selector (default This week)
-  h+=muscleGroupCard();
+  return h;
+}
+/* F58 MODULE 4 — MUSCLE BALANCE: primary-group VOLUME share for a timeframe
+   (reuses the F39 state.mgFrame select). Compact labeled bars with percentages,
+   top groups + a "rest" roll-up, coloured by CAT_COLORS. Tapping a row opens that
+   group's drill-in on the Exercises tab (judgment call, flagged) — the owner's most
+   likely next question ("what's in this group?") lands one tap away. */
+function muscleBalanceCard(){
+  const frame=state.mgFrame||'week';
+  const split=groupSplit(frame);
+  let h='<div class="card"><div class="row" style="margin-bottom:10px"><h3 class="grow" style="margin:0">Muscle balance</h3>'+
+    '<select onchange="state.mgFrame=this.value;render()" style="padding:6px 8px;font-size:16px;max-width:150px">'+
+    Object.entries(MG_FRAMES).map(([k,v])=>'<option value="'+k+'"'+(k===frame?' selected':'')+'>'+v+'</option>').join('')+
+    '</select></div>';
+  if(!split.length){
+    h+='<p class="muted small" style="margin:0">No volume logged in this timeframe.</p></div>';
+    return h;
+  }
+  const top=split.slice(0,6);
+  const rest=split.slice(6);
+  const restPct=rest.reduce((a,x)=>a+x.pct,0);
+  for(const {group,pct} of top){
+    h+='<div class="row small" data-g="'+esc(group)+'" onclick="setView(\'exercises\');state.exGroup=this.dataset.g;render()" style="padding:5px 0;cursor:pointer">'+
+      '<span style="width:78px">'+esc(group)+'</span>'+
+      '<div class="grow rankbar" style="margin:0"><i style="width:'+Math.max(2,Math.round(pct))+'%;background:'+(CAT_COLORS[group]||CAT_COLORS.Other)+'"></i></div>'+
+      '<span class="tiny muted" style="width:38px;text-align:right">'+Math.round(pct)+'%</span></div>';
+  }
+  if(rest.length)
+    h+='<div class="row small" style="padding:5px 0"><span style="width:78px;color:var(--faint)">rest</span>'+
+      '<div class="grow rankbar" style="margin:0"><i style="width:'+Math.max(2,Math.round(restPct))+'%;background:var(--faint)"></i></div>'+
+      '<span class="tiny muted" style="width:38px;text-align:right">'+Math.round(restPct)+'%</span></div>';
+  h+='<p class="tiny muted" style="margin:8px 0 0">Share of working volume by primary muscle group.</p></div>';
   return h;
 }
 /* F39 (2026-07-06): muscle-group set counts within a timeframe. Routes through
@@ -2600,36 +3007,18 @@ function muscleCounts(frame){
   }
   return catCount;
 }
-function muscleGroupCard(){
-  const frame=state.mgFrame||'week';
-  const catCount=muscleCounts(frame);
-  const catList=Object.entries(catCount).sort((a,b)=>b[1]-a[1]);
-  const maxC=catList.length?catList[0][1]:1;
-  let h='<div class="card"><div class="row" style="margin-bottom:10px"><h3 class="grow" style="margin:0">Sets by muscle group</h3>'+
-    '<select onchange="state.mgFrame=this.value;render()" style="padding:6px 8px;font-size:16px;max-width:150px">'+
-    Object.entries(MG_FRAMES).map(([k,v])=>'<option value="'+k+'"'+(k===frame?' selected':'')+'>'+v+'</option>').join('')+
-    '</select></div>';
-  if(!catList.length){
-    h+='<p class="muted small" style="margin:0">No sets logged in this timeframe.</p></div>';
-    return h;
-  }
-  for(const [c,n] of catList){
-    h+='<div class="row small" style="padding:5px 0"><span style="width:86px">'+esc(c)+'</span>'+
-      '<div class="grow rankbar" style="margin:0"><i style="width:'+Math.round(n/maxC*100)+'%;background:'+(CAT_COLORS[c]||CAT_COLORS.Other)+'"></i></div>'+
-      '<span class="tiny muted" style="width:44px;text-align:right">'+fmtNum(n)+'</span></div>';
-  }
-  h+='</div>';
-  return h;
-}
+/* F58: the F39 "Sets by muscle group" card was replaced by muscleBalanceCard
+   (volume share). muscleCounts stays — the fact box's "most-worked group" reads
+   it, and it remains the primary-based set counter. */
 /* monthly aggregation for the overall-stats drill-ins */
 const STAT_DEFS={
-  dur:{label:'Workout duration',unit:'min avg',fmt:v=>Math.round(v)},
-  vol:{label:'Volume',unit:'kg per month',fmt:v=>fmtNum(v)},
-  sets:{label:'Total sets',unit:'per month',fmt:v=>Math.round(v)},
-  reps:{label:'Total reps',unit:'per month',fmt:v=>Math.round(v)},
-  rps:{label:'Reps per set',unit:'avg',fmt:v=>v.toFixed(1)},
-  bw:{label:'Bodyweight',unit:'kg (monthly avg)',fmt:v=>fmtW(v)},
-  nw:{label:'Number of workouts',unit:'per month',fmt:v=>Math.round(v)},
+  dur:{label:'Workout duration',unit:'avg minutes',fmt:v=>Math.round(v)},
+  vol:{label:'Volume',unit:'kg lifted',fmt:v=>v>=1000?(v/1000).toFixed(1)+'t':fmtNum(v)},
+  sets:{label:'Total sets',unit:'sets',fmt:v=>Math.round(v)},
+  reps:{label:'Total reps',unit:'reps',fmt:v=>Math.round(v)},
+  rps:{label:'Reps per set',unit:'reps per set',fmt:v=>v.toFixed(1)},
+  bw:{label:'Bodyweight',unit:'kg',fmt:v=>fmtW(v)},
+  nw:{label:'Number of workouts',unit:'workouts',fmt:v=>Math.round(v)},
 };
 function monthlyStat(key){
   const agg={};
@@ -2648,33 +3037,85 @@ function monthlyStat(key){
     return {t:MONTHS[+mk.slice(5)-1].slice(0,3)+' '+mk.slice(2,4),y};
   }).filter(p=>p.y!=null);
 }
-function statCards(key,pts){
-  const f=STAT_DEFS[key].fmt;
-  const ys=pts.map(p=>p.y);
-  const latest=ys[ys.length-1], avg=ys.reduce((a,b)=>a+b,0)/ys.length;
-  const cards=[{v:f(latest),l:'latest month'},{v:f(avg),l:'monthly avg'}];
-  if(key==='bw'){
-    // bodyweight: a "biggest" number is meaningless — show range and net change
-    const lo=Math.min(...ys), hi=Math.max(...ys), ch=latest-ys[0];
-    cards.push({v:fmtW(lo)+'–'+fmtW(hi),l:'range'});
-    cards.push({v:(ch>0?'+':ch<0?'−':'')+fmtW(Math.abs(ch)),l:'net change'});
-  }else if(key==='rps'){
-    cards.push({v:f(Math.max(...ys)),l:'highest'});
-  }else if(key==='dur'){
-    cards.push({v:f(Math.max(...ys)),l:'longest avg'});
-  }else{
-    cards.push({v:f(Math.max(...ys)),l:'best month'});
+/* F58: per-metric FACT BOX — one card of plain, factual lines, each a real
+   number tied to a name or date. The generic three-number summary the owner
+   rejected is gone; these are specific facts. A fact row: {l:label, v:value}. */
+function factRow(l,v){return '<div class="row small" style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="grow muted">'+esc(l)+'</span><b style="text-align:right">'+v+'</b></div>';}
+function statFactBox(key){
+  let rows='';
+  if(key==='dur'){
+    const t=typicalDurationRange();
+    if(!t)return '';
+    rows+=factRow('Typical session',Math.round(t.lo)+'–'+Math.round(t.hi)+' min');
+    rows+=factRow('Longest ever',Math.round(t.longest.m)+' min · '+fmtDay(t.longest.date)+(t.longest.routine?' · '+esc(t.longest.routine):''));
+    // this month vs last (avg duration), signed delta
+    const ms=monthlyStat('dur');
+    if(ms.length>=2){const d=ms[ms.length-1].y-ms[ms.length-2].y;
+      rows+=factRow('This month vs last',(d>0?'+':d<0?'−':'±')+Math.round(Math.abs(d))+' min');}
+  }else if(key==='vol'){
+    const bm=bestMonth();
+    if(bm)rows+=factRow('Best month',bm.label+' · '+fmtNum(bm.vol)+' kg');
+    // average per workout
+    let tv=0,nw=0;for(const w of statWorkouts()){nw++;for(const e of w.entries)for(const s of e.sets)if(statSet(s))tv+=setVol(s);}
+    if(nw)rows+=factRow('Per workout',fmtNum(tv/nw)+' kg');
+    // top-3 group split (all time)
+    const gs=groupSplit('all').slice(0,3);
+    if(gs.length)rows+=factRow('Top groups',gs.map(g=>esc(g.group)+' '+Math.round(g.pct)+'%').join(' · '));
+  }else if(key==='sets'||key==='reps'){
+    // weekly average over the weeks that have data
+    const wv=weeklyVolumes(8);   // not volume here — recompute weekly counts
+    const mon=weekStart().getTime();
+    // weekly average of the metric over all-time = total / #active-weeks
+    const weeks={};let total=0;
+    for(const w of statWorkouts()){
+      const wm=weekStartOf(toDate(w.start).getTime());weeks[wm]=weeks[wm]||0;
+      for(const e of w.entries)for(const s of e.sets)if(statSet(s)){
+        if(key==='sets'){weeks[wm]++;total++;}else{const r=s.r||0;weeks[wm]+=r;total+=r;}}
+    }
+    const nWeeks=Object.keys(weeks).length;
+    if(nWeeks)rows+=factRow('Weekly average',fmtNum(total/nWeeks)+(key==='sets'?' sets':' reps'));
+    // most-worked group (by sets, all time)
+    const mc=muscleCounts('all');const top=Object.entries(mc).sort((a,b)=>b[1]-a[1])[0];
+    if(top)rows+=factRow('Most worked',esc(top[0])+' · '+fmtNum(top[1])+' sets');
+    // trend vs previous period (this month vs last)
+    const ms=monthlyStat(key);
+    if(ms.length>=2){const d=ms[ms.length-1].y-ms[ms.length-2].y;
+      rows+=factRow('This month vs last',(d>0?'+':d<0?'−':'±')+fmtNum(Math.abs(d)));}
+  }else if(key==='nw'||key==='rps'){
+    const ms=monthlyStat(key);
+    if(ms.length){
+      const ys=ms.map(p=>p.y);const best=Math.max(...ys);const bestIdx=ys.indexOf(best);
+      rows+=factRow(key==='nw'?'Best month':'Highest month',(key==='rps'?best.toFixed(1):Math.round(best))+' · '+ms[bestIdx].t);
+      if(ms.length>=2){const d=ys[ys.length-1]-ys[ys.length-2];
+        rows+=factRow('This month vs last',(d>0?'+':d<0?'−':'±')+(key==='rps'?Math.abs(d).toFixed(1):Math.round(Math.abs(d))));}
+    }
   }
-  return cards;
+  if(!rows)return '';
+  return '<div class="card"><h3 style="margin:0 0 2px">The facts</h3>'+rows+'</div>';
 }
 function openStatChart(key){
   const def=STAT_DEFS[key];
   const pts=monthlyStat(key);
-  openModal('<h2>'+def.label+'</h2><p class="tiny muted">'+def.unit+', whole history</p>'+
-    '<div class="card">'+lineChart(pts,def.fmt)+'</div>'+
-    (pts.length?'<div class="statgrid" style="margin-top:8px">'+
-      statCards(key,pts).map(c=>'<div class="stat"><div class="v">'+c.v+'</div><div class="l">'+c.l+'</div></div>').join('')+
-      '</div>':''));
+  /* Bodyweight KEEPS its existing chart treatment (the owner's cited good example
+     — "we already implemented a sort of fix for the weight category"): the labeled
+     line with axis values. Its fact box: range + net change. */
+  if(key==='bw'){
+    const ys=pts.map(p=>p.y);
+    let fb='';
+    if(ys.length){const lo=Math.min(...ys),hi=Math.max(...ys),ch=ys[ys.length-1]-ys[0];
+      fb='<div class="card"><h3 style="margin:0 0 2px">The facts</h3>'+
+        factRow('Range',fmtW(lo)+'–'+fmtW(hi)+' kg')+
+        factRow('Net change',(ch>0?'+':ch<0?'−':'±')+fmtW(Math.abs(ch))+' kg')+
+        factRow('Latest',fmtW(ys[ys.length-1])+' kg · '+pts[pts.length-1].t)+'</div>';}
+    openModal('<h2>'+def.label+'</h2><p class="tiny muted">monthly average, real months</p>'+
+      '<div class="card">'+lineChart(pts,def.fmt)+'</div>'+fb);
+    return;
+  }
+  /* Every other metric: a labeled BAR chart with real month names + a fact box. */
+  const bars=pts.map((p,i)=>({label:p.t,val:p.y,current:i===pts.length-1}));
+  openModal('<h2>'+def.label+'</h2><p class="tiny muted">'+def.unit+', by month</p>'+
+    '<div class="card">'+barChart(bars,def.fmt)+'</div>'+
+    statFactBox(key));
 }
 
 /* ============================== SETTINGS view (gear) ============================== */
@@ -2814,28 +3255,95 @@ function wipeAll(){
 
 /* ============================== modal & wiring ============================== */
 let closeAnimTimer=null;
-function openModal(html){
+/* F55 (2026-07-07) OWNER SPEC, verbatim: "Trying to edit stuff and exiting out
+   to choose a new thing causes it to completely exit out of everything, making
+   editing something an absolute drag." Root cause: openModal REPLACED the sheet
+   and closeModal tore the overlay down — there was NO history, so every
+   sheet-opened-from-a-sheet flow could only fully exit.
+   The fix is a modal back-stack. When openModal runs while a sheet is already
+   showing (and it's not an in-place re-render — opts.replace), the current
+   sheet's HTML + scroll (and an optional rewire callback for sheets whose live
+   listeners can't survive an innerHTML restore, e.g. the reorder drag) are
+   PUSHED. The ✕ / grab / swipe-right-exit / drag-down-dismiss POP one level
+   (restore + rewire). Backdrop tap and explicit completing actions (Start, Save,
+   Delete confirmed, finishWorkout…) still call closeModal(), which clears the
+   whole stack. Dialogs (openDialog) never participate — they sit ABOVE whatever
+   is open and, on close, restore the sheet beneath if one was showing. */
+let modalStack=[];
+const MODAL_STACK_CAP=8;
+let _reopenHook=null;   /* a sheet sets this to a fn that re-runs its live wiring after a pop */
+function overlayShown(){const ov=$('overlay');return ov&&ov.classList.contains('show')&&!ov.classList.contains('dialogmode');}
+function pushModalFrame(){
+  const sh=$('sheet');
+  modalStack.push({html:sh.innerHTML,scroll:$('overlay').scrollTop||0,rewire:_reopenHook});
+  if(modalStack.length>MODAL_STACK_CAP)modalStack.shift();
+}
+function clearModalStack(){modalStack=[];_reopenHook=null;}
+/* F55: discard the top back-stack frame WITHOUT restoring it — used when a
+   sub-sheet completes into a re-rendered version of the sheet that opened it
+   (visual picker → linked exercise), so the stale pre-action frame doesn't
+   linger as a duplicate back-step. */
+function dropModalFrame(){if(modalStack.length)modalStack.pop();}
+/* opts.replace===true → in-place re-render (segment re-render, unlink→re-open):
+   don't push a frame. opts.rewire → callback re-run after this sheet is restored
+   by a pop (used for sheets with live listeners, e.g. the reorder drag). */
+function openModal(html,opts){
+  opts=opts||{};
   /* F23: a rapid re-open mid-dismissal must land clean — cancel any pending
      animated close and reset the closing state before showing the new sheet. */
   if(closeAnimTimer){clearTimeout(closeAnimTimer);closeAnimTimer=null;}
+  /* F55: push the sheet currently on screen before we overwrite it, unless this
+     is an in-place re-render. */
+  if(!opts.replace&&overlayShown())pushModalFrame();
+  _reopenHook=typeof opts.rewire==='function'?opts.rewire:null;
   const ov=$('overlay'),sh=$('sheet');
   ov.classList.remove('closing','dialogmode');sh.classList.remove('closing');sh.style.transform='';
-  sh.innerHTML='<div class="sheethead"><div class="grab" onclick="closeModalAnimated(\'y\')"></div>'+
-    '<button class="sheetclose" onclick="closeModalAnimated(\'y\')" aria-label="Close">✕</button></div>'+html;
+  sh.innerHTML='<div class="sheethead"><div class="grab" onclick="dismissModal(\'y\')"></div>'+
+    '<button class="sheetclose" onclick="dismissModal(\'y\')" aria-label="Close">✕</button></div>'+html;
   wireSheetDrag(sh.querySelector('.sheethead'));
   wireSheetExit();
   ov.classList.add('show');ov.scrollTop=0;lockBodyScroll();}
+/* F55: restore the previous sheet from the stack. Returns true if a frame was
+   popped (caller should NOT fully close), false if the stack was empty. */
+function popModalFrame(){
+  if(!modalStack.length)return false;
+  const f=modalStack.pop();
+  if(closeAnimTimer){clearTimeout(closeAnimTimer);closeAnimTimer=null;}
+  const ov=$('overlay'),sh=$('sheet');
+  ov.classList.remove('closing','dialogmode');sh.classList.remove('closing');sh.style.transform='';
+  sh.innerHTML=f.html;
+  wireSheetDrag(sh.querySelector('.sheethead'));   /* the drag handle is inside the restored HTML */
+  _reopenHook=f.rewire||null;
+  if(f.rewire)f.rewire();                           /* re-attach live listeners (reorder drag etc.) */
+  ov.classList.add('show');ov.scrollTop=f.scroll||0;
+  return true;}
 /* F48 (2026-07-07): the centered dialog variant. Same overlay backdrop, scroll
    lock and F23 closing plumbing as the sheet, but NO sheethead/grab, NO
    drag-to-dismiss and NO swipe-right exit — it closes only via its buttons or a
    backdrop tap. The .dialogmode class on #overlay hides the sheet and shows the
    card (CSS). Callers pass the full inner markup (title, message, buttons). */
+/* F55: a dialog opened OVER a sheet must restore that sheet on close (the
+   confirmDialog delete-workout flow is exactly the owner's complaint — it's
+   called FROM the workout sheet). We record whether a sheet was showing when
+   the dialog opened; closeDialog() restores it instead of tearing everything
+   down. The dialog itself never pushes onto modalStack. */
+let _dialogOverSheet=false;
 function openDialog(html){
   if(closeAnimTimer){clearTimeout(closeAnimTimer);closeAnimTimer=null;}
-  const ov=$('overlay'),dg=$('dialog');
+  const ov=$('overlay'),dg=$('dialog'),sh=$('sheet');
+  _dialogOverSheet=overlayShown();
+  if(_dialogOverSheet)pushModalFrame();   /* stash the sheet so the dialog can return to it */
   ov.classList.remove('closing');dg.classList.remove('closing');dg.style.transform='';
   dg.innerHTML=html;
   ov.classList.add('show','dialogmode');ov.scrollTop=0;lockBodyScroll();}
+/* F55: close a dialog. If it sat over a sheet, pop back to that sheet (overlay
+   stays open, scroll lock stays); otherwise fully close. Used by the dialog ✕/
+   backdrop path so cancelling a confirm never blows away the sheet beneath. */
+function closeDialog(){
+  const ov=$('overlay'),dg=$('dialog');
+  ov.classList.remove('closing');dg.classList.remove('closing');dg.style.transform='';dg.innerHTML='';
+  if(_dialogOverSheet&&modalStack.length){_dialogOverSheet=false;popModalFrame();return;}
+  _dialogOverSheet=false;closeModal();}
 /* F30 (2026-07-06): body{overflow:hidden} does NOT stop iOS Safari from
    scrolling the page behind the sheet — the scroll chains through the overlay.
    The reliable lock is position:fixed with top:-scrollY, restored on close.
@@ -2855,9 +3363,13 @@ function unlockBodyScroll(){
   b.style.position='';b.style.top='';b.style.left='';b.style.right='';b.style.width='';b.style.overflow='';
   window.scrollTo(0,y);                          // return to the exact prior position
 }
+/* F55: closeModal fully tears the overlay down AND clears the back-stack — it's
+   the explicit-complete path (Start, Save, Delete confirmed, backdrop tap). To
+   step back ONE level instead, use dismissModal (✕/grab/swipe/drag). */
 function closeModal(){const ov=$('overlay'),sh=$('sheet'),dg=$('dialog');
   ov.classList.remove('show','closing','dialogmode');sh.classList.remove('closing');dg.classList.remove('closing');
-  sh.style.transform='';dg.style.transform='';unlockBodyScroll();clearInterval(visTimer);}
+  sh.style.transform='';dg.style.transform='';dg.innerHTML='';_dialogOverSheet=false;clearModalStack();
+  unlockBodyScroll();clearInterval(visTimer);}
 /* F47 (2026-07-07) OWNER SPEC, verbatim: "Confirmation popups need to be
    stylized in the theme, or this is a web app limitation?" Answer: not a
    limitation — the browser-native confirm() was the cause. This is an in-app
@@ -2880,6 +3392,11 @@ function confirmDialogYes(){const fn=_confirmAction;_confirmAction=null;closeMod
    off-screen (right for a swipe-right, down for drag-down / taps) while the
    overlay fades, THEN the real closeModal() lands. Programmatic closes after an
    action keep calling closeModal() directly — instant is correct there. */
+/* F55: the animated dismissal now steps back ONE level when a back-stack exists
+   (sheet) or a dialog sits over a sheet — instead of always fully closing. The
+   slide-off animation plays, then either popModalFrame() (restore prev sheet) or
+   closeModal() (nothing beneath) lands. This is what ✕ / grab / swipe-right /
+   drag-down all route through. */
 function closeModalAnimated(dir){
   const ov=$('overlay'),sh=$('sheet'),dg=$('dialog');
   /* F48: a dialog scales/fades out in place; the sheet keeps its slide-off. */
@@ -2887,7 +3404,8 @@ function closeModalAnimated(dir){
     if(dg.classList.contains('closing'))return;   // already dismissing
     dg.classList.add('closing');ov.classList.add('closing');
     if(closeAnimTimer)clearTimeout(closeAnimTimer);
-    closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;closeModal();},220);
+    /* F55: closeDialog restores the sheet beneath if the dialog sat over one. */
+    closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;closeDialog();},220);
     return;
   }
   if(sh.classList.contains('closing'))return;   // already dismissing
@@ -2895,8 +3413,18 @@ function closeModalAnimated(dir){
   sh.classList.add('closing');ov.classList.add('closing');
   sh.style.transform=(dir==='x'?'translateX(110%)':'translateY(110%)');
   if(closeAnimTimer)clearTimeout(closeAnimTimer);
-  closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;closeModal();},240);
+  const hasBack=modalStack.length>0;
+  closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;if(hasBack)popModalFrame();else closeModal();},240);
 }
+/* F55: the ✕ / grab / swipe / drag entry point. Named for clarity — it steps
+   BACK one level (or closes if it's the last sheet). closeModalAnimated already
+   does the pop-vs-close decision, so dismissModal is a thin alias kept for the
+   inline onclick handlers and gesture callers. */
+function dismissModal(dir){closeModalAnimated(dir);}
+/* F55: backdrop tap closes EVERYTHING (clears the stack), then animates out —
+   distinct from the ✕/swipe/drag which step back one level. For a dialog over a
+   sheet, tapping the backdrop dismisses the whole overlay (no restore). */
+function backdropClose(){clearModalStack();_dialogOverSheet=false;closeModalAnimated('y');}
 /* F7 OWNER SPEC, verbatim (2026-07-06): "Add a swipe to exit feature in some
    of the menus where it makes sense. For example when a menu doesn't have an
    explicit X to close button." — every sheet: drag the header/grab area down
@@ -3093,7 +3621,7 @@ function wireInputs(){
     f.text().then(t=>{
       try{const s=JSON.parse(t);
         if(!s||s.schema!==1||!Array.isArray(s.workouts))throw new Error('bad shape');
-        store=s;normalizeStore();migrateVisuals();save();toast('Backup restored — '+store.workouts.length+' workouts');render();
+        store=s;normalizeStore();migrateVisuals();migrateGroups();save();toast('Backup restored — '+store.workouts.length+' workouts');render();
       }catch(e){toast('That file is not a Sett backup.');}
     });
   };
@@ -3264,6 +3792,7 @@ if(firstRun){
   save();
 }
 migrateVisuals();
+migrateGroups();
 applyTheme((store.settings&&store.settings.theme)||'ember');
 autoStopStale();
 render();
