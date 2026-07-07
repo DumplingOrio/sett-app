@@ -297,7 +297,7 @@
   #toast{position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom)); transform:translateX(-50%);
     z-index:60; background:var(--card2); border:1px solid var(--line); color:var(--text);
     padding:10px 18px; border-radius:12px; font-weight:600; font-size:14px; display:none;
-    max-width:88vw; text-align:center;}
+    max-width:88vw; text-align:center; pointer-events:none;}   /* F61: toasts are plain text — never eat taps on what they cover */
 
   textarea.howto{width:100%; min-height:90px; resize:vertical;}
   .visual{background:#fff; border-radius:14px; overflow:hidden; margin:12px 0; text-align:center;}
@@ -439,8 +439,15 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.15';
+const APP_VERSION='0.9.16';
 const CHANGELOG=[
+  {v:'0.9.16', date:'2026-07-07', items:[
+    'The little popup notes now let your finger through — they no longer block taps on whatever is underneath them.',
+    'Browsing the catalog no longer adds an exercise on its own: tapping one opens a preview, and there is now an explicit Add to library button.',
+    'The Add-exercise picker can now browse the catalog mid-workout, so you can pull in a new exercise and drop it straight into the session.',
+    'Fixed: after viewing a catalog exercise and going back, the list stopped responding — you had to fully exit to open another one.',
+    'Typed text — how-to notes and search boxes — now survives hopping between sheets instead of being wiped.',
+  ]},
   {v:'0.9.15', date:'2026-07-07', items:[
     'Sett now keeps a private on-device log of errors and feature usage to help diagnose problems — nothing ever leaves your device.',
     'Also, something secret was buried near the bottom of Settings. Badgers know: keep digging.',
@@ -2275,13 +2282,14 @@ function renderPickList(){
     .filter(n=>!q||n.toLowerCase().includes(q));
   let h='';
   for(const n of names.slice(0,40)){
-    h+='<div class="listrow" data-pick="'+esc(n)+'"><div class="grow" style="font-weight:600">'+esc(n)+'</div>'+catChip(store.ex[n].cat)+'</div>';
+    h+='<div class="listrow" data-n="'+esc(n)+'" onclick="pickExercise(this.dataset.n)"><div class="grow" style="font-weight:600">'+esc(n)+'</div>'+catChip(store.ex[n].cat)+'</div>';
   }
+  if(!names.length)h+='<p class="muted small">'+(q?'No match — type a new name to create it.':'No exercises yet — type a name to create one.')+'</p>';
   const exact=names.some(n=>n.toLowerCase()===q);
-  if(q&&!exact)h+='<div class="listrow" data-new="'+esc($('pickq').value.trim())+'"><div class="grow" style="color:var(--accent);font-weight:700">＋ Create “'+esc($('pickq').value.trim())+'”</div></div>';
-  $('picklist').innerHTML=h||'<p class="muted small">No exercises yet — type a name to create one.</p>';
-  $('picklist').querySelectorAll('[data-pick]').forEach(el=>el.onclick=()=>pickExercise(el.dataset.pick));
-  $('picklist').querySelectorAll('[data-new]').forEach(el=>el.onclick=()=>createExercise(el.dataset.new));
+  if(q&&!exact)h+='<div class="listrow" data-n="'+esc($('pickq').value.trim())+'" onclick="createExercise(this.dataset.n)"><div class="grow" style="color:var(--accent);font-weight:700">＋ Create “'+esc($('pickq').value.trim())+'”</div></div>';
+  /* F62: mid-workout — reach the full catalog from the picker (adds to library AND the workout). */
+  h+='<div class="listrow" onclick="openCatalog(1)"><div class="grow" style="font-weight:600">Browse catalog</div><span class="chip">873</span></div>';
+  $('picklist').innerHTML=h;
 }
 function pickExercise(name){
   if(String(state.pickTarget).startsWith('replace:')){
@@ -2553,43 +2561,114 @@ function openVisualPicker(name){
 function renderVisualList(name){
   const q=($('vpq').value||'').trim().toLowerCase();
   const hits=CATALOG.filter(c=>!q||c.n.toLowerCase().includes(q)).slice(0,30);
+  /* F63: inline-dataset handlers (data-vp = catalog id, data-n = the exercise
+     name being linked) survive an innerHTML restore — no JS-bound closures. */
   $('vplist').innerHTML=hits.map(c=>
-    '<div class="listrow" data-vpick="'+esc(c.i)+'">'+
+    '<div class="listrow" data-vp="'+esc(c.i)+'" data-n="'+esc(name)+'" onclick="vpickVisual(this.dataset.vp,this.dataset.n)">'+
     '<img class="thumb" loading="lazy" src="exercises/'+esc(c.i)+'/0.jpg" alt="">'+
     '<div class="grow"><div style="font-weight:600">'+esc(c.n)+'</div>'+
     '<div class="tiny muted">'+esc(c.p.join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div></div>').join('')
     ||'<p class="muted small">No match.</p>';
-  $('vplist').querySelectorAll('[data-vpick]').forEach(el=>el.onclick=()=>{
-    store.ex[name].vid=el.dataset.vpick;save();
-    dropModalFrame();openExercise(name,1);toast('Visual linked');   /* F55: return to the exercise, no duplicate back-step */
-  });
 }
-/* catalog browser: add brand-new exercises from the 873-exercise catalog */
-function openCatalog(){
-  openModal('<h2>Exercise catalog</h2><p class="tiny muted">873 exercises with visuals — tap one to add it to your library.</p>'+
+/* F63: the visual-picker row action, top-level (was a closure). Links the chosen
+   catalog visual to the exercise and returns to its sheet (no duplicate back-step). */
+function vpickVisual(vid,name){
+  if(!store.ex[name])return;
+  store.ex[name].vid=vid;save();
+  dropModalFrame();openExercise(name,1);toast('Visual linked');   /* F55: return to the exercise, no duplicate back-step */
+}
+/* catalog browser: BROWSE the 873-exercise catalog. F62: browsing is looking, not
+   adding — a row opens a read-only preview; adding is an explicit button there.
+   openCatalog(pick): pick truthy = reached via the mid-workout Add-exercise picker
+   ('pick mode'), where the preview's primary action adds to the library AND the
+   live target (active workout / routine / replace) in one deliberate act. */
+function openCatalog(pick){
+  state.catalogPick=!!pick;
+  const sub=pick?'Tap one to preview it, then add it to this workout.'
+                :'Tap one to preview it — add to your library from there.';
+  openModal('<h2>Exercise catalog</h2><p class="tiny muted">873 exercises with visuals — '+sub+'</p>'+
     '<input id="cbq" placeholder="Search…" style="width:100%;margin:10px 0" oninput="renderCatalogList()">'+
     '<div id="cblist"></div>');
   renderCatalogList();$('cbq').focus();
 }
 function renderCatalogList(){
   const q=($('cbq').value||'').trim().toLowerCase();
-  const hits=CATALOG.filter(c=>!q||c.n.toLowerCase().includes(q)||c.p.some(p=>p.includes(q))).slice(0,30);
+  const hits=CATALOG.filter(c=>!q||(c.n||'').toLowerCase().includes(q)||(c.p||[]).some(p=>p.includes(q))).slice(0,30);
+  /* F63: inline-dataset onclick (data-cadd = catalog id) survives an innerHTML
+     restore by construction — no JS-bound closures that pop→restore would drop. */
   $('cblist').innerHTML=hits.map(c=>
-    '<div class="listrow" data-cadd="'+esc(c.i)+'">'+
+    '<div class="listrow" data-cadd="'+esc(c.i)+'" onclick="catalogRowTap(this.dataset.cadd)">'+
     '<img class="thumb" loading="lazy" src="exercises/'+esc(c.i)+'/0.jpg" alt="">'+
     '<div class="grow"><div style="font-weight:600">'+esc(c.n)+'</div>'+
-    '<div class="tiny muted">'+esc(c.p.join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div>'+
+    '<div class="tiny muted">'+esc((c.p||[]).join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div>'+
     (store.ex[c.n]?'<span class="chip">in library</span>':'')+'</div>').join('')
     ||'<p class="muted small">No match.</p>';
-  $('cblist').querySelectorAll('[data-cadd]').forEach(el=>el.onclick=()=>{
-    const c=CAT_BY_ID[el.dataset.cadd];
-    if(!store.ex[c.n]){
-      /* F57: a fresh catalog add takes the factual primary + secondary set. */
-      const primary=catalogPrimaryGroup(c.i)||(CATS.includes(c.c)?c.c:'Other');
-      store.ex[c.n]={cat:primary,cats2:catalogGroups(c.i).filter(g=>g!==primary),howto:'',custom:false,vid:c.i};
-    }
-    save();openExercise(c.n);toast('Added to your library');
-  });
+}
+/* F62/F63: a catalog row now PREVIEWS (read-only), never writes to the store. */
+function catalogRowTap(id){const c=CAT_BY_ID[id];if(c)catalogPreview(id,false);}
+/* F62: read-only catalog preview sheet. No store writes on open. The primary
+   button reflects state: already-in-library shows an "open in library" action;
+   pick mode reads "Add to workout"; otherwise "Add to library". replace===true
+   re-renders in place after an add (no back-stack churn). */
+function catalogPreview(id,replace){
+  const c=CAT_BY_ID[id];if(!c)return;
+  const inLib=!!store.ex[c.n];const pick=!!state.catalogPick;
+  const primary=catalogPrimaryGroup(id)||(CATS.includes(c.c)?c.c:'Other');
+  const groups=catalogGroups(id);const secs=groups.filter(g=>g!==primary);
+  let h='<h2>'+esc(c.n)+'</h2>';
+  h+='<div class="row" style="margin:8px 0 4px">'+catChip(primary)+secs.map(g=>catChip(g)).join('')+
+    (inLib?'<span class="chip">in library</span>':'')+'</div>';
+  h+='<div class="visual" id="visual"><img src="exercises/'+esc(id)+'/0.jpg" alt="How to perform '+esc(c.n)+'"></div>'+
+    '<div class="musclegrid">'+
+    '<div><div class="l">Primary muscles</div><div class="v">'+esc(c.p.join(', ')||'—')+'</div></div>'+
+    '<div><div class="l">Equipment</div><div class="v">'+esc(c.q||'—')+'</div></div>'+
+    (c.s&&c.s.length?'<div style="grid-column:1/-1"><div class="l">Secondary muscles</div><div class="v">'+esc(c.s.join(', '))+'</div></div>':'')+
+    '</div>';
+  /* primary action */
+  h+='<div class="row" style="margin:12px 0 4px">';
+  if(pick){
+    h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddWorkout(this.dataset.cadd)">Add to workout</button>';
+  }else if(inLib){
+    h+='<button class="btn primary grow" data-n="'+esc(c.n)+'" onclick="catalogOpenLibrary(this.dataset.n)">Open in library</button>';
+  }else{
+    h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddLibrary(this.dataset.cadd)">Add to library</button>';
+  }
+  h+='</div>';
+  if(c.t&&c.t.length)h+='<div class="card"><h3>Instructions</h3><ol class="instructions">'+
+    c.t.map(step=>'<li>'+esc(step)+'</li>').join('')+'</ol></div>';
+  openModal(h,{replace:!!replace});
+  startVisual(id);
+}
+/* F62: ensure the library entry exists with the FACTUAL primary + secondary set
+   (the F57 block, unchanged). Returns the exercise name. No-op if already present. */
+function catalogEnsureLibrary(id){
+  const c=CAT_BY_ID[id];if(!c)return null;
+  if(!store.ex[c.n]){
+    const primary=catalogPrimaryGroup(id)||(CATS.includes(c.c)?c.c:'Other');
+    store.ex[c.n]={cat:primary,cats2:catalogGroups(id).filter(g=>g!==primary),howto:'',custom:false,vid:id};
+  }
+  return c.n;
+}
+/* F62: the explicit Add-to-library action — creates the entry, toasts, and flips
+   the preview in place to the "in library" state (open-in-library button). */
+function catalogAddLibrary(id){
+  const name=catalogEnsureLibrary(id);if(!name)return;
+  save();toast('Added to your library');
+  catalogPreview(id,true);   /* in-place re-render → button becomes "Open in library" */
+}
+/* F62: jump from the preview to the full library exercise sheet (over the
+   catalog, so back returns to the preview/list). */
+function catalogOpenLibrary(name){if(store.ex[name])openExercise(name);}
+/* F62 pick path: mid-workout Add. Ensure the library entry (factual groups), then
+   route through the EXISTING pickExercise semantics so all three targets keep
+   working (active / 'routine' / replace:N). pickExercise calls closeModal, which
+   tears the whole stacked chain (picker → catalog → preview) down as a completing
+   action — no popping back through dead frames. */
+function catalogAddWorkout(id){
+  const name=catalogEnsureLibrary(id);if(!name){closeModal();return;}
+  save();
+  state.catalogPick=false;
+  pickExercise(name);
 }
 function saveExercise(name){
   const m=store.ex[name];m.howto=$('howto').value.trim();m.cat=$('excat').value;
@@ -3488,9 +3567,41 @@ let modalStack=[];
 const MODAL_STACK_CAP=8;
 let _reopenHook=null;   /* a sheet sets this to a fn that re-runs its live wiring after a pop */
 function overlayShown(){const ov=$('overlay');return ov&&ov.classList.contains('show')&&!ov.classList.contains('dialogmode');}
+/* F64 (2026-07-07): typed field values (input/textarea/select) never enter the
+   innerHTML snapshot, so a push→pop restore wiped every live value — unsaved
+   how-to notes destroyed by a visual-picker round-trip, search boxes reset. Fix
+   at the mechanism: on push, serialize the sheet's current field values; on pop,
+   reapply them after the HTML restore (by id first, index fallback). try/catch so
+   an odd DOM never breaks the back-stack. Covers dialogs too (openDialog pushes). */
+function snapshotFields(sh){
+  const out=[];
+  try{
+    const els=sh.querySelectorAll('input,textarea,select');
+    els.forEach((el,idx)=>{
+      if(el.type==='file')return;   // file inputs can't be re-applied
+      out.push({id:el.id||null,idx,value:el.value,checked:!!el.checked});
+    });
+  }catch(e){}
+  return out;
+}
+function restoreFields(sh,fields){
+  if(!fields||!fields.length)return;
+  try{
+    const els=sh.querySelectorAll('input,textarea,select');
+    for(const f of fields){
+      let el=f.id?sh.querySelector('#'+CSS_ID(f.id)):null;   // by id first
+      if(!el)el=els[f.idx]||null;                            // index fallback
+      if(!el||el.type==='file')continue;
+      if(el.type==='checkbox'||el.type==='radio')el.checked=f.checked;
+      else el.value=f.value;
+    }
+  }catch(e){}
+}
+/* Escape a value for use inside a #id selector — ids here are simple, but be safe. */
+function CSS_ID(id){return String(id).replace(/([^\w-])/g,'\\$1');}
 function pushModalFrame(){
   const sh=$('sheet');
-  modalStack.push({html:sh.innerHTML,scroll:$('overlay').scrollTop||0,rewire:_reopenHook});
+  modalStack.push({html:sh.innerHTML,scroll:$('overlay').scrollTop||0,rewire:_reopenHook,fields:snapshotFields(sh)});
   if(modalStack.length>MODAL_STACK_CAP)modalStack.shift();
 }
 function clearModalStack(){modalStack=[];_reopenHook=null;}
@@ -3527,6 +3638,7 @@ function popModalFrame(){
   const ov=$('overlay'),sh=$('sheet');
   ov.classList.remove('closing','dialogmode');sh.classList.remove('closing');sh.style.transform='';
   sh.innerHTML=f.html;
+  restoreFields(sh,f.fields);                        /* F64: reapply typed values lost by the HTML snapshot */
   wireSheetDrag(sh.querySelector('.sheethead'));   /* the drag handle is inside the restored HTML */
   _reopenHook=f.rewire||null;
   if(f.rewire)f.rewire();                           /* re-attach live listeners (reorder drag etc.) */
