@@ -201,11 +201,29 @@
   #overlay.closing{animation:none; opacity:0; transition:opacity .22s cubic-bezier(.22,.61,.36,1);}
   .sheet.closing{animation:none; transition:transform .22s cubic-bezier(.22,.61,.36,1);}
   .sheet{max-width:640px; margin:8vh auto 0; background:var(--card); border:1px solid var(--line);
-    border-radius:20px 20px 0 0; min-height:60vh; padding:0 18px calc(30px + env(safe-area-inset-bottom) + var(--kb,0px));
+    border-radius:20px 20px 20px 20px; min-height:120px; padding:0 18px calc(30px + env(safe-area-inset-bottom) + var(--kb,0px));
     animation:up .28s cubic-bezier(.22,.61,.36,1);
     transition:transform .22s cubic-bezier(.22,.61,.36,1);}
   .sheet.dragging{transition:none;}
   @keyframes up{from{transform:translateY(30px); opacity:.4;} to{transform:none; opacity:1;}}
+  /* F48 (2026-07-07) OWNER SPEC, verbatim: "The discard popup has a lot of dead
+     space… have a it popup in the middle of the screen without all the extra
+     space at the bottom" + "dead space below cancel, let's address that as
+     well." A second modal variant beside the sheet: a small centered card that
+     hugs its content — nothing below the button row but normal padding. No
+     sheethead/grab, no drag-to-dismiss, no swipe-exit; closes via its buttons or
+     a backdrop tap (like the sheet). Shares #overlay + the F23 .closing path. */
+  #overlay.dialogmode .sheet{display:none;}
+  #overlay:not(.dialogmode) .dialog{display:none;}
+  .dialog{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:85%; max-width:340px; background:var(--card); border:1px solid var(--line);
+    border-radius:20px; padding:22px 20px calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 20px 60px rgba(0,0,0,.55);
+    animation:dlgIn .2s cubic-bezier(.22,.61,.36,1);}
+  @keyframes dlgIn{from{transform:translate(-50%,-50%) scale(.92); opacity:0;}
+    to{transform:translate(-50%,-50%) scale(1); opacity:1;}}
+  .dialog.closing{animation:none; opacity:0; transform:translate(-50%,-50%) scale(.94);
+    transition:opacity .2s cubic-bezier(.22,.61,.36,1), transform .2s cubic-bezier(.22,.61,.36,1);}
   #main.slide-up{animation:sUp .34s cubic-bezier(.22,.61,.36,1);}
   #main.slide-left{animation:sLeft .42s cubic-bezier(.22,.61,.36,1);}
   #main.slide-right{animation:sRight .42s cubic-bezier(.22,.61,.36,1);}
@@ -368,7 +386,7 @@
 <main id="main"></main>
 <div id="restbar"></div>
 <nav class="tabbar" id="tabbar"></nav>
-<div id="overlay" onclick="if(event.target===this)closeModalAnimated('y')"><div class="sheet" id="sheet"></div></div>
+<div id="overlay" onclick="if(event.target===this)closeModalAnimated('y')"><div class="sheet" id="sheet"></div><div class="dialog" id="dialog"></div></div>
 <div id="toast"></div>
 
 <script src="exercises.js" onerror="window.SETT_CATALOG=[];window.SETT_ALIAS={}"></script>
@@ -376,8 +394,14 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.9';
+const APP_VERSION='0.9.10';
 const CHANGELOG=[
+  {v:'0.9.10', date:'2026-07-07', items:[
+    'Confirmation and "workout saved" popups now sit centered on screen with no wasted space below the buttons.',
+    'Every popup is sized to its content, so short ones no longer leave a big empty gap at the bottom.',
+    'The More tab is gone — the bottom bar is now five tabs (Home, Log, Routines, Stats, Exercises).',
+    'The "Add to Home Screen" help now shows up right on Home when you\'re in a browser, and disappears once Sett is installed.',
+  ]},
   {v:'0.9.9', date:'2026-07-07', items:[
     'The start screen now lists every exercise in a routine — name, muscle group and set count — before you begin.',
     'The badger cameo now matches the app icon.',
@@ -878,8 +902,17 @@ function closestRankUp(){
 
 /* ============================== state & render ============================== */
 const state={view:'home', exQuery:'', exCat:'All', editRoutine:null, pickTarget:'active', mgFrame:'week'};   /* F39: muscle-group timeframe, transient (not persisted) */
-const NAV=['home','log','routines','stats','exercises','more'];   /* F35: Stats before Exercises */
-const TITLES={home:'Home', log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', more:'More', settings:'Settings'};
+const NAV=['home','log','routines','stats','exercises'];   /* F35: Stats before Exercises. F49: More dropped — five tabs. */
+const TITLES={home:'Home', log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', settings:'Settings'};
+/* F49 (2026-07-07): the install card on Home and the version/install text moved
+   to Settings only make sense in a browser tab, not the installed PWA. Detect
+   standalone via the iOS flag OR the display-mode media query. Routed through a
+   helper so the Node test harness can stub it. */
+function isStandalone(){
+  try{return (window.navigator&&window.navigator.standalone===true)||
+    (typeof matchMedia==='function'&&matchMedia('(display-mode: standalone)').matches);}
+  catch(e){return false;}
+}
 const showRanks=()=>!(store.settings&&store.settings.showRanks===false);
 const ICONS={
   home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/></svg>',
@@ -887,7 +920,6 @@ const ICONS={
   routines:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5v11M4 9v6M17.5 6.5v11M20 9v6M6.5 12h11"/></svg>',
   exercises:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg>',
   stats:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
-  more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
 };
 /* inline UI icons — same feather line-style as the nav, replacing emoji */
 const ICO={
@@ -977,7 +1009,7 @@ function render(){
   $('gear').classList.toggle('on',state.view==='settings');
   $('tabbar').innerHTML=NAV.map(v=>
     '<button class="tab'+(state.view===v?' on':'')+'" onclick="setView(\''+v+'\')">'+ICONS[v]+'<span>'+TITLES[v]+'</span></button>').join('');
-  const fn={home:renderHome,log:renderLog,routines:renderRoutines,exercises:renderExercises,stats:renderStats,more:renderMore,settings:renderSettings}[state.view]||renderHome;
+  const fn={home:renderHome,log:renderLog,routines:renderRoutines,exercises:renderExercises,stats:renderStats,settings:renderSettings}[state.view]||renderHome;
   $('main').innerHTML=fn();
   wireInputs();
 }
@@ -1075,6 +1107,10 @@ function dismissRecap(mk){
    workout shows as a banner you tap to resume, never as the whole screen. */
 function renderHome(){
   let h='';
+  /* F49 (2026-07-07): a compact install card — shown ONLY in a browser tab, the
+     one moment it's useful. Once Sett runs as an installed PWA it never renders. */
+  if(!isStandalone())
+    h+='<div class="card"><h3>Add Sett to your phone</h3><p class="small muted" style="margin:6px 0 0">Open in Safari, tap Share, then <b>Add to Home Screen</b> — Sett runs fullscreen, works offline, and keeps your data on the phone.</p></div>';
   const a=store.active;
   if(a){
     clearInterval(tick);
@@ -1960,9 +1996,10 @@ function finishWorkout(){
   store.active=null;save();clearInterval(tick);
   const vol=entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+(statSet(s)?setVol(s):0),0),0);   // F26
   const nsets=entries.reduce((t,e)=>t+e.sets.length,0);
-  openModal('<div style="text-align:center;margin-bottom:6px">'+badgerSVG(64)+'</div>'+
+  /* F48: the worst dead-space offender — moved to the centered dialog. */
+  openDialog('<div style="text-align:center;margin-bottom:6px">'+badgerSVG(64)+'</div>'+
     '<h2 style="margin-bottom:4px;text-align:center">Workout saved</h2>'+
-    '<p class="muted small" style="text-align:center">'+fmtDur(w.start,w.end)+' · '+nsets+' sets · '+fmtNum(vol)+' kg volume</p>'+
+    '<p class="muted small" style="text-align:center;margin-bottom:'+(prs.length?'12px':'16px')+'">'+fmtDur(w.start,w.end)+' · '+nsets+' sets · '+fmtNum(vol)+' kg volume</p>'+
     (prs.length?'<div class="card"><h3>New records</h3>'+prs.map(p=>'<div class="listrow" style="cursor:default"><div class="grow">'+esc(p.name)+'</div><b style="color:var(--good)">e1RM '+fmtW(p.e1)+' kg</b></div>').join('')+'</div>':'')+
     '<button class="btn primary wide" onclick="closeModal();setView(\'log\')">Nice</button>');
   render();
@@ -2553,19 +2590,14 @@ function renderSettings(){
     '<ul class="small muted" style="margin:6px 0 0;padding-left:18px">'+(c.items||[c.desc]).map(it=>'<li style="margin:3px 0">'+esc(it)+'</li>').join('')+'</ul></div>';
   h+='<div class="card"><h3>About</h3>'+
     '<p class="small muted" style="margin:0 0 4px">Sett v'+APP_VERSION+' · '+(ranksOn?SEX_LABEL[sex]+' strength standards':'ranks off')+'</p>'+
+    // F49: the install walkthrough moved here from the dropped More tab —
+    // only useful in a browser tab, so hidden once Sett runs standalone.
+    (isStandalone()?'':'<p class="small muted" style="margin:8px 0 0">Not installed yet? Open this page in Safari, tap Share, then <b>Add to Home Screen</b>. Sett then runs fullscreen, works offline, and keeps your data on the phone.</p>')+
     '<details><summary class="small muted" style="cursor:pointer;padding:8px 0">Changelog</summary>'+
       CHANGELOG.map(clRow).join('')+'</details></div>';
   // danger zone
   h+='<div class="card"><h3>Danger zone</h3><button class="btn danger wide" onclick="wipeAll()">Delete all data on this device</button></div>';
-  return h;
-}
-/* ============================== MORE view (open for future use) ============================== */
-function renderMore(){
-  let h='<div class="card"><h3>Add to your phone</h3><p class="small muted" style="margin:0">Open this page in Safari, tap Share, then <b>Add to Home Screen</b>. Sett then runs fullscreen, works offline, and keeps your data on the phone.</p></div>';
-  h+='<div class="card"><h3>Settings</h3><p class="small muted" style="margin:0 0 12px">Themes, strength ranks, data import/export and updates live in Settings.</p>'+
-    '<button class="btn wide" onclick="setView(\'settings\')">Open Settings</button></div>';
-  h+='<div class="card"><h3>About Sett</h3><p class="small muted" style="margin:0">A simple, private workout log. Your data never leaves the device. '+
-    'Exercise visuals from the public-domain free-exercise-db.</p></div>';
+  // F49: the version footer moved here from the dropped More tab.
   h+='<p class="tiny muted" style="text-align:center;margin:20px 0">Sett v'+APP_VERSION+'</p>';
   return h;
 }
@@ -2638,12 +2670,23 @@ function openModal(html){
      animated close and reset the closing state before showing the new sheet. */
   if(closeAnimTimer){clearTimeout(closeAnimTimer);closeAnimTimer=null;}
   const ov=$('overlay'),sh=$('sheet');
-  ov.classList.remove('closing');sh.classList.remove('closing');sh.style.transform='';
+  ov.classList.remove('closing','dialogmode');sh.classList.remove('closing');sh.style.transform='';
   sh.innerHTML='<div class="sheethead"><div class="grab" onclick="closeModalAnimated(\'y\')"></div>'+
     '<button class="sheetclose" onclick="closeModalAnimated(\'y\')" aria-label="Close">✕</button></div>'+html;
   wireSheetDrag(sh.querySelector('.sheethead'));
   wireSheetExit();
   ov.classList.add('show');ov.scrollTop=0;lockBodyScroll();}
+/* F48 (2026-07-07): the centered dialog variant. Same overlay backdrop, scroll
+   lock and F23 closing plumbing as the sheet, but NO sheethead/grab, NO
+   drag-to-dismiss and NO swipe-right exit — it closes only via its buttons or a
+   backdrop tap. The .dialogmode class on #overlay hides the sheet and shows the
+   card (CSS). Callers pass the full inner markup (title, message, buttons). */
+function openDialog(html){
+  if(closeAnimTimer){clearTimeout(closeAnimTimer);closeAnimTimer=null;}
+  const ov=$('overlay'),dg=$('dialog');
+  ov.classList.remove('closing');dg.classList.remove('closing');dg.style.transform='';
+  dg.innerHTML=html;
+  ov.classList.add('show','dialogmode');ov.scrollTop=0;lockBodyScroll();}
 /* F30 (2026-07-06): body{overflow:hidden} does NOT stop iOS Safari from
    scrolling the page behind the sheet — the scroll chains through the overlay.
    The reliable lock is position:fixed with top:-scrollY, restored on close.
@@ -2663,9 +2706,9 @@ function unlockBodyScroll(){
   b.style.position='';b.style.top='';b.style.left='';b.style.right='';b.style.width='';b.style.overflow='';
   window.scrollTo(0,y);                          // return to the exact prior position
 }
-function closeModal(){const ov=$('overlay'),sh=$('sheet');
-  ov.classList.remove('show','closing');sh.classList.remove('closing');
-  sh.style.transform='';unlockBodyScroll();clearInterval(visTimer);}
+function closeModal(){const ov=$('overlay'),sh=$('sheet'),dg=$('dialog');
+  ov.classList.remove('show','closing','dialogmode');sh.classList.remove('closing');dg.classList.remove('closing');
+  sh.style.transform='';dg.style.transform='';unlockBodyScroll();clearInterval(visTimer);}
 /* F47 (2026-07-07) OWNER SPEC, verbatim: "Confirmation popups need to be
    stylized in the theme, or this is a web app limitation?" Answer: not a
    limitation — the browser-native confirm() was the cause. This is an in-app
@@ -2677,7 +2720,8 @@ function closeModal(){const ov=$('overlay'),sh=$('sheet');
 let _confirmAction=null;
 function confirmDialog(opts){
   _confirmAction=typeof opts.onYes==='function'?opts.onYes:null;
-  openModal('<h2 style="word-break:break-word">'+esc(opts.title||'Are you sure?')+'</h2>'+
+  /* F48: rides the centered content-hugging dialog, not the sheet. */
+  openDialog('<h2 style="word-break:break-word">'+esc(opts.title||'Are you sure?')+'</h2>'+
     (opts.message?'<p class="muted small" style="margin:6px 0 16px">'+esc(opts.message)+'</p>':'<div style="height:8px"></div>')+
     '<button class="btn danger wide" onclick="confirmDialogYes()">'+esc(opts.confirmLabel||'Confirm')+'</button>'+
     '<button class="btn wide ghost" style="margin-top:10px" onclick="closeModal()">'+esc(opts.cancelLabel||'Cancel')+'</button>');
@@ -2688,7 +2732,15 @@ function confirmDialogYes(){const fn=_confirmAction;_confirmAction=null;closeMod
    overlay fades, THEN the real closeModal() lands. Programmatic closes after an
    action keep calling closeModal() directly — instant is correct there. */
 function closeModalAnimated(dir){
-  const ov=$('overlay'),sh=$('sheet');
+  const ov=$('overlay'),sh=$('sheet'),dg=$('dialog');
+  /* F48: a dialog scales/fades out in place; the sheet keeps its slide-off. */
+  if(ov.classList.contains('dialogmode')){
+    if(dg.classList.contains('closing'))return;   // already dismissing
+    dg.classList.add('closing');ov.classList.add('closing');
+    if(closeAnimTimer)clearTimeout(closeAnimTimer);
+    closeAnimTimer=setTimeout(()=>{closeAnimTimer=null;closeModal();},220);
+    return;
+  }
   if(sh.classList.contains('closing'))return;   // already dismissing
   sh.classList.remove('dragging');
   sh.classList.add('closing');ov.classList.add('closing');
