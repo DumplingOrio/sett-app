@@ -439,8 +439,12 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.14';
+const APP_VERSION='0.9.15';
 const CHANGELOG=[
+  {v:'0.9.15', date:'2026-07-07', items:[
+    'Sett now keeps a private on-device log of errors and feature usage to help diagnose problems — nothing ever leaves your device.',
+    'Also, something secret was buried near the bottom of Settings. Badgers know: keep digging.',
+  ]},
   {v:'0.9.14', date:'2026-07-07', items:[
     'Install help now knows your phone: iPhone gets the Safari steps, Android gets a one-tap Install button, and other browsers get the right menu path.',
   ]},
@@ -802,6 +806,59 @@ function save(){
   if(store.active&&!store.active.editing)store.active.touch=Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){toast('Could not save — storage full?');console.error(e);}}
 
+/* ============================== F60: sett:diag ==============================
+   A SECOND localStorage key, wholly separate from sett:store. Holds a ring
+   buffer of event/error entries (capped at DIAG_CAP, oldest dropped) plus
+   per-local-day usage counters. PRIVACY BY CONSTRUCTION: nothing here ever
+   touches store.workouts / store.ex — entries carry event NAMES and error text
+   only, never exercise names, weights or reps. Every read/write is wrapped in
+   try/catch and SILENT on failure: a broken diag layer must never break or
+   toast the app (it has its own persistence, and never calls save()). */
+const DIAG_KEY='sett:diag';
+const DIAG_CAP=300;
+function diagLoad(){
+  try{const raw=localStorage.getItem(DIAG_KEY);if(raw){const d=JSON.parse(raw);
+    if(d&&typeof d==='object'){if(!Array.isArray(d.log))d.log=[];if(!d.counts||typeof d.counts!=='object')d.counts={};return d;}}}
+  catch(e){}
+  return {log:[],counts:{}};
+}
+function diagPersist(d){try{localStorage.setItem(DIAG_KEY,JSON.stringify(d));}catch(e){}}
+function diagStamp(){
+  /* the common stamp on every entry — version, OS, install context, time. */
+  return {v:APP_VERSION, os:platformOS(), sa:isStandalone(), t:nowStr()};
+}
+/* Record a diagnostic entry. `type` is 'error' | 'event'; `data` is a small
+   object of names/text only. Ring-capped to DIAG_CAP (oldest dropped). */
+function diagLog(type,data){
+  try{
+    const d=diagLoad();
+    d.log.push(Object.assign({type:String(type)}, data||{}, diagStamp()));
+    if(d.log.length>DIAG_CAP)d.log.splice(0,d.log.length-DIAG_CAP);
+    diagPersist(d);
+  }catch(e){}
+}
+/* Bump a per-local-day usage counter. O(1), silent, no store.save(). */
+function diagCount(name){
+  try{
+    const d=diagLoad();const day=nowStr().slice(0,10);
+    d.counts[day]=d.counts[day]||{};
+    d.counts[day][name]=(d.counts[day][name]||0)+1;
+    diagPersist(d);
+  }catch(e){}
+}
+/* Approx localStorage size in KB for a key (UTF-16 chars ≈ bytes/2, report chars/1024). */
+function diagKeySizeKB(key){
+  try{const raw=localStorage.getItem(key);return raw?Math.round(raw.length/1024*10)/10:0;}catch(e){return 0;}
+}
+/* Full diag JSON plus a header, for "Copy diagnostics". Contains ONLY the diag
+   store (log+counts) — never store, so no workout data can ride along. */
+function diagExport(){
+  const d=diagLoad();
+  return JSON.stringify({version:APP_VERSION, os:platformOS(), standalone:isStandalone(),
+    'exported-at':nowStr(), diag:d}, null, 1);
+}
+function diagClear(){try{diagPersist({log:[],counts:{}});}catch(e){}}
+
 /* exercise catalog (exercises.js, generated from free-exercise-db, public domain) */
 const CATALOG=window.SETT_CATALOG||[];
 const CAT_BY_ID={};for(const c of CATALOG)CAT_BY_ID[c.i]=c;
@@ -1052,6 +1109,23 @@ function platformOS(){
 let deferredInstall=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;render();});
 window.addEventListener('appinstalled',()=>{deferredInstall=null;render();});
+/* F60a: error capture — the point of the round. A crash on the iPhone used to
+   vanish without a trace. These write a diag 'error' entry (message + source +
+   truncated stack) so it can be read back in the dev panel. Everything is
+   funnelled through diagLog, which is itself try/catch-silent, so a handler
+   can never re-throw and break the app. Stack capped ~600 chars. */
+function diagOnError(e){try{diagLog('error',{
+  msg:String((e&&e.message)||'error'),
+  src:(e&&e.filename)?String(e.filename)+((e.lineno!=null)?(':'+e.lineno+((e.colno!=null)?':'+e.colno:'')):''):'',
+  stack:(e&&e.error&&e.error.stack)?String(e.error.stack).slice(0,600):'',
+});}catch(_){}}
+function diagOnRejection(e){try{const r=e&&e.reason;diagLog('error',{
+  msg:'unhandledrejection: '+String((r&&r.message)||r||'rejection'),
+  src:'',
+  stack:(r&&r.stack)?String(r.stack).slice(0,600):'',
+});}catch(_){}}
+window.addEventListener('error',diagOnError);
+window.addEventListener('unhandledrejection',diagOnRejection);
 function promptInstall(){
   if(!deferredInstall)return;
   deferredInstall.prompt();
@@ -1156,6 +1230,10 @@ function setView(v){
   /* F52: leaving Exercises drops the selected group + search so the tab always
      re-lands on the muscle-group tiles (the intended "overview" home). */
   if(state.view==='exercises'&&v!=='exercises'){state.exGroup=null;state.exQuery='';}
+  /* F60b: per-day screen-open counter (O(1), silent, own persistence). Only the
+     five main tabs + settings are named screens; the counter name is the view
+     key, never any workout content. */
+  diagCount('screen:'+v);
   state.view=v;render();
   playViewAnim(oldIdx>=0&&newIdx>=0&&oldIdx!==newIdx?(newIdx>oldIdx?'right':'left'):'up');
   window.scrollTo(0,0);
@@ -1465,7 +1543,7 @@ function startRoutine(id){
   store.active={start:nowStr(),routine:r.name,bw:latestBW(),fromRoutine:r.id||r.name||true,   /* F31: routine-started → no in-workout "Save as routine" */
     entries:r.exercises.map(ex=>({name:ex.name,ss:ex.ss??null,note:'',
       sets:ex.sets.map(t=>({w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:{tw:t.tw??null,rlo:t.rlo??null,rhi:t.rhi??null}}))}))};
-  save();setView('log');toast('Started “'+r.name+'”');
+  diagCount('workoutStarted');save();setView('log');toast('Started “'+r.name+'”');
 }
 function startPopular(i){
   if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}
@@ -1473,7 +1551,7 @@ function startPopular(i){
   for(const n of r.ex)ensureEx(n);
   store.active={start:nowStr(),routine:r.name,bw:latestBW(),fromRoutine:r.name||true,   /* F31: popular routine → no in-workout "Save as routine" */
     entries:r.ex.map(n=>({name:n,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]}))};
-  save();setView('log');toast('Started “'+r.name+'”');
+  diagCount('workoutStarted');save();setView('log');toast('Started “'+r.name+'”');
 }
 /* F33 (2026-07-06) OWNER SPEC, verbatim: "Pressing on a routine/previous
    workout shouldn't instantly start a new workout, let the user confirm if
@@ -1532,7 +1610,7 @@ function weekSummary(){
   let n=0;for(const w of statWorkouts()){if(toDate(w.start)>=mon)n++;else break;}   // F24: count the live workout too
   return n===0?'No workouts yet this week.':n+' workout'+(n>1?'s':'')+' this week.';
 }
-function startWorkout(){if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}store.active={start:nowStr(),routine:'',bw:latestBW(),entries:[]};save();setView('log');}
+function startWorkout(){if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}store.active={start:nowStr(),routine:'',bw:latestBW(),entries:[]};diagCount('workoutStarted');save();setView('log');}
 function repeatWorkout(wid){
   const src=store.workouts.find(w=>w.id===wid);if(!src)return;
   if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}
@@ -1541,7 +1619,7 @@ function repeatWorkout(wid){
     entries:src.entries.map(e=>({name:e.name,ss:e.ss??null,note:'',
       sets:e.sets.map(s=>({w:null,r:null,dur:null,dist:null,note:'',drop:false,
         tgt:{tw:s.w??null,rlo:s.r??null,rhi:s.r??null}}))}))};
-  save();closeModal();setView('log');toast('Repeating “'+(src.routine||'workout')+'” — last time\'s numbers shown as hints');
+  diagCount('workoutStarted');save();closeModal();setView('log');toast('Repeating “'+(src.routine||'workout')+'” — last time\'s numbers shown as hints');
 }
 function saveWorkoutAsRoutine(wid){
   const w=store.workouts.find(x=>x.id===wid);if(!w)return;
@@ -2172,7 +2250,7 @@ function finishWorkout(){
   }
   const w={id:newWid(),start:a.start,end:nowStr(),routine:a.routine.trim(),bw:a.bw||null,entries};
   store.workouts.unshift(w);store.workouts.sort((x,y)=>x.start<y.start?1:-1);
-  store.active=null;save();clearInterval(tick);
+  store.active=null;diagCount('workoutFinished');save();clearInterval(tick);
   const vol=entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+(statSet(s)?setVol(s):0),0),0);   // F26
   const nsets=entries.reduce((t,e)=>t+e.sets.length,0);
   /* F48: the worst dead-space offender — moved to the centered dialog. */
@@ -2215,7 +2293,7 @@ function pickExercise(name){
     state.editRoutine.exercises.push({name,ss:null,sets:[{tw:null,rlo:null,rhi:null}]});
     closeModal();render();return;}
   store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});
-  save();closeModal();render();
+  diagCount('exerciseAdded');save();closeModal();render();
 }
 function createExercise(name){
   openModal('<h2>New exercise</h2>'+
@@ -2232,7 +2310,7 @@ function saveNewExercise(){
     state.pickTarget='active';toast('Replaced with “'+name+'”');
   }
   else if(state.pickTarget==='routine'&&state.editRoutine){state.editRoutine.exercises.push({name,ss:null,sets:[{tw:null,rlo:null,rhi:null}]});}
-  else if(store.active)store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});
+  else if(store.active){store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});diagCount('exerciseAdded');}
   save();closeModal();render();
 }
 
@@ -3225,9 +3303,106 @@ function renderSettings(){
       CHANGELOG.map(clRow).join('')+'</details></div>';
   // danger zone
   h+='<div class="card"><h3>Danger zone</h3><button class="btn danger wide" onclick="wipeAll()">Delete all data on this device</button></div>';
+  // F60c: the hidden Diagnostics card sits between Danger zone and the footer,
+  // shown only while dev mode is on (a settings flag, so it persists across
+  // launches until Hide). Logging itself runs regardless of this flag.
+  if(store.settings&&store.settings.devMode)h+=renderDiagCard();
   // F49: the version footer moved here from the dropped More tab.
-  h+='<p class="tiny muted" style="text-align:center;margin:20px 0">Sett v'+APP_VERSION+'</p>';
+  // F60c: seven taps on it (reset if >2s apart) unlock developer mode. Visually
+  // unchanged — just an onclick that counts taps.
+  h+='<p class="tiny muted" style="text-align:center;margin:20px 0" onclick="devTap()">Sett v'+APP_VERSION+'</p>';
   return h;
+}
+/* F60c: the diagnostics panel body. Recent errors (danger colour, wrapping),
+   a 7-day counters summary, storage sizes, and the three action buttons. All
+   text run through esc(); long error strings get word-break so nothing overflows
+   the 375px card. Reads only the diag store — never store.workouts. */
+function renderDiagCard(){
+  const d=diagLoad();
+  const errs=d.log.filter(e=>e.type==='error').slice(-5).reverse();
+  let h='<div class="card"><div class="row"><h3 class="grow">Diagnostics</h3>'+
+    '<span class="chip">dev</span></div>'+
+    '<p class="tiny muted" style="margin:6px 0 12px">On-device only. Errors and usage counts — never your workout data.</p>';
+  // recent errors
+  h+='<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Recent errors</div>';
+  if(!errs.length)h+='<p class="small muted" style="margin:0 0 12px">No errors recorded.</p>';
+  else{
+    for(const e of errs)
+      h+='<div style="margin:0 0 10px;font-size:12px;line-height:1.35;overflow-wrap:anywhere;word-break:break-word">'+
+        '<div style="color:var(--bad);font-family:ui-monospace,Menlo,Consolas,monospace">'+esc(e.msg||'')+
+        (e.src?'<br><span class="muted">'+esc(e.src)+'</span>':'')+'</div>'+
+        '<div class="tiny muted">v'+esc(e.v||'')+' · '+esc(e.os||'')+' · '+(e.sa?'installed':'browser')+' · '+esc(e.t||'')+'</div></div>';
+  }
+  // 7-day counters
+  h+='<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px">Usage · last 7 days</div>';
+  const tot=diagCountTotals(7);
+  const labels=[['workoutStarted','Workouts started'],['workoutFinished','Workouts finished'],
+    ['exerciseAdded','Exercises added'],['backupExported','JSON backups'],['csvExported','CSV exports'],
+    ['backupRestored','Backups restored'],
+    ['screen:home','Home opens'],['screen:log','Log opens'],['screen:routines','Routines opens'],
+    ['screen:stats','Stats opens'],['screen:exercises','Exercises opens'],['screen:settings','Settings opens']];
+  h+='<div style="font-size:13px">';
+  for(const [k,lbl] of labels)
+    h+='<div class="row" style="padding:2px 0"><span class="grow muted">'+esc(lbl)+'</span>'+
+      '<span style="font-variant-numeric:tabular-nums;font-weight:700">'+(tot[k]||0)+'</span></div>';
+  h+='</div>';
+  // storage sizes
+  h+='<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px">Storage</div>'+
+    '<div style="font-size:13px"><div class="row" style="padding:2px 0"><span class="grow muted">sett:store</span>'+
+    '<span style="font-variant-numeric:tabular-nums;font-weight:700">'+diagKeySizeKB(KEY)+' KB</span></div>'+
+    '<div class="row" style="padding:2px 0"><span class="grow muted">sett:diag</span>'+
+    '<span style="font-variant-numeric:tabular-nums;font-weight:700">'+diagKeySizeKB(DIAG_KEY)+' KB</span></div></div>';
+  // actions
+  h+='<div style="margin-top:14px">'+
+    '<button class="btn wide" style="margin-bottom:10px" onclick="diagCopy()">Copy diagnostics</button>'+
+    '<button class="btn wide" style="margin-bottom:10px" onclick="diagClearLog()">Clear log</button>'+
+    '<button class="btn wide ghost" onclick="devHide()">Hide</button></div>';
+  h+='</div>';
+  return h;
+}
+/* Sum every counter across the last n local days. */
+function diagCountTotals(n){
+  const out={};
+  try{
+    const d=diagLoad();const now=new Date();
+    for(let i=0;i<n;i++){const dd=new Date(now);dd.setDate(now.getDate()-i);const day=nowStr(dd).slice(0,10);
+      const c=d.counts[day];if(!c)continue;for(const k in c)out[k]=(out[k]||0)+c[k];}
+  }catch(e){}
+  return out;
+}
+/* F60c: the 7-tap unlock. Resets if >2s between taps. Countdown toasts from tap
+   4. Tap 7 flips the devMode settings flag on. */
+let devTaps=0, devTapAt=0;
+function devTap(){
+  const now=Date.now();
+  if(now-devTapAt>2000)devTaps=0;
+  devTapAt=now;devTaps++;
+  if(store.settings&&store.settings.devMode)return;   // already unlocked
+  const left=7-devTaps;
+  if(devTaps>=7){devTaps=0;store.settings=store.settings||{};store.settings.devMode=true;save();render();toast('Developer mode on');}
+  else if(left<=3)toast(left+(left===1?' tap':' taps')+' from developer mode');
+}
+function devHide(){store.settings=store.settings||{};store.settings.devMode=false;save();render();toast('Diagnostics hidden');}
+function diagClearLog(){diagClear();render();toast('Diagnostics log cleared');}
+/* Copy the full diag JSON to the clipboard, with a textarea+execCommand
+   fallback for browsers/contexts without the async clipboard API. */
+function diagCopy(){
+  const txt=diagExport();
+  const done=()=>toast('Diagnostics copied');
+  try{
+    if(navigator&&navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(done,()=>diagCopyFallback(txt,done));return;
+    }
+  }catch(e){}
+  diagCopyFallback(txt,done);
+}
+function diagCopyFallback(txt,done){
+  try{
+    const ta=document.createElement('textarea');ta.value=txt;
+    ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    document.execCommand('copy');document.body.removeChild(ta);done();
+  }catch(e){toast('Could not copy');}
 }
 function setSex(k){store.settings=store.settings||{};store.settings.sex=k;save();toast(SEX_LABEL[k]+' standards');render();}
 function setTheme(id){store.settings=store.settings||{};store.settings.theme=id;save();applyTheme(id);render();}
@@ -3265,12 +3440,14 @@ function importBundled(){
   toast(res.msg);render();if(res.ok&&res.added)askSexIfUnset();
 }
 function exportJson(){
+  diagCount('backupExported');
   const blob=new Blob([JSON.stringify(store,null,1)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='sett-backup-'+nowStr().slice(0,10)+'.json';a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
 function exportCsv(){
+  diagCount('csvExported');
   const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';
   let rows=['Workout Start;Workout End;Exercise;Weight;Reps;Notes;Kcal;Distance;Duration;Category;Name;Bodyweight'];
   for(const w of [...store.workouts].sort((a,b)=>a.start<b.start?1:-1))
@@ -3659,7 +3836,7 @@ function wireInputs(){
     f.text().then(t=>{
       try{const s=JSON.parse(t);
         if(!s||s.schema!==1||!Array.isArray(s.workouts))throw new Error('bad shape');
-        store=s;normalizeStore();migrateVisuals();migrateGroups();save();toast('Backup restored — '+store.workouts.length+' workouts');render();
+        store=s;normalizeStore();migrateVisuals();migrateGroups();save();diagCount('backupRestored');toast('Backup restored — '+store.workouts.length+' workouts');render();
       }catch(e){toast('That file is not a Sett backup.');}
     });
   };
