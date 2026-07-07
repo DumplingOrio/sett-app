@@ -61,10 +61,14 @@
     justify-content:space-around; padding:8px 8px calc(8px + env(safe-area-inset-bottom));
     background:color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter:blur(14px);
     border-top:1px solid var(--line);
-    transition:transform .2s cubic-bezier(.22,.61,.36,1);}
+    /* F51: the RE-SHOW (un-hide) direction carries a transition-delay so a
+       transient .kb-open flap during iOS's scroll-driven keyboard dismissal
+       never repaints the bar mid-thrash; the hide direction below zeroes it. */
+    transition:transform .2s cubic-bezier(.22,.61,.36,1) .28s;}
   /* F20: with the iOS keyboard up (--kb>0) iOS floats the fixed tabbar above it;
-     slide it away while typing, restore on close. */
-  .kb-open .tabbar{transform:translateY(120%);}
+     slide it away while typing, restore on close.
+     F51: hide stays INSTANT — no delay when the class is ON. */
+  .kb-open .tabbar{transform:translateY(120%); transition-delay:0s;}
   .tab{display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint);
     font-size:11px; font-weight:600; min-width:56px; padding:4px 6px; border-radius:12px;}
   .tab svg{width:24px; height:24px;}
@@ -106,6 +110,20 @@
   .chiprow{display:flex; gap:8px; overflow-x:auto; padding:4px 2px 8px; scrollbar-width:none;}
   .chiprow::-webkit-scrollbar{display:none;}
   .chiprow .chip.on{background:var(--accent-soft); color:var(--accent);}
+
+  /* F52: muscle-group tiles landing for the Exercises tab. 2-up at 375px, card
+     language. The colored dot is the group's CAT_COLORS accent. */
+  .mgrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0 4px;}
+  .mgtile{display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line);
+    border-radius:var(--r); padding:14px 14px; cursor:pointer; text-align:left;}
+  .mgtile:active{background:var(--card2);}
+  .mgtile .dot{width:12px; height:12px; border-radius:50%; flex:none;}
+  .mgtile .nm{font-weight:700; font-size:15px; letter-spacing:-.01em; line-height:1.1;}
+  .mgtile .ct{font-size:12px; color:var(--muted); font-weight:600; margin-top:2px;}
+  /* F52: back-to-tiles header row above a selected group's list */
+  .mgback{display:flex; align-items:center; gap:8px; padding:8px 2px 2px; cursor:pointer; color:var(--text);}
+  .mgback .ico{width:20px; height:20px; color:var(--muted);}
+  .mgback h3{margin:0; font-size:17px;}
 
   .hero{padding:26px 18px; text-align:center;}
   .hero .big{font-size:26px; font-weight:800; letter-spacing:-.03em;}
@@ -394,8 +412,13 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.10';
+const APP_VERSION='0.9.11';
 const CHANGELOG=[
+  {v:'0.9.11', date:'2026-07-07', items:[
+    'The Exercises tab now opens on muscle-group tiles with counts, plus a Recent row for quick jumps — tap a group to see just its exercises.',
+    'A new review step flags imported exercises whose muscle group doesn\'t match their linked visual, so you can fix them in a tap.',
+    'The bottom bar is steadier now — it no longer flickers back when you spam-scroll a list with the keyboard open.',
+  ]},
   {v:'0.9.10', date:'2026-07-07', items:[
     'Confirmation and "workout saved" popups now sit centered on screen with no wasted space below the buttons.',
     'Every popup is sized to its content, so short ones no longer leave a big empty gap at the bottom.',
@@ -688,6 +711,10 @@ function freshStore(){return {schema:1, workouts:[], ex:{}, settings:{}, routine
 function normalizeStore(){
   if(!Array.isArray(store.workouts))store.workouts=[];
   if(!store.ex||typeof store.ex!=='object'||Array.isArray(store.ex))store.ex={};
+  /* F53: per-exercise fields (incl. the new catRev "reviewed" flag) are never
+     rewritten here — they ride whole objects through save/export/restore, so a
+     kept/accepted group survives backup round-trips untouched. No backfill
+     needed: absent catRev is falsy, i.e. "not yet reviewed", the correct default. */
   if(!store.settings||typeof store.settings!=='object'||Array.isArray(store.settings))store.settings={};
   if(!Array.isArray(store.routines))store.routines=[];
   store.active=store.active||null;
@@ -901,7 +928,7 @@ function closestRankUp(){
 }
 
 /* ============================== state & render ============================== */
-const state={view:'home', exQuery:'', exCat:'All', editRoutine:null, pickTarget:'active', mgFrame:'week'};   /* F39: muscle-group timeframe, transient (not persisted) */
+const state={view:'home', exQuery:'', exGroup:null, editRoutine:null, pickTarget:'active', mgFrame:'week'};   /* F39: muscle-group timeframe, transient. F52: exGroup = selected muscle-group tile (null = tiles landing), transient. */
 const NAV=['home','log','routines','stats','exercises'];   /* F35: Stats before Exercises. F49: More dropped — five tabs. */
 const TITLES={home:'Home', log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', settings:'Settings'};
 /* F49 (2026-07-07): the install card on Home and the version/install text moved
@@ -939,6 +966,7 @@ const ICO={
   play:'<path d="M8 5.5l11 6.5-11 6.5z"/>',
   sort:'<path d="M8 4v16M8 20l-3.5-3.5M8 20l3.5-3.5M16 20V4M16 4l-3.5 3.5M16 4l3.5 3.5"/>',
   info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 7.5v.01"/>',
+  back:'<path d="M15 5l-7 7 7 7"/>',
 };
 function ico(name,sz){return '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(sz?' style="width:'+sz+'px;height:'+sz+'px"':'')+'>'+(ICO[name]||'')+'</svg>';}
 /* F44 (2026-07-07): the badger cameo rebuilt to MATCH the app icon (icon-512.png)
@@ -994,6 +1022,9 @@ function emptyState(title,sub,sz){
 }
 function setView(v){
   const oldIdx=NAV.indexOf(state.view), newIdx=NAV.indexOf(v);
+  /* F52: leaving Exercises drops the selected group + search so the tab always
+     re-lands on the muscle-group tiles (the intended "overview" home). */
+  if(state.view==='exercises'&&v!=='exercises'){state.exGroup=null;state.exQuery='';}
   state.view=v;render();
   playViewAnim(oldIdx>=0&&newIdx>=0&&oldIdx!==newIdx?(newIdx>oldIdx?'right':'left'):'up');
   window.scrollTo(0,0);
@@ -1123,6 +1154,13 @@ function renderHome(){
     h+='<button class="btn primary wide" style="margin:4px 0 6px" onclick="startWorkout()">＋ Start workout</button>';
   }
   h+='<p class="tiny muted" style="margin:2px 4px 8px">'+weekSummary()+'</p>';
+  /* F53: a self-clearing nudge while any exercise's muscle group disagrees with
+     its linked visual — no dismissed flag needed; it vanishes once count hits 0. */
+  const dgN=groupDisagreements().length;
+  if(dgN)h+='<div class="card" style="cursor:pointer" onclick="openReviewGroups()"><div class="row">'+
+    '<div class="grow"><h3 style="margin:0">Check muscle groups</h3>'+
+    '<div class="tiny muted" style="margin-top:2px">'+dgN+' imported exercise'+(dgN===1?'':'s')+' may be filed under the wrong muscle. Tap to review.</div></div>'+
+    '<span class="chip" style="background:var(--accent-soft);color:var(--accent);flex:none">'+dgN+'</span></div></div>';
   h+=recapCardHtml();   /* F41: monthly recap (empty until the prior month has data & isn't dismissed) */
   h+='<div class="card"><h3>Routines</h3>';
   if(store.routines.length){
@@ -2104,32 +2142,77 @@ function deleteWorkout(id){
 }
 
 /* ============================== EXERCISES view ============================== */
+/* F52: the shared exercise list row (thumb, name, sessions/best line, rank badge).
+   [data-ex] rows are click-wired globally in wireInputs → openExercise. */
+function exListRow(n){
+  const m=store.ex[n];const pr=prFor(n);const rk=showRanks()?rankFor(n):null;
+  return '<div class="listrow" data-ex="'+esc(n)+'">'+
+    (m.vid?'<img class="thumb" loading="lazy" src="exercises/'+esc(m.vid)+'/0.jpg" alt="">':
+      '<span class="thumb" style="background:var(--card2);display:inline-flex;align-items:center;justify-content:center;color:'+(CAT_COLORS[m.cat]||CAT_COLORS.Other)+';font-weight:800">'+esc(n[0])+'</span>')+
+    '<div class="grow"><div style="font-weight:600">'+esc(n)+'</div>'+
+    '<div class="tiny muted">'+(pr.sessions?pr.sessions+' sessions'+(pr.bestE1?' · best e1RM '+fmtW(pr.bestE1)+' kg':''):'never logged')+'</div></div>'+
+    (rk&&!rk.locked?rankBadge(rk.tier):'')+'</div>';
+}
+/* F52: the ~6 most recently TRAINED distinct exercise names, newest-first.
+   store.workouts is always newest-first (never re-sorted here) so first-seen
+   order over its entries is the recency order. Only names still in the library. */
+function recentExercises(limit){
+  limit=limit||6;const out=[];const seen=new Set();
+  for(const w of store.workouts){
+    for(const e of w.entries){
+      const n=e.name;
+      if(!n||seen.has(n)||!store.ex[n])continue;
+      seen.add(n);out.push(n);
+      if(out.length>=limit)return out;
+    }
+  }
+  return out;
+}
 function renderExercises(){
   const names=Object.keys(store.ex).sort((a,b)=>a.localeCompare(b));
-  const cats=['All',...CATS.filter(c=>names.some(n=>store.ex[n].cat===c))];
+  const q=(state.exQuery||'').trim().toLowerCase();
   let h='<div class="row" style="margin:4px 0 2px"><button class="btn grow" onclick="openCatalog()">Browse catalog</button>'+
      '<button class="btn primary grow" onclick="createExercise(\'\')">＋ New exercise</button></div>';
   h+='<input style="width:100%;margin:8px 0" placeholder="Search '+names.length+' exercises…" data-act="exq" value="'+esc(state.exQuery)+'">';
-  h+='<div class="chiprow">'+cats.map(c=>'<button class="chip'+(state.exCat===c?' on':'')+'" onclick="state.exCat=\''+c+'\';render()">'+c+'</button>').join('')+'</div>';
-  let list='';let shown=0;
-  for(const n of names){
-    const m=store.ex[n];
-    if(state.exCat!=='All'&&m.cat!==state.exCat)continue;
-    if(state.exQuery&&!n.toLowerCase().includes(state.exQuery.toLowerCase()))continue;
-    shown++;
-    const pr=prFor(n);const rk=showRanks()?rankFor(n):null;
-    list+='<div class="listrow" data-ex="'+esc(n)+'">'+
-      (m.vid?'<img class="thumb" loading="lazy" src="exercises/'+esc(m.vid)+'/0.jpg" alt="">':
-        '<span class="thumb" style="background:var(--card2);display:inline-flex;align-items:center;justify-content:center;color:'+(CAT_COLORS[m.cat]||CAT_COLORS.Other)+';font-weight:800">'+esc(n[0])+'</span>')+
-      '<div class="grow"><div style="font-weight:600">'+esc(n)+'</div>'+
-      '<div class="tiny muted">'+(pr.sessions?pr.sessions+' sessions'+(pr.bestE1?' · best e1RM '+fmtW(pr.bestE1)+' kg':''):'never logged')+'</div></div>'+
-      (rk&&!rk.locked?rankBadge(rk.tier):'')+'</div>';
+
+  /* SEARCH short-circuits the tiles: global flat results across ALL own exercises. */
+  if(q){
+    const hits=names.filter(n=>n.toLowerCase().includes(q));
+    if(hits.length)return h+'<div class="card" style="padding:4px 14px">'+hits.map(exListRow).join('')+'</div>';
+    return h+'<div class="card">'+emptyState('Nothing matches',
+      'Try a different search, or add it from the catalog above.',64)+'</div>';
   }
-  /* F42: no matches (or an empty library) → the badger instead of an empty card */
-  if(shown)h+='<div class="card" style="padding:4px 14px">'+list+'</div>';
-  else h+='<div class="card">'+emptyState(
-    (state.exQuery||state.exCat!=='All')?'Nothing matches':'No exercises yet',
-    (state.exQuery||state.exCat!=='All')?'Try a different search, or add it from the catalog above.':'Browse the catalog or add your own with the buttons above.',64)+'</div>';
+
+  /* No exercises at all → badger (no tiles to show). */
+  if(!names.length)
+    return h+'<div class="card">'+emptyState('No exercises yet',
+      'Browse the catalog or add your own with the buttons above.',64)+'</div>';
+
+  /* A group tile is selected → that group's rows with a back-to-tiles header. */
+  if(state.exGroup&&CATS.includes(state.exGroup)){
+    const g=state.exGroup;
+    const rows=names.filter(n=>store.ex[n].cat===g);
+    h+='<div class="mgback" onclick="state.exGroup=null;render()">'+ico('back')+'<h3>'+esc(g)+'</h3>'+
+       '<span class="tiny muted" style="margin-left:auto">'+rows.length+' exercise'+(rows.length===1?'':'s')+'</span></div>';
+    if(rows.length)h+='<div class="card" style="padding:4px 14px">'+rows.map(exListRow).join('')+'</div>';
+    else h+='<div class="card">'+emptyState('Nothing here','No exercises in this group yet.',64)+'</div>';
+    return h;
+  }
+
+  /* Landing: Recent strip + muscle-group tiles. */
+  const recent=recentExercises(6);
+  if(recent.length){
+    h+='<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:10px 2px 2px">Recent</div>';
+    h+='<div class="chiprow">'+recent.map(n=>{
+      const m=store.ex[n];const c=CAT_COLORS[m.cat]||CAT_COLORS.Other;
+      return '<button class="chip" data-ex="'+esc(n)+'"><span class="dot" style="background:'+c+'"></span>'+esc(n)+'</button>';
+    }).join('')+'</div>';
+  }
+  const counts={};for(const n of names){const c=store.ex[n].cat;counts[c]=(counts[c]||0)+1;}
+  h+='<div class="mgrid">'+CATS.filter(c=>counts[c]).map(c=>
+    '<button class="mgtile" onclick="state.exGroup=\''+c+'\';render()">'+
+    '<span class="dot" style="background:'+(CAT_COLORS[c]||CAT_COLORS.Other)+'"></span>'+
+    '<span><span class="nm">'+c+'</span><span class="ct">'+counts[c]+' exercise'+(counts[c]===1?'':'s')+'</span></span></button>').join('')+'</div>';
   return h;
 }
 let visTimer=null;
@@ -2249,6 +2332,66 @@ function renderCatalogList(){
 function saveExercise(name){
   const m=store.ex[name];m.howto=$('howto').value.trim();m.cat=$('excat').value;
   save();toast('Saved');closeModal();render();
+}
+
+/* ===================== F53: muscle-group review (data hygiene) =====================
+   RepCount's CSV import trusts its Category column raw, so some own exercises carry
+   a muscle group that disagrees with the linked catalog visual's group. A generic
+   detector (no exercise names ever hardcoded — privacy law) finds those, and a
+   review sheet lets the owner Accept (take the catalog's group), Keep (persist his
+   own, never nag again) or Accept all. catRev:true marks a row reviewed so it's
+   never surfaced again regardless of which choice was made. */
+function groupDisagreements(){
+  const out=[];
+  for(const n of Object.keys(store.ex)){
+    const m=store.ex[n];
+    if(!m||!m.vid||m.catRev)continue;              // no visual linked, or already reviewed
+    const c=CAT_BY_ID[m.vid];                       // catalog entry for the linked visual
+    if(!c)continue;                                 // stale/invalid vid → nothing to compare
+    const cat=c.c;                                  // catalog's muscle group (the .c field)
+    if(!CATS.includes(cat))continue;                // guard against an out-of-set catalog value
+    if(cat!==m.cat)out.push({name:n,stored:m.cat,catalog:cat});
+  }
+  return out.sort((a,b)=>a.name.localeCompare(b.name));
+}
+function acceptGroup(name){
+  const m=store.ex[name];if(!m)return;
+  const c=m.vid?CAT_BY_ID[m.vid]:null;
+  if(c&&CATS.includes(c.c))m.cat=c.c;
+  m.catRev=true;save();renderReviewSheet();
+}
+function keepGroup(name){
+  const m=store.ex[name];if(!m)return;
+  m.catRev=true;save();renderReviewSheet();          // cat unchanged; never nags again
+}
+function acceptAllGroups(){
+  for(const d of groupDisagreements()){
+    const m=store.ex[d.name];if(!m)continue;
+    m.cat=d.catalog;m.catRev=true;
+  }
+  save();renderReviewSheet();
+}
+function openReviewGroups(){openModal('<div id="mgreview"></div>');renderReviewSheet();}
+function renderReviewSheet(){
+  const box=$('mgreview');if(!box)return;
+  const rows=groupDisagreements();
+  if(!rows.length){
+    box.innerHTML='<h2>Review muscle groups</h2>'+
+      '<div class="card">'+emptyState('All agreed','Every exercise’s muscle group matches its linked visual.',64)+'</div>';
+    /* re-render the tab/home so the entry point + nudge drop to zero, then close */
+    render();setTimeout(closeModalAnimated,900);return;
+  }
+  box.innerHTML='<h2>Review muscle groups</h2>'+
+    '<p class="tiny muted" style="margin:0 0 8px">'+rows.length+' exercise'+(rows.length===1?'':'s')+' disagree with the linked visual’s group. Accept the catalog’s group, or keep yours.</p>'+
+    '<button class="btn primary wide" style="margin-bottom:12px" onclick="acceptAllGroups()">Accept all ('+rows.length+')</button>'+
+    '<div class="card" style="padding:6px 14px">'+rows.map(d=>
+      '<div class="listrow" style="cursor:default;flex-wrap:wrap">'+
+        '<div class="grow" style="min-width:0"><div style="font-weight:600">'+esc(d.name)+'</div>'+
+        '<div class="row" style="gap:6px;margin-top:4px">'+catChip(d.stored)+'<span class="tiny muted">→</span>'+catChip(d.catalog)+'</div></div>'+
+        '<div class="row" style="gap:6px;flex:none">'+
+          '<button class="btn small" data-n="'+esc(d.name)+'" onclick="keepGroup(this.dataset.n)">Keep</button>'+
+          '<button class="btn primary small" data-n="'+esc(d.name)+'" onclick="acceptGroup(this.dataset.n)">Accept</button>'+
+        '</div></div>').join('')+'</div>';
 }
 /* line chart with axis labels; pts=[{t:label, y:number}] ascending in time */
 function lineChart(pts,fmtY){
@@ -2580,6 +2723,12 @@ function renderSettings(){
     '<button class="btn wide" style="margin-bottom:10px" onclick="exportJson()">Export backup (JSON)</button>'+
     '<button class="btn wide" style="margin-bottom:10px" onclick="exportCsv()">Export CSV (Excel / RepCount format)</button>'+
     '<label class="btn wide">Restore backup<input type="file" accept=".json,application/json" style="display:none" id="jsonfile"></label></div>';
+  // F53: muscle-group review — hidden when nothing disagrees
+  const dg=groupDisagreements().length;
+  if(dg)h+='<div class="card"><div class="row"><div class="grow"><h3 style="margin:0">Review muscle groups</h3>'+
+    '<p class="tiny muted" style="margin:4px 0 0">'+dg+' exercise'+(dg===1?'':'s')+' disagree with the linked visual’s group.</p></div>'+
+    '<span class="chip" style="background:var(--accent-soft);color:var(--accent)">'+dg+'</span></div>'+
+    '<button class="btn wide" style="margin-top:12px" onclick="openReviewGroups()">Review now</button></div>';
   // updates
   h+='<div class="card"><div class="row"><h3 class="grow">Updates</h3>'+
     '<button class="'+(autoOn?'toggle on':'toggle')+'" onclick="setAutoUpdate('+(!autoOn)+')"><span class="knob"></span></button></div>'+
@@ -2854,15 +3003,43 @@ function isTextInput(el){
   if(el.tagName!=='INPUT')return false;
   return !['button','submit','checkbox','radio','range','file','color','reset','image'].includes((el.type||'text').toLowerCase());
 }
+/* F51 (2026-07-07): F28 stabilised the HIDE path (scroll noise can't toggle the
+   class off), but iOS AUTO-DISMISSES the keyboard when you scroll a list to its
+   end: focusout fires mid-flutter, the visual viewport flaps, and .kb-open would
+   drop instantly → the tab bar animates back while the viewport is still
+   thrashing ("nav bar popping up if u spam scroll at the bottom"). Fix: the
+   RE-SHOW is now hysteretic — .kb-open only DROPS after the viewport has been
+   STABLE (kb near 0, no resize flapping) for KB_STABLE_MS; any return of kb>0 or
+   a refocus inside the window CANCELS the pending drop. HIDING stays instant. A
+   CSS transition-delay on the un-hide direction (see .tabbar rule) is the
+   belt-and-braces so even a transient class flap never paints. */
+const KB_STABLE_MS=300;
 if(window.visualViewport){
-  let kbFocused=false;
+  let kbFocused=false, kbDropTimer=null;
+  const setKbOpen=on=>{
+    if(on){                                   // HIDE: instant, and cancel any pending drop
+      if(kbDropTimer){clearTimeout(kbDropTimer);kbDropTimer=null;}
+      document.body.classList.add('kb-open');
+    }else if(document.body.classList.contains('kb-open')){
+      /* RE-SHOW: defer the drop until the viewport has held steady KB_STABLE_MS.
+         Re-arm (don't stack) on each settled tick so flapping keeps postponing. */
+      if(kbDropTimer)clearTimeout(kbDropTimer);
+      kbDropTimer=setTimeout(()=>{
+        kbDropTimer=null;
+        const raw=Math.max(0,window.innerHeight-window.visualViewport.height);
+        /* only actually drop if it's STILL settled — no field refocused, kb still near 0 */
+        if(!kbFocused && raw<=40)document.body.classList.remove('kb-open');
+      },KB_STABLE_MS);
+    }
+  };
   const kbAdj=()=>{
     const raw=Math.max(0,window.innerHeight-window.visualViewport.height);   // F28: no offsetTop
     const kb=raw>40?Math.round(raw):0;
     document.documentElement.style.setProperty('--kb',kb+'px');
     /* F28: keyboard is "up" while a text field holds focus and the viewport is
-       actually shrunk — scroll-driven offsetTop noise can't flip this off. */
-    document.body.classList.toggle('kb-open',kbFocused&&kb>0);
+       actually shrunk. F51: hide is immediate; the un-hide runs through the
+       stability window in setKbOpen so scroll-flutter can't flap the bar back. */
+    setKbOpen(kbFocused&&kb>0);
   };
   document.addEventListener('focusin',e=>{if(isTextInput(e.target)){kbFocused=true;kbAdj();}});
   document.addEventListener('focusout',e=>{if(isTextInput(e.target)){kbFocused=false;
