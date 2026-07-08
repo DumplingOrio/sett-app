@@ -24,14 +24,20 @@
   html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
     font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     /* F78 (2026-07-08) — APP-SHELL SCROLL MODEL (R20 root-cause fix). The document
-       itself never scrolls: height:100% + overflow:hidden. All scrolling lives in
-       the #main pane below, so there is NO document-level rubber-band for iOS to
-       drag the bottom nav bar with — the fixed-bar-vs-native-bounce conflict that
-       kept shipping broken (F65/F70/F76 all patched around it) is gone by
-       construction. F46's bounce the owner loves now lives INSIDE the pane.
-       F16: overflow:hidden also removes any horizontal page pan from an off-screen
-       sheet (translateX 110vw) or an overflowing row. */
-    height:100%; overflow:hidden;}
+       itself never scrolls: a definite viewport height + overflow:hidden. All
+       scrolling lives in the #main pane below, so there is NO document-level
+       rubber-band for iOS to drag the bottom nav bar with — the fixed-bar-vs-native-
+       bounce conflict that kept shipping broken (F65/F70/F76 all patched around it)
+       is gone by construction. F46's bounce the owner loves now lives INSIDE the pane.
+       F16: overflow:hidden also removes any horizontal page pan.
+       F78b (2026-07-08): height was `100%`, which on iOS (esp. standalone PWA) often
+       fails to resolve — <body> collapsed to CONTENT height, so the flex column was
+       shorter than the screen and the tab bar floated UP with dead space below it
+       (owner: "no longer along the bottom, locked higher up"). `100dvh` is a definite
+       viewport length that always resolves; `100vh` is the fallback for iOS <16.4.
+       Because the document can't scroll, the URL bar never collapses, so dvh is
+       stable (no scroll-driven resize). */
+    height:100vh; height:100dvh; overflow:hidden;}
   /* F78: the app shell is a flex column — topbar (fixed height), #main (the scroll
      pane, flex:1), tab bar (fixed height). #restbar/#overlay/#toast are position:
      fixed so they sit outside the flex flow. */
@@ -590,8 +596,11 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.29';
+const APP_VERSION='0.9.30';
 const CHANGELOG=[
+  {v:'0.9.30', date:'2026-07-08', items:[
+    'Fixed the tab bar sitting too high up on the screen — it’s back along the bottom where it belongs.',
+  ]},
   {v:'0.9.29', date:'2026-07-08', items:[
     'The bottom tab bar now stays glued to the bottom of the screen — it no longer drifts upward when you scroll or the page bounces.',
     'Menus and sheets no longer let the page scroll behind them.',
@@ -5253,6 +5262,27 @@ function checkTabbarDriftFrame(){
     return true;
   }catch(e){return false;}
 }
+/* F78b (2026-07-08) — one-time shell-geometry snapshot. The app-shell column must
+   fill the screen for the tab bar to sit at the bottom; the iOS percentage-height
+   trap made <body> content-tall (bar floated up). This logs the numbers that prove
+   whether the fix took on-device: innerHeight vs the rendered body height vs where
+   the tab bar actually sits. Silent on success by inspection — read it in an export
+   only if the bar is still misplaced. */
+function logShellGeom(){
+  try{
+    const tb=$('tabbar'),b=document.body,vv=window.visualViewport;
+    const tbr=tb&&tb.getBoundingClientRect?tb.getBoundingClientRect():null;
+    diagLog('event',{name:'shellGeom',
+      innerH:Math.round(window.innerHeight||0),
+      clientH:Math.round((document.documentElement&&document.documentElement.clientHeight)||0),
+      bodyH:Math.round((b&&b.getBoundingClientRect?b.getBoundingClientRect().height:0)||0),
+      vvH:vv?Math.round(vv.height):null,
+      tbTop:tbr?Math.round(tbr.top):null,
+      tbBottom:tbr?Math.round(tbr.bottom):null,
+      standalone:!!((window.navigator&&window.navigator.standalone)||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)),
+      dvh:!!(window.CSS&&CSS.supports&&CSS.supports('height','100dvh'))});
+  }catch(e){}
+}
 /* Two checks TABBAR_DRIFT_GAP_MS apart, so both must agree before logging. Hooked
    after every sheet open/close (lock/unlock) and run on the slow watch interval. */
 function scheduleTabbarDriftCheck(){
@@ -5555,6 +5585,7 @@ startTabbarWatch();   // F70(b): slow ~10s watchdog on the rendered tabbar
    twitch the 300ms watchdog could miss). Cheap: one getBoundingClientRect,
    rate-limited logging; stays silent unless the bar actually moves. */
 (function(){const m=$('main');if(m&&m.addEventListener)m.addEventListener('scroll',checkTabbarDriftFrame,{passive:true});})();
+logShellGeom();   // F78b: one-time shell-geometry snapshot (does the column fill the screen? where's the bar?)
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
