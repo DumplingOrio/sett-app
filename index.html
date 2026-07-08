@@ -64,18 +64,18 @@
 
   /* F78: #main IS the scroll pane. flex:1 fills the space between the topbar and
      the tab bar; overflow-y:auto carries the scroll AND iOS's native rubber-band
-     (F46) INSIDE this element, where it can't touch the tab bar. min-height:0 is
-     mandatory — a flex child otherwise refuses to shrink below its content and the
-     pane never scrolls. overscroll-behavior-y:contain keeps the bounce local (no
-     chaining to the non-scrolling document). The old min-height:100dvh hack (a
-     document-scroll workaround so short views like More didn't hit a dead edge) is
-     retired — flex sizes the pane exactly to the viewport now. padding-bottom adds
-     --kb so the last rows clear the iOS keyboard (the tab bar is no longer an
-     overlapping fixed element, so its 76px reservation is gone). */
+     (F46) INSIDE this element. min-height:0 is mandatory — a flex child otherwise
+     refuses to shrink below its content and the pane never scrolls.
+     overscroll-behavior-y:contain keeps the bounce local (no chaining to the
+     non-scrolling document).
+     F78d (2026-07-08): the tab bar is position:fixed again (see below), so it
+     OVERLAPS the pane's bottom — padding-bottom must reserve its height (~76px +
+     the home-indicator safe area) so the last rows aren't hidden behind it, plus
+     --kb to clear the iOS keyboard. */
   main{flex:1 1 auto; min-height:0; width:100%; max-width:640px; margin:0 auto;
     overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
     overscroll-behavior-y:contain;
-    padding:6px 16px calc(24px + var(--kb,0px));}
+    padding:6px 16px calc(76px + env(safe-area-inset-bottom) + var(--kb,0px));}
   /* F78 centering note: width:100% is REQUIRED. As a flex item, `margin:0 auto`
      (the desktop centering) disables the default stretch and makes width:auto
      shrink to content width — the pane blew out to ~541px on a 375px phone
@@ -83,14 +83,16 @@
      margin:auto still centers on wide screens. overflow-x:hidden is the F16
      belt-and-braces (the old overflow-x:clip lived on html,body). */
 
-  /* F78 (2026-07-08): the tab bar is a FLEX CHILD of the app-shell column, no
-     longer position:fixed. Two things make it un-draggable now: (1) the document
-     doesn't scroll, so there's no rubber-band to move a fixed bar; (2) as a
-     laid-out sibling of the scroll pane (not inside it), the pane's own internal
-     bounce can't displace it either. This retires the entire fixed-vs-viewport
-     saga (F20/F28/F51/F65/F70/F76) — the bar simply sits at the bottom of the
-     column. The tabbarDrift watchdog (F70b) stays as an on-device proof channel. */
-  .tabbar{flex:none; z-index:30; display:flex;
+  /* F78d (2026-07-08): the tab bar is position:fixed; bottom:0 AGAIN. The flex-child
+     approach (F78) sat the bar at the flex column's bottom, which on iOS proved
+     hostage to unstable safe-area/height resolution (owner's export: safe insets
+     flip-flopped 34↔0 between paints, moving the bar). position:fixed;bottom:0 pins
+     the bar to the viewport bottom regardless of that wobble — the layout that sat
+     correctly for 20+ versions. It's safe to use now because the app-shell
+     (html,body overflow:hidden) removed the document bounce that used to drag it
+     (R20) — confirmed on device ("it didn't drift"). #main reserves its height via
+     padding-bottom (above). kb-hide (.kb-open) still applies. */
+  .tabbar{position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex;
     justify-content:space-around; padding:8px 8px calc(8px + env(safe-area-inset-bottom));
     background:color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter:blur(14px);
     border-top:1px solid var(--line);
@@ -596,12 +598,12 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.31';
+const APP_VERSION='0.9.32';
 /* Changelog convention (2026-07-08, owner ask): a version only gets an entry once
    its change is CONFIRMED working on device. Internal/fix-attempt bumps (needed for
    the service-worker cache to update) do NOT get a changelog line — otherwise the
    log accumulates "fixed!" claims for bugs that aren't fixed yet. The nav-bar work
-   (v0.9.29–0.9.31: drift, background-scroll, bar position) is HELD here until the
+   (v0.9.29 onward: drift, background-scroll, bar position) is HELD here until the
    whole thing is confirmed on-device, then lands as ONE honest consolidated entry. */
 const CHANGELOG=[
   {v:'0.9.28', date:'2026-07-08', items:[
@@ -5607,7 +5609,12 @@ startTabbarWatch();   // F70(b): slow ~10s watchdog on the rendered tabbar
    twitch the 300ms watchdog could miss). Cheap: one getBoundingClientRect,
    rate-limited logging; stays silent unless the bar actually moves. */
 (function(){const m=$('main');if(m&&m.addEventListener)m.addEventListener('scroll',checkTabbarDriftFrame,{passive:true});})();
-logShellGeom();   // F78b: one-time shell-geometry snapshot (does the column fill the screen? where's the bar?)
+logShellGeom();   // F78b: shell-geometry snapshot on load
+/* F78d: iOS resolves safe-area insets a beat AFTER first paint (owner's export
+   showed them flip-flopping) — log again once settled, and after a rotate, so an
+   export captures the state actually on screen, not just the load-time state. */
+setTimeout(logShellGeom,1500);
+window.addEventListener('orientationchange',()=>setTimeout(logShellGeom,400));
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
