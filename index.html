@@ -23,14 +23,19 @@
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
     font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    /* F46: overscroll-behavior-y:none removed — iOS's native rubber-band returns
-       app-wide (F34 now satisfied by the platform, not JS). */
-    /* F16: nothing may create horizontal page scroll — an off-screen sheet
-       (translateX/Y 110vw) or an overflowing pill row would let iOS pan the app */
-    overflow-x:clip;}
-  /* --kb = live keyboard height (F12, set via visualViewport) so lists can
-     scroll past the iOS keyboard instead of hiding their last entries */
-  body{padding-bottom:calc(76px + env(safe-area-inset-bottom) + var(--kb,0px));}
+    /* F78 (2026-07-08) — APP-SHELL SCROLL MODEL (R20 root-cause fix). The document
+       itself never scrolls: height:100% + overflow:hidden. All scrolling lives in
+       the #main pane below, so there is NO document-level rubber-band for iOS to
+       drag the bottom nav bar with — the fixed-bar-vs-native-bounce conflict that
+       kept shipping broken (F65/F70/F76 all patched around it) is gone by
+       construction. F46's bounce the owner loves now lives INSIDE the pane.
+       F16: overflow:hidden also removes any horizontal page pan from an off-screen
+       sheet (translateX 110vw) or an overflowing row. */
+    height:100%; overflow:hidden;}
+  /* F78: the app shell is a flex column — topbar (fixed height), #main (the scroll
+     pane, flex:1), tab bar (fixed height). #restbar/#overlay/#toast are position:
+     fixed so they sit outside the flex flow. */
+  body{display:flex; flex-direction:column;}
   h1,h2,h3{margin:0; letter-spacing:-.02em;}
   button{font:inherit; color:inherit; background:none; border:none; cursor:pointer; padding:0;}
   input,textarea,select{font:inherit; color:var(--text); background:var(--card2);
@@ -39,7 +44,9 @@
   input:focus,textarea:focus,select:focus{border-color:var(--accent);}
   ::placeholder{color:var(--faint);}
 
-  .topbar{position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:10px;
+  /* F78: a fixed-height flex header at the top of the shell (was position:sticky
+     when the document scrolled; the #main pane scrolls beneath it now). */
+  .topbar{flex:none; z-index:20; display:flex; align-items:center; gap:10px;
     padding:calc(10px + env(safe-area-inset-top)) 18px 10px;
     background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(12px);}
   .wordmark{font-weight:800; font-size:20px; letter-spacing:-.03em;}
@@ -49,31 +56,45 @@
   .gearbtn svg{width:22px; height:22px;}
   .gearbtn.on{color:var(--accent);}
 
-  /* min-height fills the viewport minus topbar (~50px + safe-top) and the
-     body's tab-bar padding (76px + safe-bottom) WITHOUT exceeding it — a
-     short view (More) must not overflow by a few px, or scrolling hits a
-     dead edge instantly and feels broken (owner feedback 2026-07-06) */
-  main{max-width:640px; margin:0 auto; padding:6px 16px 24px;
-    min-height:70vh;
-    min-height:calc(100dvh - 126px - env(safe-area-inset-top) - env(safe-area-inset-bottom));}
+  /* F78: #main IS the scroll pane. flex:1 fills the space between the topbar and
+     the tab bar; overflow-y:auto carries the scroll AND iOS's native rubber-band
+     (F46) INSIDE this element, where it can't touch the tab bar. min-height:0 is
+     mandatory — a flex child otherwise refuses to shrink below its content and the
+     pane never scrolls. overscroll-behavior-y:contain keeps the bounce local (no
+     chaining to the non-scrolling document). The old min-height:100dvh hack (a
+     document-scroll workaround so short views like More didn't hit a dead edge) is
+     retired — flex sizes the pane exactly to the viewport now. padding-bottom adds
+     --kb so the last rows clear the iOS keyboard (the tab bar is no longer an
+     overlapping fixed element, so its 76px reservation is gone). */
+  main{flex:1 1 auto; min-height:0; width:100%; max-width:640px; margin:0 auto;
+    overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    padding:6px 16px calc(24px + var(--kb,0px));}
+  /* F78 centering note: width:100% is REQUIRED. As a flex item, `margin:0 auto`
+     (the desktop centering) disables the default stretch and makes width:auto
+     shrink to content width — the pane blew out to ~541px on a 375px phone
+     (horizontal overflow, F16). width:100% fills the column; max-width:640 +
+     margin:auto still centers on wide screens. overflow-x:hidden is the F16
+     belt-and-braces (the old overflow-x:clip lived on html,body). */
 
-  .tabbar{position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex;
+  /* F78 (2026-07-08): the tab bar is a FLEX CHILD of the app-shell column, no
+     longer position:fixed. Two things make it un-draggable now: (1) the document
+     doesn't scroll, so there's no rubber-band to move a fixed bar; (2) as a
+     laid-out sibling of the scroll pane (not inside it), the pane's own internal
+     bounce can't displace it either. This retires the entire fixed-vs-viewport
+     saga (F20/F28/F51/F65/F70/F76) — the bar simply sits at the bottom of the
+     column. The tabbarDrift watchdog (F70b) stays as an on-device proof channel. */
+  .tabbar{flex:none; z-index:30; display:flex;
     justify-content:space-around; padding:8px 8px calc(8px + env(safe-area-inset-bottom));
     background:color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter:blur(14px);
     border-top:1px solid var(--line);
-    /* F76 (2026-07-07): the F65 --vvpin translate is GONE. The owner's diag
-       export proved it was the remaining mover: every navPin entry was a top
-       rubber-band bounce (negative vvOffsetTop) that the pin converted into a
-       12-33px lift of the bar. position:fixed is correct now that the scroll
-       lock pins main, not body (F70); the tabbarDrift watchdog stands guard. */
     /* F51: the RE-SHOW (un-hide) direction carries a transition-delay so a
        transient .kb-open flap during iOS's scroll-driven keyboard dismissal
        never repaints the bar mid-thrash; the hide direction below zeroes it. */
     transition:transform .2s cubic-bezier(.22,.61,.36,1) .28s;}
-  /* F20: with the iOS keyboard up (--kb>0) iOS floats the fixed tabbar above it;
-     slide it away while typing, restore on close.
-     F51: hide stays INSTANT — no delay when the class is ON.
-     F65: the visualViewport pin is dropped while hidden (translateY 120% wins). */
+  /* F20/F78: while the iOS keyboard is up, hide the bar (it would otherwise sit in
+     the flex slot the keyboard now covers); restore on close. F51: hide is
+     instant, re-show is delayed so a scroll-driven flap never repaints it. */
   .kb-open .tabbar{transform:translateY(120%); transition-delay:0s;}
   .tab{display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--faint);
     font-size:11px; font-weight:600; min-width:56px; padding:4px 6px; border-radius:12px;}
@@ -569,8 +590,12 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.28';
+const APP_VERSION='0.9.29';
 const CHANGELOG=[
+  {v:'0.9.29', date:'2026-07-08', items:[
+    'The bottom tab bar now stays glued to the bottom of the screen — it no longer drifts upward when you scroll or the page bounces.',
+    'Menus and sheets no longer let the page scroll behind them.',
+  ]},
   {v:'0.9.28', date:'2026-07-08', items:[
     'Swiping a set now works from anywhere on the row, including over the weight and reps — not just from the edge.',
     'Reordering exercises is more reliable: a small finger movement no longer cancels the drag, and dragging no longer scrolls the page behind the menu.',
@@ -1947,7 +1972,7 @@ function setView(v){
   diagCount('screen:'+v);
   state.view=v;render();
   playViewAnim(oldIdx>=0&&newIdx>=0&&oldIdx!==newIdx?(newIdx>oldIdx?'right':'left'):'up');
-  window.scrollTo(0,0);
+  const m=$('main');if(m)m.scrollTop=0;   /* F78: reset the scroll PANE (the document no longer scrolls) */
 }
 function playViewAnim(dir){
   const m=$('main');if(!m)return;
@@ -4862,37 +4887,30 @@ function closeDialog(){
   ov.classList.remove('closing');dg.classList.remove('closing');dg.style.transform='';dg.innerHTML='';
   if(_dialogOverSheet&&modalStack.length){_dialogOverSheet=false;popModalFrame();return;}
   _dialogOverSheet=false;closeModal();}
-/* F30 (2026-07-06): body{overflow:hidden} does NOT stop iOS Safari from
-   scrolling the page behind the sheet — the scroll chains through the overlay.
-   The reliable lock is position:fixed with top:-scrollY, restored on close.
-   Guarded so a rapid re-open mid-dismissal (F23) doesn't re-capture 0.
-   F70 (2026-07-07): pin MAIN, never body. iOS WebKit misplaces position:fixed
-   DESCENDANTS of a fixed body — with F30 pinning <body>, the tabbar/#restbar/
-   #toast/#overlay (all fixed) rode UP by ~scrollY on every sheet open from a
-   scrolled page (owner's "x kg" repro). Pinning <main> instead takes the fixed
-   chrome OUT of the locked subtree entirely, so iOS has nothing to misplace.
-   main keeps its max-width/margin-auto centering: for a fixed element
-   left:0;right:0;margin:0 auto preserves the centered max-width box. body keeps
-   overflow:hidden as belt-and-braces. F65's vv pin is UNCHANGED — it handles the
-   real visual-viewport displacement (keyboard residue, URL bar, rubber-band),
-   a different member of the family; this fix removes only the fixed-in-fixed case. */
-let _scrollLockY=null;
+/* F30/F78 (2026-07-08): locking the background behind a sheet is now trivial. In
+   the app-shell model the background IS the #main scroll pane, so the lock is just
+   overflow:hidden on the pane. Setting overflow:hidden PRESERVES scrollTop (the
+   content is clipped exactly where it is), so on unlock the pane is right where it
+   was — no scrollY capture, no restore, no position:fixed dance.
+   This also finally kills "background scrolls behind the sheet": the pane can't
+   scroll AND the document never could (html,body overflow:hidden), so nothing
+   behind the overlay moves. #overlay keeps overscroll-behavior:contain (F30) so a
+   sheet's own scroll can't chain out either.
+   History: F30 pinned <body> (position:fixed,top:-scrollY) — iOS then misplaced
+   the fixed tab bar; F70 moved the pin to <main>; F78 removes the pin entirely,
+   because the tab bar is no longer fixed and the pane simply stops scrolling.
+   Guarded (_paneLocked) so a rapid re-open mid-dismissal (F23) is a no-op. */
+let _paneLocked=false;
 function lockBodyScroll(){
-  if(_scrollLockY!=null)return;                 // already locked (re-open mid-close)
-  _scrollLockY=window.scrollY||window.pageYOffset||0;
-  const b=document.body,m=$('main');
-  if(m){m.style.position='fixed';m.style.top=(-_scrollLockY)+'px';
-    m.style.left='0';m.style.right='0';m.style.margin='0 auto';}
-  b.style.overflow='hidden';                      // belt-and-braces; the pin does the real work
+  if(_paneLocked)return;                          // already locked (re-open mid-close)
+  _paneLocked=true;
+  const m=$('main');if(m)m.style.overflowY='hidden';   // scrollTop preserved; user just can't scroll
   if(typeof scheduleTabbarDriftCheck==='function')scheduleTabbarDriftCheck();   // F70(b): measure the bar after a sheet open
 }
 function unlockBodyScroll(){
-  if(_scrollLockY==null)return;
-  const y=_scrollLockY;_scrollLockY=null;
-  const b=document.body,m=$('main');
-  if(m){m.style.position='';m.style.top='';m.style.left='';m.style.right='';m.style.margin='';}
-  b.style.overflow='';
-  window.scrollTo(0,y);                          // return to the exact prior position
+  if(!_paneLocked)return;
+  _paneLocked=false;
+  const m=$('main');if(m)m.style.overflowY='';    // scroll returns at the exact prior position
   if(typeof scheduleTabbarDriftCheck==='function')scheduleTabbarDriftCheck();   // F70(b): measure the bar after a sheet close
 }
 /* F55: closeModal fully tears the overlay down AND clears the back-stack — it's
@@ -5115,7 +5133,7 @@ function applyVvPin(){
       diagLog('event',{name:'navPin',off,innerHeight:window.innerHeight,
         vvHeight:Math.round(window.visualViewport.height),
         vvOffsetTop:Math.round(window.visualViewport.offsetTop),
-        scrollY:Math.round(window.scrollY||0)});
+        scrollY:Math.round((($('main')||{}).scrollTop)||0)});   /* F78: pane scroll (document no longer scrolls) */
     }
   }
 }
@@ -5199,8 +5217,37 @@ function checkTabbarDrift(){
     diagLog('warn',{name:'tabbarDrift',
       actual:Math.round(($('tabbar').getBoundingClientRect().bottom)||0),
       expected:tabbarExpectedBottom(),
-      scrollY:Math.round(window.scrollY||0),
-      locked:_scrollLockY!=null,
+      scrollY:Math.round((($('main')||{}).scrollTop)||0),   /* F78: pane scroll */
+      locked:_paneLocked,
+      vvH:vv?Math.round(vv.height):null,vvOT:vv?Math.round(vv.offsetTop):null,
+      innerH:Math.round(window.innerHeight||0)});
+    return true;
+  }catch(e){return false;}
+}
+/* F78 (2026-07-08) — SINGLE-FRAME drift probe (the definitive on-device test we
+   lacked). The two-consecutive watchdog above needs 2 readings ~300ms apart and a
+   rubber-band twitch is faster, so it could miss a real leak. This runs ONE
+   reading on the very scroll event (no 2-check gate): rendered tab-bar bottom vs
+   the visible-viewport bottom. In the fixed app-shell the bar is a flex child that
+   cannot move, so this stays SILENT — silence is the proof. If the fix ever leaks
+   on a device, the owner's next export carries a 'tabbarDrift' {frame:true} entry
+   showing the bar actually moving. Skipped while kb-open (the bar is intentionally
+   hidden); rate-limited so a genuine leak logs once per window, not every frame. */
+let _tbFrameAt=0;
+function checkTabbarDriftFrame(){
+  try{
+    if(document.body.classList.contains('kb-open'))return false;
+    const drift=tabbarDriftPx();
+    if(drift==null||drift<=TABBAR_DRIFT_PX)return false;
+    const now=Date.now();
+    if(now-_tbFrameAt<TABBAR_DRIFT_RL_MS)return false;   // rate-limit (30s)
+    _tbFrameAt=now;
+    const vv=window.visualViewport;
+    diagLog('warn',{name:'tabbarDrift',frame:true,
+      actual:Math.round(($('tabbar').getBoundingClientRect().bottom)||0),
+      expected:tabbarExpectedBottom(),
+      scrollY:Math.round((($('main')||{}).scrollTop)||0),
+      locked:_paneLocked,
       vvH:vv?Math.round(vv.height):null,vvOT:vv?Math.round(vv.offsetTop):null,
       innerH:Math.round(window.innerHeight||0)});
     return true;
@@ -5504,6 +5551,10 @@ render();
 wireSwipe();
 wireEditorExit();
 startTabbarWatch();   // F70(b): slow ~10s watchdog on the rendered tabbar
+/* F78: single-frame drift probe on the pane's own scroll (a fast rubber-band
+   twitch the 300ms watchdog could miss). Cheap: one getBoundingClientRect,
+   rate-limited logging; stays silent unless the bar actually moves. */
+(function(){const m=$('main');if(m&&m.addEventListener)m.addEventListener('scroll',checkTabbarDriftFrame,{passive:true});})();
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
