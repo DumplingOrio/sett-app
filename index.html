@@ -524,8 +524,19 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.20';
+const APP_VERSION='0.9.23';
 const CHANGELOG=[
+  {v:'0.9.23', date:'2026-07-08', items:[
+    'Norwegian is now complete: every menu, popup, rest timer, records screen and date reads in Norwegian when you pick it — not just the main tabs. Switch anytime under Settings → Appearance.',
+  ]},
+  {v:'0.9.22', date:'2026-07-08', items:[
+    'Cancelling a confirmation (like "Delete workout?") now returns you to the menu you were in, instead of closing everything.',
+    'Creating a new exercise from the Exercises tab no longer sneaks it into a workout you have running — it just goes into your library.',
+    'Checking for updates right after opening the app no longer shows a misleading message while it\'s still starting up.',
+  ]},
+  {v:'0.9.21', date:'2026-07-08', items:[
+    'Restoring a damaged backup file can no longer break the app — anything missing or mangled inside it is repaired on the way in, and your Routines and Home screens stay usable.',
+  ]},
   {v:'0.9.20', date:'2026-07-07', items:[
     'The bottom bar had one mover left: our own fix from two versions ago, which nudged the bar during the little bounce at the top of a scroll. It no longer touches the bar at all.',
     'Going back from an exercise preview no longer replays the whole sheet animation — stepping back is now a quick, quiet swap instead of a close-and-reopen.',
@@ -920,6 +931,7 @@ const STRINGS={
     'act.saveChanges':'Save changes','act.finishWorkout':'Finish workout','act.saveAsRoutine':'Save as routine',
     'act.startRest':'Start rest timer','act.restTimer':'Rest timer','act.dragReorder':'Drag to reorder','act.exOptions':'Exercise options',
     'act.setPill':'＋ Set','act.dropPill':'＋ Drop set','act.linked':'Linked','act.history':'History','act.charts':'Charts','act.prs':'Personal records',
+    'act.kg':'Kg','act.repsLbl':'Reps',
     'act.reorder':'Reorder','act.discard':'Discard',
     // Stats
     'st.noneTitle':'No data yet','st.noneSub':'Stats appear after your first workout.',
@@ -974,6 +986,7 @@ const STRINGS={
     'toast.warmCounted':'Warmups counted in stats','toast.warmExcluded':'Warmups excluded from stats',
     'toast.standards':'{0} standards',
     'toast.updLatest':'You’re on the latest version','toast.updNeedInstall':'Updates need the installed app (add to Home Screen).',
+    'toast.updStarting':'Still starting up — try again in a moment.',
     'toast.updOffline':'Could not check — are you online?','toast.updReady':'Update ready — reopen Sett to apply',
     // onboarding
     'ob.langTitle':'Choose your language','ob.welcome':'Welcome to Sett',
@@ -990,6 +1003,92 @@ const STRINGS={
     'ig.other':'In your browser’s menu, choose <b>Install app</b> or <b>Add to Home Screen</b> — Sett runs fullscreen, works offline, and keeps your data on this device.',
     // shared dialog defaults
     'dlg.sure':'Are you sure?','dlg.confirm':'Confirm','dlg.cancel':'Cancel',
+    /* ——— R23 (audit 2026-07-08 E): sheets, dialogs, live chrome, toasts ——— */
+    // exercise ⋯ menu
+    'xm.infoAria':'What do these mean?',
+    'xm.ssExplain':'<b>Superset</b> — two exercises done back to back with no rest between; link an exercise to the one above it.',
+    'xm.dropExplain':'<b>Drop set</b> — a set done right after the previous one at a lower weight, no rest; it shows the D mark.',
+    'xm.notesPh':'Notes for this exercise (grip, tempo, machine setting…)',
+    'xm.unlinkSS':'Unlink from superset','xm.linkSS':'Superset with exercise above',
+    'xm.replace':'Replace exercise','xm.remove':'Remove exercise',
+    // set ⋯ menu + set-row chrome
+    'sm.title':'Set {0}','sm.copy':'Copy set','sm.copyRest':'Copy to remaining sets',
+    'sm.dropOn':'Mark as drop set','sm.dropOff':'Unmark as drop set','sm.remove':'Remove set',
+    'sr.copy':'Copy','sr.remove':'Remove','sr.warmup':'Warmup set','sr.drop':'Drop set',
+    'sr.warmOff':'Warmup — tap to unmark','sr.warmOn':'Mark as warmup','sr.setOptions':'Set options',
+    // reorder sheet
+    'ro.title':'Reorder exercises',
+    'ro.help':'Press and hold a row, then drag to reorder — or drag the ⠿ handle. Changes apply right away.',
+    'ro.superset':'superset','ro.done':'Done',
+    // rest bar
+    'rest.label':'Rest','rest.done':'Rest done','rest.skip':'Skip','rest.dismiss':'Dismiss',
+    // live chrome (stats line, PR line, beat hint, superset flow, last-time hint)
+    'live.vol':'Vol','live.best':'Best','live.prE1':'PR e1RM',
+    'live.newE1':'New e1RM record — {0} kg','live.newReps':'New reps record — {0} reps','live.was':', was {0}',
+    'live.try':'▲ try {0}','live.tryReps':'▲ try {0} reps','live.last':' · last: ','live.next':'Next: ',
+    // discard / delete / finish
+    'dw.discardQ':'Discard workout?','dw.discardMsg':'Nothing from this workout will be saved.','dw.discardBtn':'Discard workout',
+    'dw.cancelEditQ':'Cancel editing?','dw.cancelEditMsg':'Your changes will be lost.','dw.cancelEditBtn':'Cancel editing',
+    'dw.deleteQ':'Delete workout?','dw.deleteMsg':'This workout will be permanently removed.','dw.deleteBtn':'Delete workout',
+    'fin.logFirst':'Log at least one set first','fin.updated':'Workout updated',
+    'fin.saved':'Workout saved','fin.newRecords':'New records','fin.nice':'Nice',
+    'u.kgVol':'{0} kg volume',
+    // exercise picker + create exercise
+    'pk.add':'Add exercise','pk.replace':'Replace exercise','pk.search':'Search or type a new name…',
+    'pk.noMatch':'No match — type a new name to create it.','pk.noneYet':'No exercises yet — type a name to create one.',
+    'pk.create':'＋ Create “{0}”',
+    'ce.title':'New exercise','ce.howPh':'How to perform it — cues, setup, machine settings… (your own form notes)','ce.createAdd':'Create & add',
+    // workout sheet (Log)
+    'ws.repeat':'Repeat','ws.delete':'Delete','ws.edit':'Edit workout',
+    // exercise sheet + shared list-row bits
+    'xs.custom':'custom','xs.primaryMuscles':'Primary muscles','xs.equipment':'Equipment','xs.secondaryMuscles':'Secondary muscles',
+    'xs.noVisual':'No visual linked yet — pick one from the catalog below.',
+    'xs.changeVisual':'Change visual','xs.chooseVisual':'Choose visual from catalog','xs.unlink':'Unlink',
+    'xs.bwUnlock':'Log your bodyweight in a workout to unlock ranks.',
+    'xs.bestKg':'best kg','xs.bestE1':'best e1RM','xs.setsTotal':'sets total',
+    'xs.records':'Records','xs.e1Trend':'e1RM trend','xs.instructions':'Instructions',
+    'xs.notes':'Your own notes','xs.notesPh':'Your own cues: setup, grip, seat height, tempo…',
+    'xs.primaryGroup':'Primary muscle group','xs.alsoWorks':'Also works (secondary)','xs.addOpt':'＋ add…','xs.save':'Save',
+    'xs.recentSessions':'Recent sessions','xs.altHow':'How to perform {0}',
+    'u.session.one':'session','u.session.many':'sessions','xs.neverLogged':'never logged','xs.secondChip':'2nd',
+    // visual picker + catalog browser + preview
+    'vp.title':'Choose a visual','vp.for':'for {0}',
+    'cb.title':'Exercise catalog','cb.subPick':'Tap one to preview it, then add it to this workout.',
+    'cb.subBrowse':'Tap one to preview it — add to your library from there.','cb.search':'Search…',
+    'cb.inLib':'in library','cb.addWorkout':'Add to workout','cb.openLib':'Open in library','cb.addLib':'Add to library',
+    'cb.noMatch':'No match.',
+    // muscle-group review sheet
+    'rv.title':'Review muscle groups','rv.allAgreed':'All agreed',
+    'rv.allAgreedSub':'Every exercise’s muscle group matches its linked visual.',
+    'rv.acceptOrKeep':'Accept the catalog’s group, or keep yours.',
+    'rv.acceptAll':'Accept all ({0})','rv.keep':'Keep','rv.accept':'Accept','rv.also':'also: ',
+    // per-exercise history / charts / records sheets
+    'xh.never':'Never logged.',
+    'ch.e1':'Est. 1RM','ch.vol':'Volume','ch.maxw':'Max weight','ch.reps':'Total reps','ch.rangeAll':'All',
+    'ch.foot':'One point per session{0}.','ch.footE1':' (best set, Epley formula)',
+    'ch.noData':'No data in this range.','ch.noVol':'No volume in this timeframe.',
+    'pr.bestE1':'Best est. 1RM','pr.repLadder':'Rep ladder',
+    'pr.ladderFoot':'Heaviest set you’ve logged at each rep count.','pr.bestSingle':'Best single workout',
+    'pr.volume':'Volume','pr.totalReps':'Total reps','pr.totalSets':'Total sets','pr.maxWeight':'Max weight','pr.maxReps':'Max reps',
+    'u.rep.one':'rep','u.rep.many':'reps',
+    // stat drill-in pages (STAT_DEFS labels/units are STRING KEYS)
+    'sd.dur':'Workout duration','sd.durU':'avg minutes','sd.vol':'Volume','sd.volU':'kg lifted',
+    'sd.sets':'Total sets','sd.setsU':'sets','sd.reps':'Total reps','sd.repsU':'reps',
+    'sd.rps':'Reps per set','sd.rpsU':'reps per set','sd.bw':'Bodyweight','sd.bwU':'kg',
+    'sd.nw':'Number of workouts','sd.nwU':'workouts',
+    'sd.byMonth':'{0}, by month','sd.bwSub':'monthly average, real months',
+    // per-metric fact box
+    'fb.facts':'The facts','fb.typical':'Typical session','fb.longest':'Longest ever',
+    'fb.mvl':'This month vs last','fb.bestMonth':'Best month','fb.perWorkout':'Per workout',
+    'fb.topGroups':'Top groups','fb.weeklyAvg':'Weekly average','fb.mostWorked':'Most worked',
+    'fb.highestMonth':'Highest month','fb.range':'Range','fb.netChange':'Net change','fb.latest':'Latest','fb.min':'min',
+    // toasts
+    'toast.storageFull':'Could not save — storage full?','toast.setCopied':'Set copied',
+    'toast.visualLinked':'Visual linked','toast.addedLib':'Added to your library','toast.saved':'Saved',
+    'toast.replacedWith':'Replaced with “{0}”',
+    'toast.restored':'Backup restored — {0} {1}','toast.notBackup':'That file is not a Sett backup.',
+    'toast.autoDiscard':'Forgotten empty workout discarded',
+    'toast.autoStop':'Workout auto-stopped and saved (ended {0})',
   },
   no:{
     'tab.home':'Hjem','tab.log':'Logg','tab.routines':'Rutiner','tab.stats':'Statistikk','tab.exercises':'Øvelser','tab.settings':'Innstillinger',
@@ -1043,6 +1142,7 @@ const STRINGS={
     'act.saveChanges':'Lagre endringer','act.finishWorkout':'Fullfør økt','act.saveAsRoutine':'Lagre som rutine',
     'act.startRest':'Start pausetimer','act.restTimer':'Pausetimer','act.dragReorder':'Dra for å endre rekkefølge','act.exOptions':'Øvelsesvalg',
     'act.setPill':'＋ Sett','act.dropPill':'＋ Dropsett','act.linked':'Koblet','act.history':'Historikk','act.charts':'Grafer','act.prs':'Personlige rekorder',
+    'act.kg':'Kg','act.repsLbl':'Reps',
     'act.reorder':'Endre rekkefølge','act.discard':'Forkast',
     'st.noneTitle':'Ingen data ennå','st.noneSub':'Statistikk dukker opp etter din første økt.',
     'st.overallRank':'Samlet rang','st.acrossLifts':'over {0} rangerte løft',
@@ -1091,6 +1191,7 @@ const STRINGS={
     'toast.warmCounted':'Oppvarming teller i statistikk','toast.warmExcluded':'Oppvarming utelatt fra statistikk',
     'toast.standards':'{0}-standard',
     'toast.updLatest':'Du har nyeste versjon','toast.updNeedInstall':'Oppdateringer krever den installerte appen (legg til på Hjem-skjermen).',
+    'toast.updStarting':'Starter fortsatt — prøv igjen om et øyeblikk.',
     'toast.updOffline':'Fikk ikke sjekket — er du på nett?','toast.updReady':'Oppdatering klar — åpne Sett på nytt for å ta den i bruk',
     'ob.langTitle':'Velg språk','ob.welcome':'Velkommen til Sett',
     'ob.welcomeSub1':'En privat treningslogg — alt blir på denne enheten, ingenting lastes opp.',
@@ -1104,6 +1205,77 @@ const STRINGS={
     'ig.android':'I Chrome, åpne <b>⋮-menyen</b> og velg <b>Installer app</b> (eller <b>Legg til på Hjem-skjerm</b>) — Sett kjører i fullskjerm, virker offline, og holder dataene dine på telefonen.',
     'ig.other':'I nettlesermenyen, velg <b>Installer app</b> eller <b>Legg til på Hjem-skjerm</b> — Sett kjører i fullskjerm, virker offline, og holder dataene dine på denne enheten.',
     'dlg.sure':'Er du sikker?','dlg.confirm':'Bekreft','dlg.cancel':'Avbryt',
+    /* ——— R23 (audit 2026-07-08 E): sheets, dialogs, live chrome, toasts ——— */
+    'xm.infoAria':'Hva betyr disse?',
+    'xm.ssExplain':'<b>Supersett</b> — to øvelser rett etter hverandre uten pause; koble en øvelse til den over.',
+    'xm.dropExplain':'<b>Dropsett</b> — et sett rett etter det forrige med lavere vekt, uten pause; det vises med D-merket.',
+    'xm.notesPh':'Notater for denne øvelsen (grep, tempo, maskininnstilling…)',
+    'xm.unlinkSS':'Koble fra supersett','xm.linkSS':'Supersett med øvelsen over',
+    'xm.replace':'Bytt øvelse','xm.remove':'Fjern øvelse',
+    'sm.title':'Sett {0}','sm.copy':'Kopier sett','sm.copyRest':'Kopier til resten av settene',
+    'sm.dropOn':'Merk som dropsett','sm.dropOff':'Fjern dropsett-merket','sm.remove':'Fjern sett',
+    'sr.copy':'Kopier','sr.remove':'Fjern','sr.warmup':'Oppvarmingssett','sr.drop':'Dropsett',
+    'sr.warmOff':'Oppvarming — trykk for å fjerne merket','sr.warmOn':'Merk som oppvarming','sr.setOptions':'Settvalg',
+    'ro.title':'Endre rekkefølge',
+    'ro.help':'Hold på en rad og dra for å endre rekkefølgen — eller dra i ⠿-håndtaket. Endringene gjelder med en gang.',
+    'ro.superset':'supersett','ro.done':'Ferdig',
+    'rest.label':'Pause','rest.done':'Pause ferdig','rest.skip':'Hopp over','rest.dismiss':'Lukk',
+    'live.vol':'Vol','live.best':'Best','live.prE1':'PR e1RM',
+    'live.newE1':'Ny e1RM-rekord — {0} kg','live.newReps':'Ny reps-rekord — {0} reps','live.was':', var {0}',
+    'live.try':'▲ prøv {0}','live.tryReps':'▲ prøv {0} reps','live.last':' · sist: ','live.next':'Neste: ',
+    'dw.discardQ':'Forkaste økta?','dw.discardMsg':'Ingenting fra denne økta blir lagret.','dw.discardBtn':'Forkast økta',
+    'dw.cancelEditQ':'Avbryte redigeringen?','dw.cancelEditMsg':'Endringene dine går tapt.','dw.cancelEditBtn':'Avbryt redigeringen',
+    'dw.deleteQ':'Slette økta?','dw.deleteMsg':'Denne økta blir slettet for godt.','dw.deleteBtn':'Slett økta',
+    'fin.logFirst':'Logg minst ett sett først','fin.updated':'Økta er oppdatert',
+    'fin.saved':'Økt lagret','fin.newRecords':'Nye rekorder','fin.nice':'Rått',
+    'u.kgVol':'{0} kg volum',
+    'pk.add':'Legg til øvelse','pk.replace':'Bytt øvelse','pk.search':'Søk eller skriv et nytt navn…',
+    'pk.noMatch':'Ingen treff — skriv et nytt navn for å opprette den.','pk.noneYet':'Ingen øvelser ennå — skriv et navn for å opprette en.',
+    'pk.create':'＋ Opprett “{0}”',
+    'ce.title':'Ny øvelse','ce.howPh':'Hvordan den utføres — teknikk, oppsett, maskininnstillinger… (dine egne notater)','ce.createAdd':'Opprett og legg til',
+    'ws.repeat':'Gjenta','ws.delete':'Slett','ws.edit':'Rediger økt',
+    'xs.custom':'egen','xs.primaryMuscles':'Primære muskler','xs.equipment':'Utstyr','xs.secondaryMuscles':'Sekundære muskler',
+    'xs.noVisual':'Ingen figur koblet ennå — velg en fra katalogen under.',
+    'xs.changeVisual':'Bytt figur','xs.chooseVisual':'Velg figur fra katalogen','xs.unlink':'Koble fra',
+    'xs.bwUnlock':'Logg kroppsvekta i en økt for å låse opp ranger.',
+    'xs.bestKg':'beste kg','xs.bestE1':'beste e1RM','xs.setsTotal':'sett totalt',
+    'xs.records':'Rekorder','xs.e1Trend':'e1RM-trend','xs.instructions':'Instruksjoner',
+    'xs.notes':'Dine egne notater','xs.notesPh':'Dine egne stikkord: oppsett, grep, setehøyde, tempo…',
+    'xs.primaryGroup':'Primær muskelgruppe','xs.alsoWorks':'Trener også (sekundært)','xs.addOpt':'＋ legg til…','xs.save':'Lagre',
+    'xs.recentSessions':'Siste økter','xs.altHow':'Slik utføres {0}',
+    'u.session.one':'økt','u.session.many':'økter','xs.neverLogged':'aldri logget','xs.secondChip':'2.',
+    'vp.title':'Velg en figur','vp.for':'for {0}',
+    'cb.title':'Øvelseskatalog','cb.subPick':'Trykk på en for å se den, og legg den til i denne økta derfra.',
+    'cb.subBrowse':'Trykk på en for å se den — legg den til i biblioteket ditt derfra.','cb.search':'Søk…',
+    'cb.inLib':'i biblioteket','cb.addWorkout':'Legg til i økta','cb.openLib':'Åpne i biblioteket','cb.addLib':'Legg til i biblioteket',
+    'cb.noMatch':'Ingen treff.',
+    'rv.title':'Se over muskelgrupper','rv.allAgreed':'Alt stemmer',
+    'rv.allAgreedSub':'Alle øvelsers muskelgruppe stemmer med den koblede figuren.',
+    'rv.acceptOrKeep':'Godta katalogens gruppe, eller behold din.',
+    'rv.acceptAll':'Godta alle ({0})','rv.keep':'Behold','rv.accept':'Godta','rv.also':'også: ',
+    'xh.never':'Aldri logget.',
+    'ch.e1':'Est. 1RM','ch.vol':'Volum','ch.maxw':'Maks vekt','ch.reps':'Reps totalt','ch.rangeAll':'Alt',
+    'ch.foot':'Ett punkt per økt{0}.','ch.footE1':' (beste sett, Epley-formelen)',
+    'ch.noData':'Ingen data i denne perioden.','ch.noVol':'Ingen volum i denne perioden.',
+    'pr.bestE1':'Beste est. 1RM','pr.repLadder':'Reps-stige',
+    'pr.ladderFoot':'Tyngste sett du har logget på hvert reps-antall.','pr.bestSingle':'Beste enkeltøkt',
+    'pr.volume':'Volum','pr.totalReps':'Reps totalt','pr.totalSets':'Sett totalt','pr.maxWeight':'Maks vekt','pr.maxReps':'Maks reps',
+    'u.rep.one':'rep','u.rep.many':'reps',
+    'sd.dur':'Øktlengde','sd.durU':'minutter i snitt','sd.vol':'Volum','sd.volU':'kg løftet',
+    'sd.sets':'Sett totalt','sd.setsU':'sett','sd.reps':'Reps totalt','sd.repsU':'reps',
+    'sd.rps':'Reps per sett','sd.rpsU':'reps per sett','sd.bw':'Kroppsvekt','sd.bwU':'kg',
+    'sd.nw':'Antall økter','sd.nwU':'økter',
+    'sd.byMonth':'{0}, per måned','sd.bwSub':'månedssnitt, ekte måneder',
+    'fb.facts':'Fakta','fb.typical':'Typisk økt','fb.longest':'Lengste noensinne',
+    'fb.mvl':'Denne måneden mot forrige','fb.bestMonth':'Beste måned','fb.perWorkout':'Per økt',
+    'fb.topGroups':'Toppgrupper','fb.weeklyAvg':'Ukesnitt','fb.mostWorked':'Mest trent',
+    'fb.highestMonth':'Høyeste måned','fb.range':'Spenn','fb.netChange':'Netto endring','fb.latest':'Sist','fb.min':'min',
+    'toast.storageFull':'Kunne ikke lagre — er lagringen full?','toast.setCopied':'Sett kopiert',
+    'toast.visualLinked':'Figur koblet','toast.addedLib':'Lagt til i biblioteket ditt','toast.saved':'Lagret',
+    'toast.replacedWith':'Byttet til “{0}”',
+    'toast.restored':'Sikkerhetskopi gjenopprettet — {0} {1}','toast.notBackup':'Den fila er ikke en Sett-sikkerhetskopi.',
+    'toast.autoDiscard':'Glemt tom økt forkastet',
+    'toast.autoStop':'Økta ble stoppet og lagret automatisk (sluttet {0})',
   },
 };
 function lang(){return (store&&store.settings&&store.settings.lang==='no')?'no':'en';}
@@ -1130,13 +1302,24 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const pad2=n=>String(n).padStart(2,'0');
 const nowStr=d=>{d=d||new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+' '+pad2(d.getHours())+':'+pad2(d.getMinutes());};
 const toDate=s=>new Date(String(s).replace(' ','T'));
-const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const WEEKDAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];   // F68: full weekday name for the Home day header
-const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const fmtDay=s=>{const d=toDate(s);return DAYS[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3);};
+/* R23 (audit E): date names are lang-aware. Norwegian day/month names are the
+   standard bokmål set; .slice(0,3) yields the standard NO abbreviations too
+   (Jan…Des, Mai included). Capitalized display forms on purpose — every use is
+   a standalone label/badge/header, never mid-sentence (register choice flagged
+   for the native Bokmål review). Stored dates stay ISO — display only. */
+const DAYS_EN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_NO=['Søn','Man','Tir','Ons','Tor','Fre','Lør'];
+const WEEKDAYS_EN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];   // F68: full weekday name for the Home day header
+const WEEKDAYS_NO=['Søndag','Mandag','Tirsdag','Onsdag','Torsdag','Fredag','Lørdag'];
+const MONTHS_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_NO=['Januar','Februar','Mars','April','Mai','Juni','Juli','August','September','Oktober','November','Desember'];
+const dayName=i=>(lang()==='no'?DAYS_NO:DAYS_EN)[i];
+const weekdayName=i=>(lang()==='no'?WEEKDAYS_NO:WEEKDAYS_EN)[i];
+const monthName=i=>(lang()==='no'?MONTHS_NO:MONTHS_EN)[i];
+const fmtDay=s=>{const d=toDate(s);return dayName(d.getDay())+' '+d.getDate()+' '+monthName(d.getMonth()).slice(0,3);};
 const fmtClock=s=>{if(!s)return'';const d=toDate(s);return pad2(d.getHours())+':'+pad2(d.getMinutes());};
 const fmtClockRange=(a,b)=>{const s=fmtClock(a);if(!s)return'';return b?s+'–'+fmtClock(b):s;};
-const fmtMonth=s=>{const d=toDate(s);return MONTHS[d.getMonth()]+' '+d.getFullYear();};
+const fmtMonth=s=>{const d=toDate(s);return monthName(d.getMonth())+' '+d.getFullYear();};
 const monthKey=s=>String(s).slice(0,7);
 const fmtNum=n=>Math.round(n).toLocaleString('en-US').replace(/,/g,' ');
 const fmtW=w=>w==null?'—':(Math.round(w*10)/10).toString().replace(/\.0$/,'');
@@ -1178,11 +1361,41 @@ function normalizeStore(){
   store.workouts.sort((a,b)=>a.start<b.start?1:-1);
   /* one-time re-id: old 'w'+digits ids collide for same-minute starts */
   let changed=false;const seen=new Set();
+  /* B4/R22: entry lists from a hand-edited backup get one shared repair —
+     drop non-object items (a null entry would crash this very loop), then
+     coerce each entry's sets to an array. */
+  const fixEntries=o=>{
+    if(!Array.isArray(o.entries)){o.entries=[];changed=true;}
+    const n=o.entries.length;
+    o.entries=o.entries.filter(e=>e&&typeof e==='object'&&!Array.isArray(e));
+    if(o.entries.length!==n)changed=true;
+    for(const e of o.entries)if(!Array.isArray(e.sets)){e.sets=[];changed=true;}
+  };
   for(const w of store.workouts){if(!w.id||seen.has(w.id)){w.id=newWid();changed=true;}seen.add(w.id);
     /* B4 (sweep 2026-07-06): a hand-edited backup can lack entries/sets arrays —
        renderLog/renderStats then throw. Coerce like S4 did for top-level fields. */
-    if(!Array.isArray(w.entries)){w.entries=[];changed=true;}
-    for(const e of w.entries)if(!Array.isArray(e.sets)){e.sets=[];changed=true;}}
+    fixEntries(w);}
+  /* R22 (audit 2026-07-08 A): same bar for routines — a restored backup whose
+     routine lacks .exercises (or whose routine exercise lacks .sets) threw in
+     renderRoutines and confirmStartInfo, bricking the Routines tab and Home's
+     routine chips. */
+  {const n=store.routines.length;
+   store.routines=store.routines.filter(r=>r&&typeof r==='object'&&!Array.isArray(r));
+   if(store.routines.length!==n)changed=true;}
+  for(const r of store.routines){
+    if(!Array.isArray(r.exercises)){r.exercises=[];changed=true;}
+    const n=r.exercises.length;
+    r.exercises=r.exercises.filter(e=>e&&typeof e==='object'&&!Array.isArray(e));
+    if(r.exercises.length!==n)changed=true;
+    for(const e of r.exercises)if(!Array.isArray(e.sets)){e.sets=[];changed=true;}
+  }
+  /* R22 (audit 2026-07-08 B): exportJson exports the whole store, active
+     included — a truncated mid-workout backup can carry a malformed active
+     that threw in renderHome AND renderActive: app dead on open, no healthy
+     tab left to reach the Danger zone. Drop an active that isn't even an
+     object; repair a workout-shaped one like any workout. */
+  if(store.active&&(typeof store.active!=='object'||Array.isArray(store.active))){store.active=null;changed=true;}
+  if(store.active)fixEntries(store.active);
   /* strip the junk 'undefined' set key the v0.9.6–0.9.7 wireInputs bug wrote */
   const scrub=es=>{for(const e of es||[])for(const s of e.sets||[])if('undefined' in s){delete s.undefined;changed=true;}};
   for(const w of store.workouts)scrub(w.entries);
@@ -1195,7 +1408,7 @@ if(!store){store=freshStore();firstRun=true;}
 normalizeStore();
 function save(){
   if(store.active&&!store.active.editing)store.active.touch=Date.now();
-  try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){toast('Could not save — storage full?');console.error(e);}}
+  try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){toast(T('toast.storageFull'));console.error(e);}}
 
 /* ============================== F60: sett:diag ==============================
    A SECOND localStorage key, wholly separate from sett:store. Holds a ring
@@ -1475,7 +1688,7 @@ function closestRankUp(){
 }
 
 /* ============================== state & render ============================== */
-const state={view:'home', exQuery:'', exGroup:null, editRoutine:null, pickTarget:'active', mgFrame:'week', statFrame:'month', statBarPin:null, setSection:null};   /* F39: muscle-group timeframe, transient. F52: exGroup = selected muscle-group tile (null = tiles landing), transient. F67: statFrame = global Stats timeframe (transient). F66: setSection = the one open Settings accordion (null = all collapsed, transient). */
+const state={view:'home', exQuery:'', exGroup:null, editRoutine:null, pickTarget:null, mgFrame:'week', statFrame:'month', statBarPin:null, setSection:null};   /* F39: muscle-group timeframe, transient. F52: exGroup = selected muscle-group tile (null = tiles landing), transient. F67: statFrame = global Stats timeframe (transient). F66: setSection = the one open Settings accordion (null = all collapsed, transient). R21 (audit 2026-07-08 D): pickTarget=null means "no pick flow armed" — only openPicker arms it, closeModal disarms it; a default of 'active' made a library-context create silently append to a live workout. */
 const NAV=['home','log','routines','stats','exercises'];   /* F35: Stats before Exercises. F49: More dropped — five tabs. */
 const TITLES={home:'Home', log:'Log', routines:'Routines', exercises:'Exercises', stats:'Stats', settings:'Settings'};
 /* F49 (2026-07-07): the install card on Home and the version/install text moved
@@ -1708,10 +1921,10 @@ function monthlyRecap(){
   let delta=null;
   if(prev.vol>0){
     const pct=Math.round((a.vol-prev.vol)/prev.vol*100);
-    const prevName=MONTHS[+prevMonthKey(2).slice(5)-1];
+    const prevName=monthName(+prevMonthKey(2).slice(5)-1);
     delta={pct,up:pct>0,prevName};
   }
-  return {mk,monthName:MONTHS[+mk.slice(5)-1],sessions:a.sessions,vol:a.vol,records,top,delta};
+  return {mk,monthName:monthName(+mk.slice(5)-1),sessions:a.sessions,vol:a.vol,records,top,delta};
 }
 function recapCardHtml(){
   const r=monthlyRecap();if(!r)return '';
@@ -1751,7 +1964,7 @@ function renderHome(){
      → glance strip (3 tiles) → recap → nudge banner → routines chip row →
      last-workout row. */
   const now=new Date();
-  let h='<div class="dayhead"><div class="dow">'+WEEKDAYS[now.getDay()]+'</div>'+
+  let h='<div class="dayhead"><div class="dow">'+weekdayName(now.getDay())+'</div>'+
     '<div class="wk">'+weekSummary()+'</div></div>';
 
   // HERO — resume/editing card when a workout is live, else the Start button.
@@ -1858,7 +2071,7 @@ function historyList(){
     const nsets=w.entries.reduce((t,e)=>t+e.sets.length,0);
     const vol=w.entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+(statSet(s)?setVol(s):0),0),0);   // F26: warmups out of volume by default
     h+='<div class="swipe" data-swipe="wk">'+
-      '<button class="swipe-act del" aria-label="Delete workout" title="Delete" data-id="'+esc(w.id)+'" onclick="swipeDeleteWorkout(this.dataset.id)">'+ico('trash')+'</button>'+
+      '<button class="swipe-act del" aria-label="'+T('dw.deleteBtn')+'" title="'+T('ws.delete')+'" data-id="'+esc(w.id)+'" onclick="swipeDeleteWorkout(this.dataset.id)">'+ico('trash')+'</button>'+
       '<div class="swipe-fg listrow" onclick="openWorkout(\''+esc(w.id)+'\')">'+dateBadge(w.start)+
       '<div class="grow"><div style="font-weight:700">'+esc(w.routine||T('log.workout'))+'</div>'+
       '<div class="tiny muted">'+nPlur('u.exercise',w.entries.length)+' · '+nPlur('u.set',nsets)+' · '+fmtDur(w.start,w.end)+'</div></div>'+
@@ -2089,13 +2302,13 @@ function renderActive(){
     const linked=e.ss!=null;
     h+='<div class="card excard" data-ei="'+ei+'">'+
       '<div class="swipe" data-swipe="ex" data-ei="'+ei+'">'+
-      '<button class="swipe-act del" aria-label="Remove exercise" title="Remove" onclick="swipeRemoveEx('+ei+')">'+ico('trash')+'</button>'+
+      '<button class="swipe-act del" aria-label="'+T('xm.remove')+'" title="'+T('sr.remove')+'" onclick="swipeRemoveEx('+ei+')">'+ico('trash')+'</button>'+
       '<div class="swipe-fg"><div class="row">'+
       (a.entries.length>1?'<span class="draghandle" data-drag="'+ei+'" title="'+T('act.dragReorder')+'">⠿</span>':'')+
       '<div class="grow"><span style="font-weight:800">'+esc(e.name)+'</span> '+
       (linked?'<span class="ssbadge" style="color:'+ssColors[e.ss%5]+';background:'+ssColors[e.ss%5]+'22">'+T('rt.superset')+' '+String.fromCharCode(65+e.ss%26)+'</span>':'')+
       '<div class="tiny muted">'+esc(catName(meta.cat))+lastTimeHint(e.name)+'</div></div>'+
-      '<button class="setmenu" title="'+T('act.exOptions')+'" onclick="exMenu('+ei+')">⋯</button>'+
+      '<button class="setmenu" title="'+T('act.exOptions')+'" aria-label="'+T('act.exOptions')+'" onclick="exMenu('+ei+')">⋯</button>'+
       '</div></div></div>';
     if(e.note)h+='<div class="tiny muted" style="margin-top:6px">'+ico('note')+' '+esc(e.note)+'</div>';
     const prm=a.editing?null:prMoment(ei);        // F36: PR-beating set (never while editing)
@@ -2106,18 +2319,18 @@ function renderActive(){
       const isPr=prm&&prm.si===si;                 // F36
       const hint=(bh&&bh.si===si&&!isPr)?bh.text:'';   // F45 (PR wins on the same row)
       h+='<div class="swipe'+(isPr?' pr':'')+'" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
-        '<button class="swipe-act copy" aria-label="Copy set" title="Copy" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'</button>'+
-        '<button class="swipe-act del" aria-label="Remove set" title="Remove" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'</button>'+
+        '<button class="swipe-act copy" aria-label="'+T('sm.copy')+'" title="'+T('sr.copy')+'" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'</button>'+
+        '<button class="swipe-act del" aria-label="'+T('sm.remove')+'" title="'+T('sr.remove')+'" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'</button>'+
         '<div class="swipe-fg">'+
         '<div class="setrow2">'+
         /* F26: warmup circle shows W (distinct from drop's D) */
-        '<span class="setnum'+(s.warmup?' warm':s.drop?' drop':'')+'" title="'+(s.warmup?'Warmup set':s.drop?'Drop set':'')+'">'+(s.warmup?'W':s.drop?'D':si+1)+'</span>'+
-        '<div class="setcell"><label>Kg</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
-        '<div class="setcell"><label>Reps</label><input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'></div>'+
+        '<span class="setnum'+(s.warmup?' warm':s.drop?' drop':'')+'" title="'+(s.warmup?T('sr.warmup'):s.drop?T('sr.drop'):'')+'">'+(s.warmup?'W':s.drop?'D':si+1)+'</span>'+
+        '<div class="setcell"><label>'+T('act.kg')+'</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
+        '<div class="setcell"><label>'+T('act.repsLbl')+'</label><input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'></div>'+
         '<span class="sp"></span>'+
         /* F26: petite, non-invading W toggle beside the ⋯ menu */
-        '<button class="wtog'+(s.warmup?' on':'')+'" title="'+(s.warmup?'Warmup — tap to unmark':'Mark as warmup')+'" aria-pressed="'+(!!s.warmup)+'" onclick="toggleWarmup('+ei+','+si+')">W</button>'+
-        '<button class="setmenu" title="Set options" onclick="setMenu('+ei+','+si+')">⋯</button>'+
+        '<button class="wtog'+(s.warmup?' on':'')+'" title="'+(s.warmup?T('sr.warmOff'):T('sr.warmOn'))+'" aria-pressed="'+(!!s.warmup)+'" onclick="toggleWarmup('+ei+','+si+')">W</button>'+
+        '<button class="setmenu" title="'+T('sr.setOptions')+'" aria-label="'+T('sr.setOptions')+'" onclick="setMenu('+ei+','+si+')">⋯</button>'+
         '</div>'+
         /* F36 PR chip + F45 beat hint on a micro-line under the inputs — keeps the
            set row itself from ever overflowing at 375px. One row keeps at most one
@@ -2176,7 +2389,7 @@ function elapsedStr(){const m=Math.floor((Date.now()-toDate(store.active.start))
 function lastTimeHint(name){
   for(const w of store.workouts)for(const e of w.entries)if(e.name===name){
     const top=e.sets.reduce((a,s)=>setVol(s)>setVol(a)?s:a,e.sets[0]);
-    if(top&&top.w!=null)return ' · last: '+fmtW(top.w)+' kg × '+(top.r||'—');
+    if(top&&top.w!=null)return T('live.last')+fmtW(top.w)+' kg × '+(top.r||'—');
     return '';
   }
   return '';
@@ -2191,9 +2404,9 @@ function cardStatsLine(ei){
   for(const s of e.sets){if(!statSet(s))continue;vol+=setVol(s);
     const v=setVol(s);if(v>0&&(best==null||v>best)){best=v;bestS=s;}}
   const pr=prFor(e.name,true).bestE1;   // standing PR from HISTORY only (excludes this live session)
-  const parts=['Vol '+fmtNum(vol)+' kg'];
-  if(bestS)parts.push('Best '+fmtW(bestS.w)+'×'+(bestS.r||0));
-  parts.push('<b>PR e1RM '+(pr!=null?fmtW(pr)+' kg':'—')+'</b>');
+  const parts=[T('live.vol')+' '+fmtNum(vol)+' kg'];
+  if(bestS)parts.push(T('live.best')+' '+fmtW(bestS.w)+'×'+(bestS.r||0));
+  parts.push('<b>'+T('live.prE1')+' '+(pr!=null?fmtW(pr)+' kg':'—')+'</b>');
   return parts.join(' · ');
 }
 /* F36 (2026-07-06): the PR moment. A live set that beats the PRE-WORKOUT record
@@ -2235,8 +2448,8 @@ function prMoment(ei){
 function prLineHtml(ei){
   const m=prMoment(ei);if(!m)return '';
   if(m.kind==='e1')
-    return '<div class="prline">New e1RM record — '+fmtW(m.val)+' kg'+(m.prev!=null?', was '+fmtW(m.prev):'')+'</div>';
-  return '<div class="prline">New reps record — '+m.val+' reps'+(m.prev!=null?', was '+m.prev:'')+'</div>';
+    return '<div class="prline">'+T('live.newE1',fmtW(m.val))+(m.prev!=null?T('live.was',fmtW(m.prev)):'')+'</div>';
+  return '<div class="prline">'+T('live.newReps',m.val)+(m.prev!=null?T('live.was',m.prev):'')+'</div>';
 }
 /* F45 (2026-07-07) OWNER SPEC, verbatim: "the try 'x' kg only shows on set 1,
    this should realistically only show on your current best weight… if i do a
@@ -2276,7 +2489,7 @@ function beatHint(e){
     const s=e.sets[i];
     if(s.warmup)continue;                          // skip warmup rows when picking the hint row
     if(s.w==null&&s.r==null)
-      return {si:i,text:trigWeight!=null?'▲ try '+fmtW(trigWeight+2.5):'▲ try '+(trigReps+1)+' reps'};
+      return {si:i,text:trigWeight!=null?T('live.try',fmtW(trigWeight+2.5)):T('live.tryReps',trigReps+1)};
     return null;                                   // next working row already logged — no hint
   }
   return null;                                     // no empty row after the trigger
@@ -2301,7 +2514,7 @@ function ssFlowHtml(ei){
   const pi=ssPartner(ei);if(pi<0)return '';
   const partner=a.entries[pi];if(!partner)return '';
   return '<button class="ssflow" data-n="'+esc(partner.name)+'" onclick="scrollToEntry(this.dataset.n)">'+
-    ico('link')+'Next: '+esc(partner.name)+
+    ico('link')+T('live.next')+esc(partner.name)+
     '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M9 6l6 6-6 6"/></svg>'+
     '</button>';
 }
@@ -2399,15 +2612,15 @@ function replaceEntryExercise(ei,name){
    normal list scrolling still works; the ⠿ handle drags immediately. */
 function openReorder(){
   const a=store.active;if(!a||a.entries.length<2)return;
-  let h='<h2>Reorder exercises</h2><p class="tiny muted" style="margin-bottom:4px">Press and hold a row, then drag to reorder — or drag the ⠿ handle. Changes apply right away.</p><div id="rolist">';
+  let h='<h2>'+T('ro.title')+'</h2><p class="tiny muted" style="margin-bottom:4px">'+T('ro.help')+'</p><div id="rolist">';
   a.entries.forEach((e,ei)=>{
     h+='<div class="listrow" data-ro="'+ei+'" style="cursor:grab; touch-action:pan-y">'+
       '<span class="draghandle" data-rodrag="'+ei+'">⠿</span>'+
       '<div class="grow"><div class="small" style="font-weight:600">'+esc(e.name)+'</div>'+
-      '<div class="tiny muted">'+e.sets.length+' set'+(e.sets.length===1?'':'s')+(e.ss!=null?' · superset '+String.fromCharCode(65+e.ss%26):'')+'</div></div>'+
+      '<div class="tiny muted">'+nPlur('u.set',e.sets.length)+(e.ss!=null?' · '+T('ro.superset')+' '+String.fromCharCode(65+e.ss%26):'')+'</div></div>'+
       '</div>';
   });
-  h+='</div><button class="btn primary wide" style="margin-top:12px" onclick="closeModal()">Done</button>';
+  h+='</div><button class="btn primary wide" style="margin-top:12px" onclick="closeModal()">'+T('ro.done')+'</button>';
   /* F55: the reorder sheet wires live pointer listeners onto its rows AFTER the
      HTML is in the DOM — those can't survive an innerHTML restore from the
      back-stack. Pass wireRoList as opts.rewire so a pop re-attaches them. */
@@ -2533,19 +2746,20 @@ function exMenu(ei){
   const meta=store.ex[e.name]||{cat:'Other'};
   openModal('<div class="row" style="align-items:flex-start; gap:8px; margin-bottom:2px">'+
       '<h2 style="min-width:0; word-break:break-word">'+esc(e.name)+'</h2><span class="sp"></span>'+
-      '<button class="infobtn" aria-label="What do these mean?" onclick="toggleExInfo(this)">'+ico('info')+'</button></div>'+
-    '<p class="tiny muted" style="margin-bottom:8px">'+esc(meta.cat)+'</p>'+
-    /* F22 (2026-07-06): collapsed-by-default plain-English explainers */
+      '<button class="infobtn" aria-label="'+T('xm.infoAria')+'" onclick="toggleExInfo(this)">'+ico('info')+'</button></div>'+
+    /* R23 (audit E bonus): catName(), not the raw stored group key */
+    '<p class="tiny muted" style="margin-bottom:8px">'+esc(catName(meta.cat))+'</p>'+
+    /* F22 (2026-07-06): collapsed-by-default plain-language explainers */
     '<div class="exinfo" hidden>'+
-      '<p><b>Superset</b> — two exercises done back to back with no rest between; link an exercise to the one above it.</p>'+
-      '<p><b>Drop set</b> — a set done right after the previous one at a lower weight, no rest; it shows the D mark.</p>'+
+      '<p>'+T('xm.ssExplain')+'</p>'+
+      '<p>'+T('xm.dropExplain')+'</p>'+
     '</div>'+
-    '<textarea class="howto" placeholder="Notes for this exercise (grip, tempo, machine setting…)" oninput="setEntryNote('+ei+',this.value)" style="margin-bottom:8px">'+esc(e.note||'')+'</textarea>'+
+    '<textarea class="howto" placeholder="'+T('xm.notesPh')+'" oninput="setEntryNote('+ei+',this.value)" style="margin-bottom:8px">'+esc(e.note||'')+'</textarea>'+
     '<div class="menu">'+
-    (ei>0?'<button onclick="toggleSS('+ei+');closeModal()">'+ico('link')+(e.ss!=null?'Unlink from superset':'Superset with exercise above')+'</button>':'')+
-    '<button onclick="openPicker(\'replace:'+ei+'\')">'+ico('repeat')+'Replace exercise</button>'+
-    (a.entries.length>1?'<button onclick="openReorder()">'+ico('sort')+'Reorder exercises</button>':'')+
-    '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+'Remove exercise</button>'+
+    (ei>0?'<button onclick="toggleSS('+ei+');closeModal()">'+ico('link')+(e.ss!=null?T('xm.unlinkSS'):T('xm.linkSS'))+'</button>':'')+
+    '<button onclick="openPicker(\'replace:'+ei+'\')">'+ico('repeat')+T('xm.replace')+'</button>'+
+    (a.entries.length>1?'<button onclick="openReorder()">'+ico('sort')+T('ro.title')+'</button>':'')+
+    '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+T('xm.remove')+'</button>'+
     '</div>');
 }
 function toggleExInfo(btn){
@@ -2554,11 +2768,11 @@ function toggleExInfo(btn){
 }
 function setMenu(ei,si){
   const a=store.active;if(!a)return;const e=a.entries[ei];if(!e)return;const s=e.sets[si];if(!s)return;
-  openModal('<h2>Set '+(si+1)+'</h2><div class="menu">'+
-    '<button onclick="copySet('+ei+','+si+');closeModal()">'+ico('copy')+'Copy set</button>'+
-    (si<e.sets.length-1?'<button onclick="copySetToRest('+ei+','+si+');closeModal()">'+ico('copy')+'Copy to remaining sets</button>':'')+
-    '<button onclick="toggleDrop('+ei+','+si+');closeModal()">'+ico('down')+(s.drop?'Unmark as drop set':'Mark as drop set')+'</button>'+
-    '<button class="del" onclick="removeSet('+ei+','+si+');closeModal()">'+ico('trash')+'Remove set</button>'+
+  openModal('<h2>'+T('sm.title',si+1)+'</h2><div class="menu">'+
+    '<button onclick="copySet('+ei+','+si+');closeModal()">'+ico('copy')+T('sm.copy')+'</button>'+
+    (si<e.sets.length-1?'<button onclick="copySetToRest('+ei+','+si+');closeModal()">'+ico('copy')+T('sm.copyRest')+'</button>':'')+
+    '<button onclick="toggleDrop('+ei+','+si+');closeModal()">'+ico('down')+(s.drop?T('sm.dropOff'):T('sm.dropOn'))+'</button>'+
+    '<button class="del" onclick="removeSet('+ei+','+si+');closeModal()">'+ico('trash')+T('sm.remove')+'</button>'+
     '</div>');
 }
 /* ============================== rest timer ============================== */
@@ -2585,12 +2799,12 @@ function tickRest(){
 }
 function drawRestBar(left,done){
   $('restbar').innerHTML='<div class="inner'+(done?' done':'')+'">'+
-    '<div><div class="rlabel">'+(done?'Rest done':'Rest')+'</div>'+
+    '<div><div class="rlabel">'+(done?T('rest.done'):T('rest.label'))+'</div>'+
     '<div class="rt">'+Math.floor(left/60)+':'+pad2(left%60)+'</div></div>'+
     '<span style="flex:1"></span>'+
-    (done?'<button onclick="stopRest()">Dismiss</button>':
+    (done?'<button onclick="stopRest()">'+T('rest.dismiss')+'</button>':
       '<button onclick="addRest(-15)">−15</button><button onclick="addRest(15)">+15</button>'+
-      '<button onclick="stopRest()">Skip</button>')+'</div>';
+      '<button onclick="stopRest()">'+T('rest.skip')+'</button>')+'</div>';
 }
 function addRest(d){restEnd+=d*1000;const now=Date.now();if(restEnd<now+1000)restEnd=now+1000;
   if(restEnd-now>restTotal*1000)restTotal=Math.ceil((restEnd-now)/1000);tickRest();}
@@ -2649,23 +2863,23 @@ function onDragEnd(){
 function discardWorkout(){
   const editing=store.active&&store.active.editing;
   confirmDialog({
-    title:editing?'Cancel editing?':'Discard workout?',
-    message:editing?'Your changes will be lost.':'Nothing from this workout will be saved.',
-    confirmLabel:editing?'Cancel editing':'Discard workout',
+    title:editing?T('dw.cancelEditQ'):T('dw.discardQ'),
+    message:editing?T('dw.cancelEditMsg'):T('dw.discardMsg'),
+    confirmLabel:editing?T('dw.cancelEditBtn'):T('dw.discardBtn'),
     onYes:()=>{store.active=null;save();clearInterval(tick);
       if(editing)render();else setView('routines');}});
 }
 function finishWorkout(){
   const a=store.active;
   const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
-  if(!entries.length){toast('Log at least one set first');return;}
+  if(!entries.length){toast(T('fin.logFirst'));return;}
   if(a.editing){
     const idx=store.workouts.findIndex(x=>x.id===a.editing);
     const w={id:a.editing,start:a.start,end:a.end||a.start,routine:a.routine.trim(),bw:a.bw||null,entries};
     for(const e of entries)ensureEx(e.name);
     if(idx>=0)store.workouts[idx]=w;else store.workouts.unshift(w);
     store.workouts.sort((x,y)=>x.start<y.start?1:-1);
-    store.active=null;save();toast('Workout updated');setView('log');
+    store.active=null;save();toast(T('fin.updated'));setView('log');
     return;
   }
   // PR check against history before saving
@@ -2683,17 +2897,17 @@ function finishWorkout(){
   const nsets=entries.reduce((t,e)=>t+e.sets.length,0);
   /* F48: the worst dead-space offender — moved to the centered dialog. */
   openDialog('<div style="text-align:center;margin-bottom:6px">'+badgerSVG(64)+'</div>'+
-    '<h2 style="margin-bottom:4px;text-align:center">Workout saved</h2>'+
-    '<p class="muted small" style="text-align:center;margin-bottom:'+(prs.length?'12px':'16px')+'">'+fmtDur(w.start,w.end)+' · '+nsets+' sets · '+fmtNum(vol)+' kg volume</p>'+
-    (prs.length?'<div class="card"><h3>New records</h3>'+prs.map(p=>'<div class="listrow" style="cursor:default"><div class="grow">'+esc(p.name)+'</div><b style="color:var(--good)">e1RM '+fmtW(p.e1)+' kg</b></div>').join('')+'</div>':'')+
-    '<button class="btn primary wide" onclick="closeModal();setView(\'log\')">Nice</button>');
+    '<h2 style="margin-bottom:4px;text-align:center">'+T('fin.saved')+'</h2>'+
+    '<p class="muted small" style="text-align:center;margin-bottom:'+(prs.length?'12px':'16px')+'">'+fmtDur(w.start,w.end)+' · '+nPlur('u.set',nsets)+' · '+T('u.kgVol',fmtNum(vol))+'</p>'+
+    (prs.length?'<div class="card"><h3>'+T('fin.newRecords')+'</h3>'+prs.map(p=>'<div class="listrow" style="cursor:default"><div class="grow">'+esc(p.name)+'</div><b style="color:var(--good)">e1RM '+fmtW(p.e1)+' kg</b></div>').join('')+'</div>':'')+
+    '<button class="btn primary wide" onclick="closeModal();setView(\'log\')">'+T('fin.nice')+'</button>');
   render();
 }
 /* exercise picker */
 function openPicker(target){
   state.pickTarget=target||'active';
-  openModal('<h2>'+(String(state.pickTarget).startsWith('replace:')?'Replace exercise':'Add exercise')+'</h2>'+
-    '<input id="pickq" placeholder="Search or type a new name…" style="width:100%;margin:12px 0" oninput="renderPickList()">'+
+  openModal('<h2>'+(String(state.pickTarget).startsWith('replace:')?T('pk.replace'):T('pk.add'))+'</h2>'+
+    '<input id="pickq" placeholder="'+T('pk.search')+'" style="width:100%;margin:12px 0" oninput="renderPickList()">'+
     '<div id="picklist"></div>');
   renderPickList();$('pickq').focus();
 }
@@ -2705,18 +2919,18 @@ function renderPickList(){
   for(const n of names.slice(0,40)){
     h+='<div class="listrow" data-n="'+esc(n)+'" onclick="pickExercise(this.dataset.n)"><div class="grow" style="font-weight:600">'+esc(n)+'</div>'+catChip(store.ex[n].cat)+'</div>';
   }
-  if(!names.length)h+='<p class="muted small">'+(q?'No match — type a new name to create it.':'No exercises yet — type a name to create one.')+'</p>';
+  if(!names.length)h+='<p class="muted small">'+(q?T('pk.noMatch'):T('pk.noneYet'))+'</p>';
   const exact=names.some(n=>n.toLowerCase()===q);
-  if(q&&!exact)h+='<div class="listrow" data-n="'+esc($('pickq').value.trim())+'" onclick="createExercise(this.dataset.n)"><div class="grow" style="color:var(--accent);font-weight:700">＋ Create “'+esc($('pickq').value.trim())+'”</div></div>';
+  if(q&&!exact)h+='<div class="listrow" data-n="'+esc($('pickq').value.trim())+'" onclick="createExercise(this.dataset.n)"><div class="grow" style="color:var(--accent);font-weight:700">'+T('pk.create',esc($('pickq').value.trim()))+'</div></div>';
   /* F62: mid-workout — reach the full catalog from the picker (adds to library AND the workout). */
-  h+='<div class="listrow" onclick="openCatalog(1)"><div class="grow" style="font-weight:600">Browse catalog</div><span class="chip">873</span></div>';
+  h+='<div class="listrow" onclick="openCatalog(1)"><div class="grow" style="font-weight:600">'+T('ex.browseCatalog')+'</div><span class="chip">873</span></div>';
   $('picklist').innerHTML=h;
 }
 function pickExercise(name){
   if(String(state.pickTarget).startsWith('replace:')){
     const ei=+String(state.pickTarget).slice(8);
-    if(replaceEntryExercise(ei,name))toast('Replaced with “'+name+'”');
-    state.pickTarget='active';closeModal();render();return;
+    if(replaceEntryExercise(ei,name))toast(T('toast.replacedWith',name));
+    state.pickTarget=null;closeModal();render();return;   /* R21 audit-D: reset target */
   }
   if(state.pickTarget==='routine'){ensureEx(name);
     state.editRoutine.exercises.push({name,ss:null,sets:[{tw:null,rlo:null,rhi:null}]});
@@ -2725,21 +2939,25 @@ function pickExercise(name){
   diagCount('exerciseAdded');save();closeModal();render();
 }
 function createExercise(name){
-  openModal('<h2>New exercise</h2>'+
+  openModal('<h2>'+T('ce.title')+'</h2>'+
     '<div style="margin:12px 0"><input id="newname" style="width:100%" value="'+esc(name)+'"></div>'+
-    '<select id="newcat" style="width:100%">'+CATS.map(c=>'<option'+(c==='Other'?' selected':'')+'>'+c+'</option>').join('')+'</select>'+
-    '<textarea id="newhow" class="howto" style="margin:12px 0" placeholder="How to perform it — cues, setup, machine settings… (your own form notes)"></textarea>'+
-    '<button class="btn primary wide" onclick="saveNewExercise()">Create & add</button>');
+    /* R23: options DISPLAY catName(); value keeps the English KEY (data law) */
+    '<select id="newcat" style="width:100%">'+CATS.map(c=>'<option value="'+c+'"'+(c==='Other'?' selected':'')+'>'+esc(catName(c))+'</option>').join('')+'</select>'+
+    '<textarea id="newhow" class="howto" style="margin:12px 0" placeholder="'+T('ce.howPh')+'"></textarea>'+
+    '<button class="btn primary wide" onclick="saveNewExercise()">'+T('ce.createAdd')+'</button>');
 }
 function saveNewExercise(){
   const name=$('newname').value.trim();if(!name)return;
   store.ex[name]={cat:$('newcat').value,cats2:[],howto:$('newhow').value.trim(),custom:true,vid:autoVisual(name)};
   if(String(state.pickTarget).startsWith('replace:')){
     replaceEntryExercise(+String(state.pickTarget).slice(8),name);
-    state.pickTarget='active';toast('Replaced with “'+name+'”');
+    state.pickTarget=null;toast(T('toast.replacedWith',name));   /* R21 audit-D: reset target */
   }
   else if(state.pickTarget==='routine'&&state.editRoutine){state.editRoutine.exercises.push({name,ss:null,sets:[{tw:null,rlo:null,rhi:null}]});}
-  else if(store.active){store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});diagCount('exerciseAdded');}
+  /* R21 (audit 2026-07-08 D): only an armed picker ('active') may touch the live
+     workout — bare store.active here meant "＋ New exercise" from the Exercises
+     tab silently appended to a workout in progress. null = library-only create. */
+  else if(state.pickTarget==='active'&&store.active){store.active.entries.push({name,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]});diagCount('exerciseAdded');}
   save();closeModal();render();
 }
 
@@ -2747,7 +2965,7 @@ function openWorkout(id){
   const w=store.workouts.find(x=>x.id===id);if(!w)return;
   const ssColors=['#ff7a3c','#4cc2ff','#7ee081','#ffd166','#c792ea'];
   const times=fmtClockRange(w.start,w.end);const dur=fmtDur(w.start,w.end);
-  let h='<h2>'+esc(w.routine||'Workout')+'</h2>'+
+  let h='<h2>'+esc(w.routine||T('home.workout'))+'</h2>'+
     '<p class="muted small">'+fmtDay(w.start)+(times?' · '+times:'')+(dur?' · '+dur:'')+(w.bw?' · BW '+fmtW(w.bw)+' kg':'')+'</p>';
   for(const e of w.entries){
     h+='<div class="card" style="padding:12px 14px"><div class="row"><b class="grow">'+esc(e.name)+'</b>'+
@@ -2755,7 +2973,7 @@ function openWorkout(id){
     e.sets.forEach((s,i)=>{
       const bits=[];
       if(s.w!=null)bits.push(fmtW(s.w)+' kg');
-      if(s.r!=null)bits.push(s.r+' reps');
+      if(s.r!=null)bits.push(s.r+' '+T('u.rep'));
       if(s.dur!=null)bits.push(s.dur+' s');
       if(s.dist!=null)bits.push(s.dist+' m');
       const e1=epley(s.w,s.r);
@@ -2768,15 +2986,15 @@ function openWorkout(id){
     h+='</div>';
   }
   h+='<div class="row" style="margin-top:8px">'+
-    '<button class="btn grow" data-id="'+esc(w.id)+'" onclick="confirmStart(\'repeat\',this.dataset.id)">Repeat</button>'+   /* F33/F55: pushes over the workout sheet; cancel returns here */
-    '<button class="btn grow" onclick="saveWorkoutAsRoutine(\''+esc(w.id)+'\')">Save as routine</button></div>'+
+    '<button class="btn grow" data-id="'+esc(w.id)+'" onclick="confirmStart(\'repeat\',this.dataset.id)">'+T('ws.repeat')+'</button>'+   /* F33/F55: pushes over the workout sheet; cancel returns here */
+    '<button class="btn grow" onclick="saveWorkoutAsRoutine(\''+esc(w.id)+'\')">'+T('rt.saveAsRoutine')+'</button></div>'+
     '<div class="row" style="margin-top:8px">'+
-    '<button class="btn danger" onclick="deleteWorkout(\''+esc(w.id)+'\')">Delete</button>'+
-    '<button class="btn primary grow" onclick="editWorkout(\''+esc(w.id)+'\')">Edit workout</button></div>';
+    '<button class="btn danger" onclick="deleteWorkout(\''+esc(w.id)+'\')">'+T('ws.delete')+'</button>'+
+    '<button class="btn primary grow" onclick="editWorkout(\''+esc(w.id)+'\')">'+T('ws.edit')+'</button></div>';
   openModal(h);
 }
 function editWorkout(id){
-  if(store.active&&!store.active.editing){toast('Finish or discard the current workout first');return;}
+  if(store.active&&!store.active.editing){toast(T('start.finishFirst'));return;}
   const w=store.workouts.find(x=>x.id===id);if(!w)return;
   store.active={start:w.start,end:w.end,routine:w.routine,bw:w.bw,editing:id,
     entries:w.entries.map(e=>({name:e.name,ss:e.ss,note:e.note||'',
@@ -2784,8 +3002,8 @@ function editWorkout(id){
   save();closeModal();state.view='log';render();
 }
 function deleteWorkout(id){
-  confirmDialog({title:'Delete workout?',message:'This workout will be permanently removed.',
-    confirmLabel:'Delete workout',onYes:()=>{
+  confirmDialog({title:T('dw.deleteQ'),message:T('dw.deleteMsg'),
+    confirmLabel:T('dw.deleteBtn'),onYes:()=>{
       store.workouts=store.workouts.filter(w=>w.id!==id);save();closeModal();render();}});
 }
 
@@ -2798,8 +3016,8 @@ function exListRow(n,secondary){
     (m.vid?'<img class="thumb" loading="lazy" src="exercises/'+esc(m.vid)+'/0.jpg" alt="">':
       '<span class="thumb" style="background:var(--card2);display:inline-flex;align-items:center;justify-content:center;color:'+(CAT_COLORS[m.cat]||CAT_COLORS.Other)+';font-weight:800">'+esc(n[0])+'</span>')+
     '<div class="grow"><div style="font-weight:600">'+esc(n)+
-      (secondary?' <span class="chip sec2">2nd</span>':'')+'</div>'+   /* F57: muted marker on secondary-group members */
-    '<div class="tiny muted">'+(pr.sessions?pr.sessions+' sessions'+(pr.bestE1?' · best e1RM '+fmtW(pr.bestE1)+' kg':''):'never logged')+'</div></div>'+
+      (secondary?' <span class="chip sec2">'+T('xs.secondChip')+'</span>':'')+'</div>'+   /* F57: muted marker on secondary-group members */
+    '<div class="tiny muted">'+(pr.sessions?nPlur('u.session',pr.sessions)+(pr.bestE1?' · '+T('xs.bestE1')+' '+fmtW(pr.bestE1)+' kg':''):T('xs.neverLogged'))+'</div></div>'+
     (rk&&!rk.locked?rankBadge(rk.tier):'')+'</div>';
 }
 /* F52: the ~6 most recently TRAINED distinct exercise names, newest-first.
@@ -2909,34 +3127,34 @@ function openExercise(name,replace){
   const cats2=Array.isArray(m.cats2)?m.cats2:[];
   let h='<h2>'+esc(name)+'</h2><div class="row" style="margin:8px 0 4px">'+catChip(m.cat)+
     cats2.map(g=>catChip(g)).join('')+                              /* F57: secondary group chips */
-    (m.custom?'<span class="chip">custom</span>':'')+'</div>';
+    (m.custom?'<span class="chip">'+T('xs.custom')+'</span>':'')+'</div>';
   if(cat){
-    h+='<div class="visual" id="visual"><img src="exercises/'+esc(m.vid)+'/0.jpg" alt="How to perform '+esc(name)+'"></div>'+
+    h+='<div class="visual" id="visual"><img src="exercises/'+esc(m.vid)+'/0.jpg" alt="'+T('xs.altHow',esc(name))+'"></div>'+
       '<div class="musclegrid">'+
-      '<div><div class="l">Primary muscles</div><div class="v">'+esc(cat.p.join(', ')||'—')+'</div></div>'+
-      '<div><div class="l">Equipment</div><div class="v">'+esc(cat.q||'—')+'</div></div>'+
-      (cat.s.length?'<div style="grid-column:1/-1"><div class="l">Secondary muscles</div><div class="v">'+esc(cat.s.join(', '))+'</div></div>':'')+
+      '<div><div class="l">'+T('xs.primaryMuscles')+'</div><div class="v">'+esc(cat.p.join(', ')||'—')+'</div></div>'+
+      '<div><div class="l">'+T('xs.equipment')+'</div><div class="v">'+esc(cat.q||'—')+'</div></div>'+
+      (cat.s.length?'<div style="grid-column:1/-1"><div class="l">'+T('xs.secondaryMuscles')+'</div><div class="v">'+esc(cat.s.join(', '))+'</div></div>':'')+
       '</div>';
   }else{
-    h+='<div class="banner">No visual linked yet — pick one from the catalog below.</div>';
+    h+='<div class="banner">'+T('xs.noVisual')+'</div>';
   }
-  h+='<div class="row" style="margin:0 0 4px"><button class="btn ghost small" data-n="'+esc(name)+'" onclick="openVisualPicker(this.dataset.n)">'+(cat?'Change visual':'Choose visual from catalog')+'</button>'+
-     (cat?'<button class="btn ghost small" data-n="'+esc(name)+'" onclick="unlinkVisual(this.dataset.n)">Unlink</button>':'')+'</div>';
+  h+='<div class="row" style="margin:0 0 4px"><button class="btn ghost small" data-n="'+esc(name)+'" onclick="openVisualPicker(this.dataset.n)">'+(cat?T('xs.changeVisual'):T('xs.chooseVisual'))+'</button>'+
+     (cat?'<button class="btn ghost small" data-n="'+esc(name)+'" onclick="unlinkVisual(this.dataset.n)">'+T('xs.unlink')+'</button>':'')+'</div>';
   if(rk){
-    if(rk.locked==='bw')h+='<div class="banner">Log your bodyweight in a workout to unlock ranks.</div>';
+    if(rk.locked==='bw')h+='<div class="banner">'+T('xs.bwUnlock')+'</div>';
     else if(rk.locked!=='data')h+=rankCardHtml(rk);
   }
   h+='<div class="statgrid" style="margin:12px 0">'+
-    '<div class="stat"><div class="v">'+(pr.maxW!=null?fmtW(pr.maxW):'—')+'</div><div class="l">best kg'+(pr.maxWr?' ×'+pr.maxWr:'')+'</div></div>'+
-    '<div class="stat"><div class="v">'+(pr.bestE1!=null?fmtW(pr.bestE1):'—')+'</div><div class="l">best e1RM</div></div>'+
-    '<div class="stat"><div class="v">'+pr.total+'</div><div class="l">sets total</div></div></div>';
+    '<div class="stat"><div class="v">'+(pr.maxW!=null?fmtW(pr.maxW):'—')+'</div><div class="l">'+T('xs.bestKg')+(pr.maxWr?' ×'+pr.maxWr:'')+'</div></div>'+
+    '<div class="stat"><div class="v">'+(pr.bestE1!=null?fmtW(pr.bestE1):'—')+'</div><div class="l">'+T('xs.bestE1')+'</div></div>'+
+    '<div class="stat"><div class="v">'+pr.total+'</div><div class="l">'+T('xs.setsTotal')+'</div></div></div>';
   h+='<div class="row" style="margin:0 0 8px">'+
-    '<button class="btn grow small" data-n="'+esc(name)+'" onclick="openExHistory(this.dataset.n)">History</button>'+
-    '<button class="btn grow small" data-n="'+esc(name)+'" onclick="openExCharts(this.dataset.n)">Charts</button>'+
-    '<button class="btn grow small" data-n="'+esc(name)+'" onclick="openExPRs(this.dataset.n)">Records</button></div>';
+    '<button class="btn grow small" data-n="'+esc(name)+'" onclick="openExHistory(this.dataset.n)">'+T('act.history')+'</button>'+
+    '<button class="btn grow small" data-n="'+esc(name)+'" onclick="openExCharts(this.dataset.n)">'+T('act.charts')+'</button>'+
+    '<button class="btn grow small" data-n="'+esc(name)+'" onclick="openExPRs(this.dataset.n)">'+T('xs.records')+'</button></div>';
   const pts=sessions.slice(0,20).reverse().map(s=>s.best).filter(v=>v!=null);
-  if(pts.length>1)h+='<div class="card"><h3>e1RM trend</h3>'+sparkSvg(pts,'spark')+'</div>';
-  if(cat&&cat.t&&cat.t.length)h+='<div class="card"><h3>Instructions</h3><ol class="instructions">'+
+  if(pts.length>1)h+='<div class="card"><h3>'+T('xs.e1Trend')+'</h3>'+sparkSvg(pts,'spark')+'</div>';
+  if(cat&&cat.t&&cat.t.length)h+='<div class="card"><h3>'+T('xs.instructions')+'</h3><ol class="instructions">'+
     cat.t.map(step=>'<li>'+esc(step)+'</li>').join('')+'</ol></div>';
   /* F57: primary select (13 groups) + a petite editable SECONDARY row — the
      exercise's cats2 as removable chips plus a compact add-picker of the other
@@ -2945,20 +3163,21 @@ function openExercise(name,replace){
      and reuses the native picker the rest of the app uses. Both edits mutate the
      store live and re-render the sheet in place (replace, no stack churn). */
   const avail=CATS.filter(g=>g!==m.cat&&!cats2.includes(g));
-  h+='<div class="card"><h3>Your own notes</h3>'+
-    '<textarea class="howto" id="howto" placeholder="Your own cues: setup, grip, seat height, tempo…">'+esc(m.howto)+'</textarea>'+
-    '<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 4px">Primary muscle group</div>'+
-    '<div class="row"><select id="excat" class="grow">'+CATS.map(c=>'<option'+(c===m.cat?' selected':'')+'>'+c+'</option>').join('')+'</select></div>'+
-    '<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 4px">Also works (secondary)</div>'+
+  h+='<div class="card"><h3>'+T('xs.notes')+'</h3>'+
+    '<textarea class="howto" id="howto" placeholder="'+T('xs.notesPh')+'">'+esc(m.howto)+'</textarea>'+
+    '<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 4px">'+T('xs.primaryGroup')+'</div>'+
+    /* R23: options DISPLAY catName(); value keeps the English group KEY (data law) */
+    '<div class="row"><select id="excat" class="grow">'+CATS.map(c=>'<option value="'+c+'"'+(c===m.cat?' selected':'')+'>'+esc(catName(c))+'</option>').join('')+'</select></div>'+
+    '<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 4px">'+T('xs.alsoWorks')+'</div>'+
     '<div class="cats2row">'+
       cats2.map(g=>'<button class="chip cat2chip" data-n="'+esc(name)+'" data-g="'+esc(g)+'" onclick="removeCat2(this.dataset.n,this.dataset.g)">'+
-        '<span class="dot" style="background:'+(CAT_COLORS[g]||CAT_COLORS.Other)+'"></span>'+esc(g)+'<span class="x">×</span></button>').join('')+
-      (avail.length?'<select class="cat2add" data-n="'+esc(name)+'" onchange="addCat2(this.dataset.n,this.value)"><option value="">＋ add…</option>'+
-        avail.map(g=>'<option>'+g+'</option>').join('')+'</select>':'')+
+        '<span class="dot" style="background:'+(CAT_COLORS[g]||CAT_COLORS.Other)+'"></span>'+esc(catName(g))+'<span class="x">×</span></button>').join('')+
+      (avail.length?'<select class="cat2add" data-n="'+esc(name)+'" onchange="addCat2(this.dataset.n,this.value)"><option value="">'+T('xs.addOpt')+'</option>'+
+        avail.map(g=>'<option value="'+g+'">'+esc(catName(g))+'</option>').join('')+'</select>':'')+
     '</div>'+
-    '<div class="row" style="margin-top:12px"><button class="btn primary grow" data-n="'+esc(name)+'" onclick="saveExercise(this.dataset.n)">Save</button></div></div>';
+    '<div class="row" style="margin-top:12px"><button class="btn primary grow" data-n="'+esc(name)+'" onclick="saveExercise(this.dataset.n)">'+T('xs.save')+'</button></div></div>';
   if(sessions.length){
-    h+='<div class="card"><h3>Recent sessions</h3>';
+    h+='<div class="card"><h3>'+T('xs.recentSessions')+'</h3>';
     for(const s of sessions.slice(0,8)){
       h+='<div class="listrow" style="cursor:default"><div class="grow"><div class="small" style="font-weight:600">'+fmtDay(s.date)+'</div>'+
         '<div class="tiny muted">'+s.sets.map(x=>fmtW(x.w)+'×'+(x.r??(x.dur!=null?x.dur+'s':'—'))).join(', ')+'</div></div>'+
@@ -2973,8 +3192,8 @@ function unlinkVisual(name){store.ex[name].vid=null;save();openExercise(name,1);
 /* visual picker: link any catalog visual to any exercise (incl. custom ones) */
 function openVisualPicker(name){
   _vpChunks=1;   // F73: reset the chunk window on a fresh open
-  openModal('<h2>Choose a visual</h2><p class="tiny muted">for '+esc(name)+'</p>'+
-    '<input id="vpq" placeholder="Search 873 exercises…" style="width:100%;margin:10px 0" data-n="'+esc(name)+'" oninput="onCatalogSearch(this)">'+
+  openModal('<h2>'+T('vp.title')+'</h2><p class="tiny muted">'+T('vp.for',esc(name))+'</p>'+
+    '<input id="vpq" placeholder="'+T('ex.search',873)+'" style="width:100%;margin:10px 0" data-n="'+esc(name)+'" oninput="onCatalogSearch(this)">'+
     '<div id="vplist"></div>');
   renderVisualList(name);$('vpq').focus();
 }
@@ -2991,7 +3210,7 @@ function renderVisualList(name){
     '<img class="thumb" loading="lazy" src="exercises/'+esc(c.i)+'/0.jpg" alt="">'+
     '<div class="grow"><div style="font-weight:600">'+esc(c.n)+'</div>'+
     '<div class="tiny muted">'+esc((c.p||[]).join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div></div>').join('')
-    ||'<p class="muted small">No match.</p>';
+    ||'<p class="muted small">'+T('cb.noMatch')+'</p>';
   if(shown<all.length)h+=catalogSentinel('vplist','renderVisualList',name);
   $('vplist').innerHTML=h;
   armCatalogSentinel('vplist',()=>{_vpChunks++;renderVisualList(name);});
@@ -3001,7 +3220,7 @@ function renderVisualList(name){
 function vpickVisual(vid,name){
   if(!store.ex[name])return;
   store.ex[name].vid=vid;save();
-  dropModalFrame();openExercise(name,1);toast('Visual linked');   /* F55: return to the exercise, no duplicate back-step */
+  dropModalFrame();openExercise(name,1);toast(T('toast.visualLinked'));   /* F55: return to the exercise, no duplicate back-step */
 }
 /* catalog browser: BROWSE the 873-exercise catalog. F62: browsing is looking, not
    adding — a row opens a read-only preview; adding is an explicit button there.
@@ -3011,10 +3230,9 @@ function vpickVisual(vid,name){
 function openCatalog(pick){
   state.catalogPick=!!pick;
   _catChunks=1;   // F73: reset the chunk window on a fresh open
-  const sub=pick?'Tap one to preview it, then add it to this workout.'
-                :'Tap one to preview it — add to your library from there.';
-  openModal('<h2>Exercise catalog</h2><p class="tiny muted" id="cbcount">'+catalogCountLine(CATALOG.length)+' — '+sub+'</p>'+
-    '<input id="cbq" placeholder="Search…" style="width:100%;margin:10px 0" oninput="onCatalogSearch(this)">'+
+  const sub=pick?T('cb.subPick'):T('cb.subBrowse');
+  openModal('<h2>'+T('cb.title')+'</h2><p class="tiny muted" id="cbcount">'+catalogCountLine(CATALOG.length)+' — '+sub+'</p>'+
+    '<input id="cbq" placeholder="'+T('cb.search')+'" style="width:100%;margin:10px 0" oninput="onCatalogSearch(this)">'+
     '<div id="cblist"></div>');
   renderCatalogList();$('cbq').focus();
 }
@@ -3031,9 +3249,7 @@ function renderCatalogList(){
   const hits=all.slice(0,shown);
   /* F73: the count line honestly reflects what's being shown while filtering. */
   const cc=$('cbcount');
-  if(cc)cc.innerHTML=catalogCountLine(all.length,!!q)+' — '+(state.catalogPick
-    ?'Tap one to preview it, then add it to this workout.'
-    :'Tap one to preview it — add to your library from there.');
+  if(cc)cc.innerHTML=catalogCountLine(all.length,!!q)+' — '+(state.catalogPick?T('cb.subPick'):T('cb.subBrowse'));
   /* F63: inline-dataset onclick (data-cadd = catalog id) survives an innerHTML
      restore by construction — no JS-bound closures that pop→restore would drop. */
   let h=hits.map(c=>
@@ -3041,8 +3257,8 @@ function renderCatalogList(){
     '<img class="thumb" loading="lazy" src="exercises/'+esc(c.i)+'/0.jpg" alt="">'+
     '<div class="grow"><div style="font-weight:600">'+esc(c.n)+'</div>'+
     '<div class="tiny muted">'+esc((c.p||[]).join(', '))+(c.q?' · '+esc(c.q):'')+'</div></div>'+
-    (store.ex[c.n]?'<span class="chip">in library</span>':'')+'</div>').join('')
-    ||'<p class="muted small">No match.</p>';
+    (store.ex[c.n]?'<span class="chip">'+T('cb.inLib')+'</span>':'')+'</div>').join('')
+    ||'<p class="muted small">'+T('cb.noMatch')+'</p>';
   if(shown<all.length)h+=catalogSentinel('cblist','renderCatalogList');
   $('cblist').innerHTML=h;
   armCatalogSentinel('cblist',()=>{_catChunks++;renderCatalogList();});
@@ -3114,24 +3330,24 @@ function catalogPreview(id,replace){
   const groups=catalogGroups(id);const secs=groups.filter(g=>g!==primary);
   let h='<h2>'+esc(c.n)+'</h2>';
   h+='<div class="row" style="margin:8px 0 4px">'+catChip(primary)+secs.map(g=>catChip(g)).join('')+
-    (inLib?'<span class="chip">in library</span>':'')+'</div>';
-  h+='<div class="visual" id="visual"><img src="exercises/'+esc(id)+'/0.jpg" alt="How to perform '+esc(c.n)+'"></div>'+
+    (inLib?'<span class="chip">'+T('cb.inLib')+'</span>':'')+'</div>';
+  h+='<div class="visual" id="visual"><img src="exercises/'+esc(id)+'/0.jpg" alt="'+T('xs.altHow',esc(c.n))+'"></div>'+
     '<div class="musclegrid">'+
-    '<div><div class="l">Primary muscles</div><div class="v">'+esc(c.p.join(', ')||'—')+'</div></div>'+
-    '<div><div class="l">Equipment</div><div class="v">'+esc(c.q||'—')+'</div></div>'+
-    (c.s&&c.s.length?'<div style="grid-column:1/-1"><div class="l">Secondary muscles</div><div class="v">'+esc(c.s.join(', '))+'</div></div>':'')+
+    '<div><div class="l">'+T('xs.primaryMuscles')+'</div><div class="v">'+esc(c.p.join(', ')||'—')+'</div></div>'+
+    '<div><div class="l">'+T('xs.equipment')+'</div><div class="v">'+esc(c.q||'—')+'</div></div>'+
+    (c.s&&c.s.length?'<div style="grid-column:1/-1"><div class="l">'+T('xs.secondaryMuscles')+'</div><div class="v">'+esc(c.s.join(', '))+'</div></div>':'')+
     '</div>';
   /* primary action */
   h+='<div class="row" style="margin:12px 0 4px">';
   if(pick){
-    h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddWorkout(this.dataset.cadd)">Add to workout</button>';
+    h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddWorkout(this.dataset.cadd)">'+T('cb.addWorkout')+'</button>';
   }else if(inLib){
-    h+='<button class="btn primary grow" data-n="'+esc(c.n)+'" onclick="catalogOpenLibrary(this.dataset.n)">Open in library</button>';
+    h+='<button class="btn primary grow" data-n="'+esc(c.n)+'" onclick="catalogOpenLibrary(this.dataset.n)">'+T('cb.openLib')+'</button>';
   }else{
-    h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddLibrary(this.dataset.cadd)">Add to library</button>';
+    h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddLibrary(this.dataset.cadd)">'+T('cb.addLib')+'</button>';
   }
   h+='</div>';
-  if(c.t&&c.t.length)h+='<div class="card"><h3>Instructions</h3><ol class="instructions">'+
+  if(c.t&&c.t.length)h+='<div class="card"><h3>'+T('xs.instructions')+'</h3><ol class="instructions">'+
     c.t.map(step=>'<li>'+esc(step)+'</li>').join('')+'</ol></div>';
   openModal(h,{replace:!!replace});
   startVisual(id);
@@ -3150,7 +3366,7 @@ function catalogEnsureLibrary(id){
    the preview in place to the "in library" state (open-in-library button). */
 function catalogAddLibrary(id){
   const name=catalogEnsureLibrary(id);if(!name)return;
-  save();toast('Added to your library');
+  save();toast(T('toast.addedLib'));
   catalogPreview(id,true);   /* in-place re-render → button becomes "Open in library" */
 }
 /* F62: jump from the preview to the full library exercise sheet (over the
@@ -3172,7 +3388,7 @@ function saveExercise(name){
   /* F57: the primary must never also appear in cats2 (it can if the select was
      changed to a group that was a secondary). Keep the invariant on save. */
   if(Array.isArray(m.cats2))m.cats2=m.cats2.filter(g=>g!==m.cat);
-  save();toast('Saved');closeModal();render();
+  save();toast(T('toast.saved'));closeModal();render();
 }
 /* F57: live secondary-group edits — mutate the store and re-render the sheet in
    place (replace → no back-stack churn). addCat2 ignores the primary/dupes. */
@@ -3244,14 +3460,14 @@ function renderReviewSheet(){
   const box=$('mgreview');if(!box)return;
   const rows=groupDisagreements();
   if(!rows.length){
-    box.innerHTML='<h2>Review muscle groups</h2>'+
-      '<div class="card">'+emptyState('All agreed','Every exercise’s muscle group matches its linked visual.',64)+'</div>';
+    box.innerHTML='<h2>'+T('rv.title')+'</h2>'+
+      '<div class="card">'+emptyState(T('rv.allAgreed'),T('rv.allAgreedSub'),64)+'</div>';
     /* re-render the tab/home so the entry point + nudge drop to zero, then close */
     render();setTimeout(closeModalAnimated,900);return;
   }
-  box.innerHTML='<h2>Review muscle groups</h2>'+
-    '<p class="tiny muted" style="margin:0 0 8px">'+rows.length+' exercise'+(rows.length===1?'':'s')+' disagree with the linked visual’s group. Accept the catalog’s group, or keep yours.</p>'+
-    '<button class="btn primary wide" style="margin-bottom:12px" onclick="acceptAllGroups()">Accept all ('+rows.length+')</button>'+
+  box.innerHTML='<h2>'+T('rv.title')+'</h2>'+
+    '<p class="tiny muted" style="margin:0 0 8px">'+T('set.reviewDisagree',rows.length,plur('u.exercise',rows.length))+' '+T('rv.acceptOrKeep')+'</p>'+
+    '<button class="btn primary wide" style="margin-bottom:12px" onclick="acceptAllGroups()">'+T('rv.acceptAll',rows.length)+'</button>'+
     /* F54 (2026-07-07) OWNER SPEC, verbatim: "categories bleed into the keep and
        accept buttons." Root cause: the old .listrow packed name+chips into a
        .grow (measured 126px at 375px) with the buttons in a flex:none row — the
@@ -3268,18 +3484,18 @@ function renderReviewSheet(){
         '<div class="mgrev-line">'+
           '<div class="mgrev-chips">'+catChip(d.stored)+'<span class="tiny muted">→</span>'+catChip(d.catalog)+'</div>'+
           '<div class="mgrev-acts">'+
-            '<button class="btn small" data-n="'+esc(d.name)+'" onclick="keepGroup(this.dataset.n)">Keep</button>'+
-            '<button class="btn primary small" data-n="'+esc(d.name)+'" onclick="acceptGroup(this.dataset.n)">Accept</button>'+
+            '<button class="btn small" data-n="'+esc(d.name)+'" onclick="keepGroup(this.dataset.n)">'+T('rv.keep')+'</button>'+
+            '<button class="btn primary small" data-n="'+esc(d.name)+'" onclick="acceptGroup(this.dataset.n)">'+T('rv.accept')+'</button>'+
           '</div>'+
         '</div>'+
-        (extra.length?'<div class="mgrev-also tiny muted">also: '+esc(extra.join(', '))+'</div>':'')+
+        (extra.length?'<div class="mgrev-also tiny muted">'+T('rv.also')+esc(extra.map(catName).join(', '))+'</div>':'')+
       '</div>';
     }).join('')+'</div>';
 }
 /* line chart with axis labels; pts=[{t:label, y:number}] ascending in time */
 function lineChart(pts,fmtY){
   fmtY=fmtY||(v=>fmtNum(v));
-  if(!pts.length)return '<p class="muted small">No data in this range.</p>';
+  if(!pts.length)return '<p class="muted small">'+T('ch.noData')+'</p>';
   const W=560,H=190,L=56,R=12,T=14,B=28;
   const ys=pts.map(p=>p.y);let min=Math.min(...ys),max=Math.max(...ys);
   if(min===max){min-=1;max+=1;}
@@ -3305,7 +3521,7 @@ function lineChart(pts,fmtY){
    viewBox-scaled so it never overflows its card. The line-squiggle era is over. */
 function barChart(bars,fmtV){
   fmtV=fmtV||(v=>fmtNum(v));
-  if(!bars.length)return '<p class="muted small">No data in this range.</p>';
+  if(!bars.length)return '<p class="muted small">'+T('ch.noData')+'</p>';
   const W=560,H=180,L=8,R=8,T=22,B=26;
   const max=Math.max(1,...bars.map(b=>b.val));
   const n=bars.length,gap=6;
@@ -3333,12 +3549,12 @@ function barChart(bars,fmtV){
   return s;
 }
 function dateBadge(s){const d=toDate(s);
-  return '<div class="datebadge"><div class="dow">'+DAYS[d.getDay()]+'</div><div class="d">'+d.getDate()+'</div></div>';}
+  return '<div class="datebadge"><div class="dow">'+dayName(d.getDay())+'</div><div class="d">'+d.getDate()+'</div></div>';}
 /* full session history for one exercise */
 function openExHistory(name){
   const sessions=exSessions(name);
-  let h='<h2>History</h2><p class="tiny muted">'+esc(name)+' · '+sessions.length+' sessions</p>';
-  if(!sessions.length)h+='<p class="muted small">Never logged.</p>';
+  let h='<h2>'+T('act.history')+'</h2><p class="tiny muted">'+esc(name)+' · '+nPlur('u.session',sessions.length)+'</p>';
+  if(!sessions.length)h+='<p class="muted small">'+T('xh.never')+'</p>';
   let curMonth='';
   for(const s of sessions){
     const mk=monthKey(s.date);
@@ -3346,29 +3562,33 @@ function openExHistory(name){
       h+='<h3 style="font-size:13px;color:var(--muted);margin:14px 4px 2px">'+fmtMonth(s.date)+'</h3>';}
     h+='<div class="listrow" style="cursor:default">'+dateBadge(s.date)+
       '<div class="grow"><div class="small" style="font-weight:600">'+s.sets.map(x=>fmtW(x.w)+'×'+(x.r??(x.dur!=null?x.dur+'s':'—'))).join(', ')+'</div>'+
-      '<div class="tiny muted">'+fmtNum(s.vol)+' kg volume</div></div>'+
+      '<div class="tiny muted">'+T('u.kgVol',fmtNum(s.vol))+'</div></div>'+
       (s.best?'<span class="tiny muted">e1RM '+fmtW(s.best)+'</span>':'')+'</div>';
   }
   openModal(h);
 }
 /* charts: metric + time range */
 const exChart={metric:'e1',range:'all'};
-const CHART_METRICS={e1:'Est. 1RM',vol:'Volume',maxw:'Max weight',reps:'Total reps'};
-const CHART_RANGES={'3m':'3M','6m':'6M','1y':'1Y',all:'All'};
+/* R23: chart metric labels are STRING KEYS; ranges 3M/6M/1Y are language-neutral,
+   only "All" translates. */
+const CHART_METRICS={e1:'ch.e1',vol:'ch.vol',maxw:'ch.maxw',reps:'ch.reps'};
+const CHART_RANGES={'3m':'3M','6m':'6M','1y':'1Y',all:'ch.rangeAll'};
 function openExCharts(name,replace){
   const cutoff={'3m':90,'6m':182,'1y':365}[exChart.range];
   let sessions=exSessions(name).slice().reverse();
   if(cutoff)sessions=sessions.filter(s=>toDate(s.date)>Date.now()-cutoff*86400000);
-  const pts=sessions.map(s=>({t:toDate(s.date).getDate()+' '+MONTHS[toDate(s.date).getMonth()].slice(0,3)+' '+String(toDate(s.date).getFullYear()).slice(2),
+  const pts=sessions.map(s=>({t:toDate(s.date).getDate()+' '+monthName(toDate(s.date).getMonth()).slice(0,3)+' '+String(toDate(s.date).getFullYear()).slice(2),
     y:{e1:s.best,vol:s.vol,maxw:Math.max(0,...s.sets.map(x=>x.w||0)),reps:s.sets.reduce((a,x)=>a+(x.r||0),0)}[exChart.metric]}))
     .filter(p=>p.y!=null&&p.y>0);
-  let h='<h2>Charts</h2><p class="tiny muted">'+esc(name)+'</p>'+
+  /* R23: metric labels are string keys → T(); range keys 3M/6M/1Y are neutral,
+     "All" translates → T() (T() returns the literal itself when not a key). */
+  let h='<h2>'+T('act.charts')+'</h2><p class="tiny muted">'+esc(name)+'</p>'+
     '<div class="seg">'+Object.entries(CHART_METRICS).map(([k,v])=>
-      '<button class="'+(exChart.metric===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.metric=\''+k+'\';openExCharts(this.dataset.n,1)">'+v+'</button>').join('')+'</div>'+
+      '<button class="'+(exChart.metric===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.metric=\''+k+'\';openExCharts(this.dataset.n,1)">'+T(v)+'</button>').join('')+'</div>'+
     '<div class="seg">'+Object.entries(CHART_RANGES).map(([k,v])=>
-      '<button class="'+(exChart.range===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.range=\''+k+'\';openExCharts(this.dataset.n,1)">'+v+'</button>').join('')+'</div>'+
+      '<button class="'+(exChart.range===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.range=\''+k+'\';openExCharts(this.dataset.n,1)">'+T(v)+'</button>').join('')+'</div>'+
     '<div class="card">'+lineChart(pts,v=>fmtW(v))+'</div>'+
-    '<p class="tiny muted">One point per session'+(exChart.metric==='e1'?' (best set, Epley formula)':'')+'.</p>';
+    '<p class="tiny muted">'+T('ch.foot',exChart.metric==='e1'?T('ch.footE1'):'')+'</p>';
   openModal(h,{replace:!!replace});   /* F55: segment re-renders replace in place; fresh open pushes */
 }
 /* personal records incl. rep-max frontier */
@@ -3391,25 +3611,25 @@ function openExPRs(name){
   const volR=bestBy(s=>s.vol||null), e1R=bestBy(s=>s.best), repsR=bestBy(s=>s.sets.reduce((a,x)=>a+(x.r||0),0)||null),
         setsR=bestBy(s=>s.sets.length), maxwR=bestBy(s=>Math.max(0,...s.sets.map(x=>x.w||0))||null),
         maxrR=bestBy(s=>Math.max(0,...s.sets.map(x=>x.r||0))||null);
-  let h='<h2>Personal records</h2><p class="tiny muted">'+esc(name)+'</p>';
-  if(!sessions.length)h+='<p class="muted small">Never logged.</p>';
+  let h='<h2>'+T('act.prs')+'</h2><p class="tiny muted">'+esc(name)+'</p>';
+  if(!sessions.length)h+='<p class="muted small">'+T('xh.never')+'</p>';
   if(e1R)h+='<div class="card" style="text-align:center">'+
-    '<div class="tiny prlabel">Best est. 1RM</div>'+
+    '<div class="tiny prlabel">'+T('pr.bestE1')+'</div>'+
     '<div style="font-size:30px;font-weight:800;color:var(--accent);line-height:1.2">'+fmtW(e1R.v)+' <span style="font-size:15px;font-weight:700">kg</span></div>'+
     '<div class="tiny muted">'+fmtDay(e1R.date)+'</div></div>';
   if(rr.length){
     const maxW=Math.max(...rr.map(x=>x.w));
-    h+='<div class="card"><div class="tiny prlabel" style="margin-bottom:8px">Rep ladder</div>';
+    h+='<div class="card"><div class="tiny prlabel" style="margin-bottom:8px">'+T('pr.repLadder')+'</div>';
     for(const x of rr)
       h+='<div class="row" style="gap:8px;padding:3px 0">'+
-        '<span class="tiny muted" style="width:42px;flex:none">'+x.r+' rep'+(x.r>1?'s':'')+'</span>'+
+        '<span class="tiny muted" style="width:42px;flex:none">'+nPlur('u.rep',x.r)+'</span>'+
         '<div class="prbar" style="width:'+Math.max(30,Math.round(x.w/maxW*100))+'%">'+fmtW(x.w)+' kg</div></div>';
-    h+='<p class="tiny muted" style="margin:8px 0 0">Heaviest set you’ve logged at each rep count.</p></div>';
+    h+='<p class="tiny muted" style="margin:8px 0 0">'+T('pr.ladderFoot')+'</p></div>';
   }
-  const rows=[['Volume',volR,v=>fmtNum(v)+' kg'],['Total reps',repsR,v=>v],['Total sets',setsR,v=>v],
-              ['Max weight',maxwR,v=>fmtW(v)+' kg'],['Max reps',maxrR,v=>v]].filter(x=>x[1]);
+  const rows=[[T('pr.volume'),volR,v=>fmtNum(v)+' kg'],[T('pr.totalReps'),repsR,v=>v],[T('pr.totalSets'),setsR,v=>v],
+              [T('pr.maxWeight'),maxwR,v=>fmtW(v)+' kg'],[T('pr.maxReps'),maxrR,v=>v]].filter(x=>x[1]);
   if(rows.length){
-    h+='<div class="card"><div class="tiny prlabel" style="margin-bottom:4px">Best single workout</div>';
+    h+='<div class="card"><div class="tiny prlabel" style="margin-bottom:4px">'+T('pr.bestSingle')+'</div>';
     rows.forEach(([l,b,fmt],i)=>{
       h+='<div class="row small" style="padding:6px 0'+(i<rows.length-1?';border-bottom:1px solid var(--line)':'')+'">'+
         '<span class="grow">'+l+'</span><b>'+fmt(b.v)+'</b>'+
@@ -3439,7 +3659,7 @@ function sparkSvg(pts,cls){
 /* Monday-start boundary of the week that contains a given ms timestamp. */
 function weekStartOf(ms){const d=new Date(ms);const day=(d.getDay()+6)%7;d.setHours(0,0,0,0);d.setDate(d.getDate()-day);return d.getTime();}
 /* "19 May" style short label for a week's Monday. */
-function weekLabel(ms){const d=new Date(ms);return d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3);}
+function weekLabel(ms){const d=new Date(ms);return d.getDate()+' '+monthName(d.getMonth()).slice(0,3);}
 
 /* n weekly volume buckets ending with THIS week, oldest→newest.
    Each: {ms, label, vol, current}. current flags the live week (last bucket). */
@@ -3540,7 +3760,7 @@ function bestMonth(){
   }
   const keys=Object.keys(agg);if(!keys.length)return null;
   let best=keys[0];for(const k of keys)if(agg[k]>agg[best])best=k;
-  return {mk:best,label:MONTHS[+best.slice(5)-1].slice(0,3)+' '+best.slice(2,4),vol:agg[best]};
+  return {mk:best,label:monthName(+best.slice(5)-1).slice(0,3)+' '+best.slice(2,4),vol:agg[best]};
 }
 
 /* Primary-group VOLUME split for a timeframe (reuses the F39 MG_FRAMES/mgCutoff).
@@ -3606,7 +3826,7 @@ function frameVolumeBuckets(frame){
     const mon=weekStart().getTime();const today=new Date();today.setHours(0,0,0,0);
     const buckets=[];
     for(let i=0;i<7;i++){const ms=mon+i*86400000;const d=new Date(ms);
-      buckets.push({ms,label:DAYS[d.getDay()],val:0,current:ms===today.getTime()});}
+      buckets.push({ms,label:dayName(d.getDay()),val:0,current:ms===today.getTime()});}
     const byDay={};buckets.forEach(b=>byDay[b.ms]=b);
     for(const w of statWorkouts()){const d=toDate(w.start);d.setHours(0,0,0,0);
       const b=byDay[d.getTime()];if(!b)continue;for(const e of w.entries)b.val+=setVolOf(e);}
@@ -3617,7 +3837,7 @@ function frameVolumeBuckets(frame){
   }
   if(frame==='year'){
     const yr=new Date().getFullYear(),mNow=new Date().getMonth();
-    const buckets=[];for(let m=0;m<12;m++)buckets.push({label:MONTHS[m].slice(0,3),val:0,current:m===mNow});
+    const buckets=[];for(let m=0;m<12;m++)buckets.push({label:monthName(m).slice(0,3),val:0,current:m===mNow});
     for(const w of statWorkouts()){const d=toDate(w.start);if(d.getFullYear()!==yr)continue;
       for(const e of w.entries)buckets[d.getMonth()].val+=setVolOf(e);}
     return buckets;
@@ -3644,7 +3864,7 @@ function statBarTap(i){
 }
 function volBarChart(buckets,fmtV){
   fmtV=fmtV||(v=>v>=1000?(v/1000).toFixed(1)+'t':fmtNum(v));
-  if(!buckets.length)return '<p class="muted small">No volume in this timeframe.</p>';
+  if(!buckets.length)return '<p class="muted small">'+T('ch.noVol')+'</p>';
   const W=560,H=180,L=8,R=8,T=22,B=26;
   const max=Math.max(1,...buckets.map(b=>b.val));
   const n=buckets.length,gap=6;
@@ -3843,14 +4063,16 @@ function muscleCounts(frame){
    (volume share). muscleCounts stays — the fact box's "most-worked group" reads
    it, and it remains the primary-based set counter. */
 /* monthly aggregation for the overall-stats drill-ins */
+/* R23: label/unit are STRING KEYS resolved through T() at render time (openStatChart).
+   fmt stays language-neutral (numbers + t/kg suffixes). */
 const STAT_DEFS={
-  dur:{label:'Workout duration',unit:'avg minutes',fmt:v=>Math.round(v)},
-  vol:{label:'Volume',unit:'kg lifted',fmt:v=>v>=1000?(v/1000).toFixed(1)+'t':fmtNum(v)},
-  sets:{label:'Total sets',unit:'sets',fmt:v=>Math.round(v)},
-  reps:{label:'Total reps',unit:'reps',fmt:v=>Math.round(v)},
-  rps:{label:'Reps per set',unit:'reps per set',fmt:v=>v.toFixed(1)},
-  bw:{label:'Bodyweight',unit:'kg',fmt:v=>fmtW(v)},
-  nw:{label:'Number of workouts',unit:'workouts',fmt:v=>Math.round(v)},
+  dur:{label:'sd.dur',unit:'sd.durU',fmt:v=>Math.round(v)},
+  vol:{label:'sd.vol',unit:'sd.volU',fmt:v=>v>=1000?(v/1000).toFixed(1)+'t':fmtNum(v)},
+  sets:{label:'sd.sets',unit:'sd.setsU',fmt:v=>Math.round(v)},
+  reps:{label:'sd.reps',unit:'sd.repsU',fmt:v=>Math.round(v)},
+  rps:{label:'sd.rps',unit:'sd.rpsU',fmt:v=>v.toFixed(1)},
+  bw:{label:'sd.bw',unit:'sd.bwU',fmt:v=>fmtW(v)},
+  nw:{label:'sd.nw',unit:'sd.nwU',fmt:v=>Math.round(v)},
 };
 function monthlyStat(key){
   const agg={};
@@ -3866,7 +4088,7 @@ function monthlyStat(key){
     const a=agg[mk];
     const y={dur:a.durN?a.durMin/a.durN:null,vol:a.vol,sets:a.sets,reps:a.reps,
       rps:a.sets?a.reps/a.sets:null,bw:a.bwN?a.bwSum/a.bwN:null,nw:a.n}[key];
-    return {t:MONTHS[+mk.slice(5)-1].slice(0,3)+' '+mk.slice(2,4),y};
+    return {t:monthName(+mk.slice(5)-1).slice(0,3)+' '+mk.slice(2,4),y};
   }).filter(p=>p.y!=null);
 }
 /* F58: per-metric FACT BOX — one card of plain, factual lines, each a real
@@ -3878,21 +4100,21 @@ function statFactBox(key){
   if(key==='dur'){
     const t=typicalDurationRange();
     if(!t)return '';
-    rows+=factRow('Typical session',Math.round(t.lo)+'–'+Math.round(t.hi)+' min');
-    rows+=factRow('Longest ever',Math.round(t.longest.m)+' min · '+fmtDay(t.longest.date)+(t.longest.routine?' · '+esc(t.longest.routine):''));
+    rows+=factRow(T('fb.typical'),Math.round(t.lo)+'–'+Math.round(t.hi)+' '+T('fb.min'));
+    rows+=factRow(T('fb.longest'),Math.round(t.longest.m)+' '+T('fb.min')+' · '+fmtDay(t.longest.date)+(t.longest.routine?' · '+esc(t.longest.routine):''));
     // this month vs last (avg duration), signed delta
     const ms=monthlyStat('dur');
     if(ms.length>=2){const d=ms[ms.length-1].y-ms[ms.length-2].y;
-      rows+=factRow('This month vs last',(d>0?'+':d<0?'−':'±')+Math.round(Math.abs(d))+' min');}
+      rows+=factRow(T('fb.mvl'),(d>0?'+':d<0?'−':'±')+Math.round(Math.abs(d))+' '+T('fb.min'));}
   }else if(key==='vol'){
     const bm=bestMonth();
-    if(bm)rows+=factRow('Best month',bm.label+' · '+fmtNum(bm.vol)+' kg');
+    if(bm)rows+=factRow(T('fb.bestMonth'),bm.label+' · '+fmtNum(bm.vol)+' kg');
     // average per workout
     let tv=0,nw=0;for(const w of statWorkouts()){nw++;for(const e of w.entries)for(const s of e.sets)if(statSet(s))tv+=setVol(s);}
-    if(nw)rows+=factRow('Per workout',fmtNum(tv/nw)+' kg');
-    // top-3 group split (all time)
+    if(nw)rows+=factRow(T('fb.perWorkout'),fmtNum(tv/nw)+' kg');
+    // top-3 group split (all time) — group names translate through catName()
     const gs=groupSplit('all').slice(0,3);
-    if(gs.length)rows+=factRow('Top groups',gs.map(g=>esc(g.group)+' '+Math.round(g.pct)+'%').join(' · '));
+    if(gs.length)rows+=factRow(T('fb.topGroups'),gs.map(g=>esc(catName(g.group))+' '+Math.round(g.pct)+'%').join(' · '));
   }else if(key==='sets'||key==='reps'){
     // weekly average over the weeks that have data
     const wv=weeklyVolumes(8);   // not volume here — recompute weekly counts
@@ -3905,25 +4127,25 @@ function statFactBox(key){
         if(key==='sets'){weeks[wm]++;total++;}else{const r=s.r||0;weeks[wm]+=r;total+=r;}}
     }
     const nWeeks=Object.keys(weeks).length;
-    if(nWeeks)rows+=factRow('Weekly average',fmtNum(total/nWeeks)+(key==='sets'?' sets':' reps'));
-    // most-worked group (by sets, all time)
+    if(nWeeks)rows+=factRow(T('fb.weeklyAvg'),fmtNum(total/nWeeks)+' '+(key==='sets'?plur('u.set',2):T('u.rep')));
+    // most-worked group (by sets, all time) — group key translates through catName()
     const mc=muscleCounts('all');const top=Object.entries(mc).sort((a,b)=>b[1]-a[1])[0];
-    if(top)rows+=factRow('Most worked',esc(top[0])+' · '+fmtNum(top[1])+' sets');
+    if(top)rows+=factRow(T('fb.mostWorked'),esc(catName(top[0]))+' · '+nPlur('u.set',top[1]));
     // trend vs previous period (this month vs last)
     const ms=monthlyStat(key);
     if(ms.length>=2){const d=ms[ms.length-1].y-ms[ms.length-2].y;
-      rows+=factRow('This month vs last',(d>0?'+':d<0?'−':'±')+fmtNum(Math.abs(d)));}
+      rows+=factRow(T('fb.mvl'),(d>0?'+':d<0?'−':'±')+fmtNum(Math.abs(d)));}
   }else if(key==='nw'||key==='rps'){
     const ms=monthlyStat(key);
     if(ms.length){
       const ys=ms.map(p=>p.y);const best=Math.max(...ys);const bestIdx=ys.indexOf(best);
-      rows+=factRow(key==='nw'?'Best month':'Highest month',(key==='rps'?best.toFixed(1):Math.round(best))+' · '+ms[bestIdx].t);
+      rows+=factRow(key==='nw'?T('fb.bestMonth'):T('fb.highestMonth'),(key==='rps'?best.toFixed(1):Math.round(best))+' · '+ms[bestIdx].t);
       if(ms.length>=2){const d=ys[ys.length-1]-ys[ys.length-2];
-        rows+=factRow('This month vs last',(d>0?'+':d<0?'−':'±')+(key==='rps'?Math.abs(d).toFixed(1):Math.round(Math.abs(d))));}
+        rows+=factRow(T('fb.mvl'),(d>0?'+':d<0?'−':'±')+(key==='rps'?Math.abs(d).toFixed(1):Math.round(Math.abs(d))));}
     }
   }
   if(!rows)return '';
-  return '<div class="card"><h3 style="margin:0 0 2px">The facts</h3>'+rows+'</div>';
+  return '<div class="card"><h3 style="margin:0 0 2px">'+T('fb.facts')+'</h3>'+rows+'</div>';
 }
 function openStatChart(key){
   const def=STAT_DEFS[key];
@@ -3935,17 +4157,17 @@ function openStatChart(key){
     const ys=pts.map(p=>p.y);
     let fb='';
     if(ys.length){const lo=Math.min(...ys),hi=Math.max(...ys),ch=ys[ys.length-1]-ys[0];
-      fb='<div class="card"><h3 style="margin:0 0 2px">The facts</h3>'+
-        factRow('Range',fmtW(lo)+'–'+fmtW(hi)+' kg')+
-        factRow('Net change',(ch>0?'+':ch<0?'−':'±')+fmtW(Math.abs(ch))+' kg')+
-        factRow('Latest',fmtW(ys[ys.length-1])+' kg · '+pts[pts.length-1].t)+'</div>';}
-    openModal('<h2>'+def.label+'</h2><p class="tiny muted">monthly average, real months</p>'+
+      fb='<div class="card"><h3 style="margin:0 0 2px">'+T('fb.facts')+'</h3>'+
+        factRow(T('fb.range'),fmtW(lo)+'–'+fmtW(hi)+' kg')+
+        factRow(T('fb.netChange'),(ch>0?'+':ch<0?'−':'±')+fmtW(Math.abs(ch))+' kg')+
+        factRow(T('fb.latest'),fmtW(ys[ys.length-1])+' kg · '+pts[pts.length-1].t)+'</div>';}
+    openModal('<h2>'+T(def.label)+'</h2><p class="tiny muted">'+T('sd.bwSub')+'</p>'+
       '<div class="card">'+lineChart(pts,def.fmt)+'</div>'+fb);
     return;
   }
   /* Every other metric: a labeled BAR chart with real month names + a fact box. */
   const bars=pts.map((p,i)=>({label:p.t,val:p.y,current:i===pts.length-1}));
-  openModal('<h2>'+def.label+'</h2><p class="tiny muted">'+def.unit+', by month</p>'+
+  openModal('<h2>'+T(def.label)+'</h2><p class="tiny muted">'+T('sd.byMonth',T(def.unit))+'</p>'+
     '<div class="card">'+barChart(bars,def.fmt)+'</div>'+
     statFactBox(key));
 }
@@ -4448,6 +4670,7 @@ function unlockBodyScroll(){
 function closeModal(){const ov=$('overlay'),sh=$('sheet'),dg=$('dialog');
   ov.classList.remove('show','closing','dialogmode');sh.classList.remove('closing','stepback','noanim');dg.classList.remove('closing');
   sh.style.transform='';sh.style.opacity='';dg.style.transform='';dg.innerHTML='';_dialogOverSheet=false;clearModalStack();
+  state.pickTarget=null;   /* R21 (audit 2026-07-08 D): disarm any pick flow — a stale 'active'/'replace:N' survived every teardown and misrouted the next create */
   unlockBodyScroll();clearInterval(visTimer);}
 /* F47 (2026-07-07) OWNER SPEC, verbatim: "Confirmation popups need to be
    stylized in the theme, or this is a web app limitation?" Answer: not a
@@ -4464,7 +4687,13 @@ function confirmDialog(opts){
   openDialog('<h2 style="word-break:break-word">'+esc(opts.title||T('dlg.sure'))+'</h2>'+
     (opts.message?'<p class="muted small" style="margin:6px 0 16px">'+esc(opts.message)+'</p>':'<div style="height:8px"></div>')+
     '<button class="btn danger wide" onclick="confirmDialogYes()">'+esc(opts.confirmLabel||T('dlg.confirm'))+'</button>'+
-    '<button class="btn wide ghost" style="margin-top:10px" onclick="closeModal()">'+esc(opts.cancelLabel||T('dlg.cancel'))+'</button>');
+    /* R21 (audit 2026-07-08 C): Cancel steps BACK, never out. closeModal() here
+       cleared the back-stack, so cancelling a confirm opened over a sheet
+       (workout sheet → Delete → Cancel) tore the sheet down — the exact
+       complaint F55 was built for, with its closeDialog restore path
+       unreachable from any button. dismissModal's dialogmode branch lands in
+       closeDialog, which restores the sheet beneath (or fully closes if none). */
+    '<button class="btn wide ghost" style="margin-top:10px" onclick="dismissModal()">'+esc(opts.cancelLabel||T('dlg.cancel'))+'</button>');
 }
 function confirmDialogYes(){const fn=_confirmAction;_confirmAction=null;closeModal();if(fn)fn();}
 /* F23 (2026-07-06): smooth, consistent dismissal everywhere. The sheet slides
@@ -4808,8 +5037,8 @@ function wireInputs(){
     f.text().then(t=>{
       try{const s=JSON.parse(t);
         if(!s||s.schema!==1||!Array.isArray(s.workouts))throw new Error('bad shape');
-        store=s;normalizeStore();migrateVisuals();migrateGroups();save();diagCount('backupRestored');toast('Backup restored — '+store.workouts.length+' workouts');render();
-      }catch(e){toast('That file is not a Sett backup.');}
+        store=s;normalizeStore();migrateVisuals();migrateGroups();save();diagCount('backupRestored');toast(T('toast.restored',store.workouts.length,plur('u.workout',store.workouts.length)));render();
+      }catch(e){toast(T('toast.notBackup'));}
     });
   };
 }
@@ -4829,7 +5058,7 @@ const SWW=60, SWLATCH=SWW*0.55, SWVEL=0.5;   // latch: 33px slow drag OR a genui
 const SWDIRS={set:{l:1,r:1}, ex:{l:1}, wk:{l:1}};   // l = left-swipe allowed (del), r = right-swipe (copy)
 let _sw=null, _swOpen=null, _swMoved=false, _swClosedTap=false;
 function closeSwipe(){if(_swOpen){_swOpen.classList.remove('open-l','open-r');_swOpen=null;}}
-function swipeCopy(ei,si){closeSwipe();copySet(ei,si);toast('Set copied');}
+function swipeCopy(ei,si){closeSwipe();copySet(ei,si);toast(T('toast.setCopied'));}
 function swipeRemoveSet(ei,si){closeSwipe();removeSet(ei,si);}
 function swipeRemoveEx(ei){closeSwipe();removeEntry(ei);}
 function swipeDeleteWorkout(id){closeSwipe();deleteWorkout(id);}
@@ -4963,12 +5192,12 @@ function autoStopStale(){
   const t=a.touch||toDate(a.start).getTime();
   if(Date.now()-t<AUTOSTOP_MS)return false;
   const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
-  if(!entries.length){store.active=null;save();toast('Forgotten empty workout discarded');return true;}
+  if(!entries.length){store.active=null;save();toast(T('toast.autoDiscard'));return true;}
   for(const e of entries)ensureEx(e.name);
   const w={id:newWid(),start:a.start,end:nowStr(new Date(t)),routine:(a.routine||'').trim(),bw:a.bw||null,entries};
   store.workouts.unshift(w);store.workouts.sort((x,y)=>x.start<y.start?1:-1);
   store.active=null;save();
-  toast('Workout auto-stopped and saved (ended '+fmtClock(w.end)+')');
+  toast(T('toast.autoStop',fmtClock(w.end)));
   return true;
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&autoStopStale())render();});
@@ -4989,16 +5218,20 @@ startTabbarWatch();   // F70(b): slow ~10s watchdog on the rendered tabbar
 if(firstRun&&!window.SETT_LOCAL_CSV)startOnboarding();
 
 /* service worker: offline + auto-update on entering, plus a manual check */
-let swReg=null, swRefreshing=false, swManualCheck=false;
+let swReg=null, swRefreshing=false, swManualCheck=false, swRegStarted=false;
 function autoUpdateOn(){return !(store.settings&&store.settings.autoUpdate===false);}
 function checkForUpdates(manual){
-  if(!swReg){if(manual)toast('Updates need the installed app (add to Home Screen).');return;}
+  /* R21 (audit 2026-07-08 F5): swReg is also null for the first ~second after
+     open while register() is still resolving — inside the installed app the old
+     blanket "Updates need the installed app" message was simply wrong there.
+     R23: both messages translated. */
+  if(!swReg){if(manual)toast(swRegStarted?T('toast.updStarting'):T('toast.updNeedInstall'));return;}
   if(manual)swManualCheck=true;
   swReg.update().then(()=>{
     // if a new worker is already waiting, activate it now
     if(swReg.waiting){swReg.waiting.postMessage('skipWaiting');}
-    else if(manual&&!swReg.installing){toast('You’re on the latest version');swManualCheck=false;}
-  }).catch(()=>{if(manual)toast('Could not check — are you online?');});
+    else if(manual&&!swReg.installing){toast(T('toast.updLatest'));swManualCheck=false;}
+  }).catch(()=>{if(manual)toast(T('toast.updOffline'));});
 }
 if('serviceWorker' in navigator&&location.protocol!=='file:'){
   const hadCtrl=!!navigator.serviceWorker.controller;
@@ -5006,8 +5239,9 @@ if('serviceWorker' in navigator&&location.protocol!=='file:'){
     if(swRefreshing)return;
     // a new version took over: reload if auto-update (or a manual check) asked for it
     if(hadCtrl&&(autoUpdateOn()||swManualCheck)){swRefreshing=true;location.reload();}
-    else if(hadCtrl){toast('Update ready — reopen Sett to apply');}
+    else if(hadCtrl){toast(T('toast.updReady'));}
   });
+  swRegStarted=true;   /* R21 (F5): registration is underway — a manual check before it resolves gets "still starting", not the misleading install nag */
   navigator.serviceWorker.register('sw.js').then(reg=>{
     swReg=reg;
     reg.addEventListener('updatefound',()=>{
@@ -5016,7 +5250,7 @@ if('serviceWorker' in navigator&&location.protocol!=='file:'){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
           // new version downloaded; skipWaiting -> activate -> controllerchange (handled above)
           if(autoUpdateOn()||swManualCheck)reg.waiting&&reg.waiting.postMessage('skipWaiting');
-          else toast('Update ready — reopen Sett to apply');
+          else toast(T('toast.updReady'));
         }
       });
     });
