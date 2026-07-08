@@ -596,15 +596,14 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.30';
+const APP_VERSION='0.9.31';
+/* Changelog convention (2026-07-08, owner ask): a version only gets an entry once
+   its change is CONFIRMED working on device. Internal/fix-attempt bumps (needed for
+   the service-worker cache to update) do NOT get a changelog line — otherwise the
+   log accumulates "fixed!" claims for bugs that aren't fixed yet. The nav-bar work
+   (v0.9.29–0.9.31: drift, background-scroll, bar position) is HELD here until the
+   whole thing is confirmed on-device, then lands as ONE honest consolidated entry. */
 const CHANGELOG=[
-  {v:'0.9.30', date:'2026-07-08', items:[
-    'Fixed the tab bar sitting too high up on the screen — it’s back along the bottom where it belongs.',
-  ]},
-  {v:'0.9.29', date:'2026-07-08', items:[
-    'The bottom tab bar now stays glued to the bottom of the screen — it no longer drifts upward when you scroll or the page bounces.',
-    'Menus and sheets no longer let the page scroll behind them.',
-  ]},
   {v:'0.9.28', date:'2026-07-08', items:[
     'Swiping a set now works from anywhere on the row, including over the weight and reps — not just from the edge.',
     'Reordering exercises is more reliable: a small finger movement no longer cancels the drag, and dragging no longer scrolls the page behind the menu.',
@@ -5270,15 +5269,38 @@ function checkTabbarDriftFrame(){
    only if the bar is still misplaced. */
 function logShellGeom(){
   try{
-    const tb=$('tabbar'),b=document.body,vv=window.visualViewport;
+    const tb=$('tabbar'),mn=$('main'),b=document.body,vv=window.visualViewport,de=document.documentElement;
     const tbr=tb&&tb.getBoundingClientRect?tb.getBoundingClientRect():null;
+    const mnr=mn&&mn.getBoundingClientRect?mn.getBoundingClientRect():null;
+    /* F78c: read the live safe-area insets via a throwaway probe element — the
+       env() values are the crux (viewport-fit=cover makes them non-zero, and the
+       bar's padding-bottom uses safe-area-inset-bottom). Guarded so a non-DOM env
+       (test sandbox) degrades to null without breaking the log. */
+    let safeTop=null,safeBottom=null;
+    try{
+      const p=document.createElement('div');
+      p.style.cssText='position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);';
+      b.appendChild(p);const cs=window.getComputedStyle(p);
+      safeTop=Math.round(parseFloat(cs.paddingTop)||0);safeBottom=Math.round(parseFloat(cs.paddingBottom)||0);
+      b.removeChild(p);
+    }catch(e){}
+    let tbPadB=null;try{tbPadB=Math.round(parseFloat(window.getComputedStyle(tb).paddingBottom)||0);}catch(e){}
+    let vp=null;try{const m=document.querySelector('meta[name=viewport]');vp=m?m.getAttribute('content'):null;}catch(e){}
     diagLog('event',{name:'shellGeom',
       innerH:Math.round(window.innerHeight||0),
-      clientH:Math.round((document.documentElement&&document.documentElement.clientHeight)||0),
+      clientH:Math.round((de&&de.clientHeight)||0),
       bodyH:Math.round((b&&b.getBoundingClientRect?b.getBoundingClientRect().height:0)||0),
       vvH:vv?Math.round(vv.height):null,
+      outerH:Math.round(window.outerHeight||0),
+      screenH:Math.round((window.screen&&window.screen.height)||0),
+      availH:Math.round((window.screen&&window.screen.availHeight)||0),
+      docElH:Math.round((de&&de.getBoundingClientRect?de.getBoundingClientRect().height:0)||0),
+      safeTop:safeTop,safeBottom:safeBottom,tbPadB:tbPadB,
       tbTop:tbr?Math.round(tbr.top):null,
       tbBottom:tbr?Math.round(tbr.bottom):null,
+      mainTop:mnr?Math.round(mnr.top):null,
+      mainBottom:mnr?Math.round(mnr.bottom):null,
+      vp:vp,
       standalone:!!((window.navigator&&window.navigator.standalone)||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)),
       dvh:!!(window.CSS&&CSS.supports&&CSS.supports('height','100dvh'))});
   }catch(e){}
