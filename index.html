@@ -427,6 +427,10 @@
      values hug the left so the row no longer fills the whole bar */
   .excard{padding:14px 16px;}
   .setrow2{display:flex; align-items:center; gap:20px; padding:8px 0;}
+  /* Item 3 (2026-07-08): the right-side ✓/W/⋯ cluster — tight 8px gaps so the
+     three controls fit inside the card at 375px (the row's own 20px gap between
+     each was clipping the ⋯ off the card edge once R24 added the ✓). */
+  .setctrls{display:flex; align-items:center; gap:8px; flex:none;}
   .setnum{width:26px; height:26px; flex:none; border:1.6px solid var(--line); border-radius:50%;
     display:grid; place-items:center; font-size:13px; font-weight:700; color:var(--muted);}
   .setnum.drop{border-color:var(--accent); color:var(--accent);}
@@ -447,7 +451,17 @@
      always-present Copy/Delete swipe buttons behind .swipe-fg bled through (a
      red Delete box sat permanently at a done row's edge). color-mix over
      var(--card) is the same hue, opaque, buttons stay hidden until swiped. */
-  .swipe-fg.done{background:color-mix(in srgb, var(--accent) 14%, var(--card));}
+  /* Item 6 (2026-07-08): owner wants the done highlight KEPT but subtler — 8%
+     accent over card is a quiet confirmation, not a strong fill. Still opaque
+     (F85), so the swipe buttons stay hidden.
+     SPECIFICITY FIX (the item-6 "is it even supposed to highlight?" bug): the
+     base `.swipe .swipe-fg{background:var(--card)}` (below) has equal specificity
+     and sits LATER in source, so a bare `.swipe-fg.done` lost the cascade — a
+     PLAIN done set never tinted while a done+PR set did (its `.swipe.pr .swipe-fg`
+     rule outranks the base). Scoping this to `.swipe .swipe-fg.done` (0,3,0)
+     beats the base override; the .pr rule (same specificity, later) still wins on
+     a PR row, so PRs keep their stronger pop. */
+  .swipe .swipe-fg.done{background:color-mix(in srgb, var(--accent) 11%, var(--card));}
   .setcell{display:flex; flex-direction:column; gap:1px; position:relative;}
   .setcell label{font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--faint);}
   .setcell input{width:58px; text-align:left; padding:1px 0; font-size:18px; font-weight:800;
@@ -510,6 +524,15 @@
   .swipe{position:relative; overflow:hidden;}
   .swipe .swipe-fg{position:relative; z-index:1; background:var(--card);
     transition:transform .2s cubic-bezier(.22,.61,.36,1);}
+  /* Item 6b (2026-07-08): the done/PR highlight was FLOATING — the set rows sit
+     in the exercise card's 16px content padding, so the tint filled only the inner
+     column and left a 16px dark gap on each side (the owner: "isn't filling out the
+     space"). Full-bleed the rows to the card's inner edge: a negative margin pulls
+     the row (and its tinted fg background) edge-to-edge, while matching padding on
+     the fg keeps the numbers/controls exactly where they were. Scoped to .excard
+     set rows so the Log/other .swipe lists are untouched. */
+  .excard .swipe{margin-left:-16px; margin-right:-16px;}
+  .excard .swipe .swipe-fg{padding-left:16px; padding-right:16px;}
   .swipe.swiping .swipe-fg{transition:none;}
   /* F9 (2026-07-06): icon-only inset buttons tinted like the app's chips —
      seamless with the row, no solid slab. Reveal offset = button + margins. */
@@ -546,8 +569,13 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.25';
+const APP_VERSION='0.9.26';
 const CHANGELOG=[
+  {v:'0.9.26', date:'2026-07-08', items:[
+    'Fixed the set row on narrow phones — the ✓, W and ⋯ buttons no longer get pushed off the edge of the card.',
+    'The highlight on a completed set now fills the whole row instead of floating in the middle.',
+    'Starting a routine now shows your last session’s weight and reps as ghost targets — the same way repeating a past workout already did.',
+  ]},
   {v:'0.9.25', date:'2026-07-08', items:[
     'Fixed the broken row highlight after tapping ✓ — a done set no longer shows a stray red strip peeking out of its edge.',
     'Replacing an exercise mid-workout now shows the new exercise’s own previous numbers as ghost targets, instead of leaving the old exercise’s numbers behind.',
@@ -1516,6 +1544,16 @@ function diagExport(){
     'exported-at':nowStr(), diag:d}, null, 1);
 }
 function diagClear(){try{diagPersist({log:[],counts:{}});}catch(e){}}
+/* Item 4 (2026-07-08): clear the diag LOG on the first boot of a new app version,
+   so an export only carries entries since the last update — the owner was sending
+   a long tail of previous-version noise. Per-day usage counts are KEPT (small, and
+   useful across versions). The last-seen version rides in the diag object as `ver`;
+   diagLoad/diagPersist round-trip it, diagLog/diagCount never touch it. */
+function diagVersionGate(){
+  try{const d=diagLoad();
+    if(d.ver!==APP_VERSION){d.log=[];d.ver=APP_VERSION;diagPersist(d);}
+  }catch(e){}
+}
 
 /* exercise catalog (exercises.js, generated from free-exercise-db, public domain) */
 const CATALOG=window.SETT_CATALOG||[];
@@ -1785,6 +1823,7 @@ function diagOnRejection(e){try{const r=e&&e.reason;diagLog('error',{
 });}catch(_){}}
 window.addEventListener('error',diagOnError);
 window.addEventListener('unhandledrejection',diagOnRejection);
+diagVersionGate();   // Item 4: a fresh log per app version (runs once on the first boot after an update)
 function promptInstall(){
   if(!deferredInstall)return;
   deferredInstall.prompt();
@@ -2237,7 +2276,12 @@ function startRoutine(id){
   for(const ex of r.exercises)ensureEx(ex.name);
   store.active={start:nowStr(),routine:r.name,bw:latestBW(),fromRoutine:r.id||r.name||true,   /* F31: routine-started → no in-workout "Save as routine" */
     entries:r.exercises.map(ex=>({name:ex.name,ss:ex.ss??null,note:'',
-      sets:ex.sets.map(t=>({w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:{tw:t.tw??null,rlo:t.rlo??null,rhi:t.rhi??null}}))}))};
+      /* Item 5 (2026-07-08): seed each ghost from your ACTUAL last session of this
+         exercise (like Repeat workout does) — falling back to the routine's planned
+         target only when you've never logged it. Before, a routine always showed the
+         frozen template, so kg/reps from your last session never appeared. */
+      sets:ex.sets.map((t,si)=>({w:null,r:null,dur:null,dist:null,note:'',drop:false,
+        tgt:prevSessionSet(ex.name,si)||{tw:t.tw??null,rlo:t.rlo??null,rhi:t.rhi??null}}))}))};
   diagCount('workoutStarted');save();setView('log');toast(T('start.started',r.name));
 }
 function startPopular(i){
@@ -2245,7 +2289,8 @@ function startPopular(i){
   const r=POPULAR_ROUTINES[i];if(!r)return;
   for(const n of r.ex)ensureEx(n);
   store.active={start:nowStr(),routine:r.name,bw:latestBW(),fromRoutine:r.name||true,   /* F31: popular routine → no in-workout "Save as routine" */
-    entries:r.ex.map(n=>({name:n,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false}]}))};
+    /* Item 5 (2026-07-08): seed the ghost from your last session of each exercise (null → "—" when never logged). */
+    entries:r.ex.map(n=>({name:n,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:prevSessionSet(n,0)}]}))};
   diagCount('workoutStarted');save();setView('log');toast(T('start.started',r.name));
 }
 /* F33 (2026-07-06) OWNER SPEC, verbatim: "Pressing on a routine/previous
@@ -2382,11 +2427,17 @@ function renderActive(){
         '<div class="setcell"><label>'+T('act.kg')+'</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
         '<div class="setcell"><label>'+T('act.repsLbl')+'</label><input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'></div>'+
         '<span class="sp"></span>'+
+        /* Item 3 (2026-07-08): the ✓/W/⋯ controls live in ONE tight cluster (8px
+           gaps) instead of riding the row's 20px gap each. The R24 ✓ pushed the
+           row over 375px and the ⋯ clipped ~4px past the card edge; clustering
+           the three recovers ~24px so they sit inside the card. */
+        '<div class="setctrls">'+
         (a.editing?'':
         '<button class="checkbtn'+(s.done?' on':'')+'" title="'+(s.done?T('sr.unchk'):T('sr.check'))+'" aria-pressed="'+(!!s.done)+'" onclick="toggleDone('+ei+','+si+')">✓</button>')+
         /* F26: petite, non-invading W toggle beside the ⋯ menu */
         '<button class="wtog'+(s.warmup?' on':'')+'" title="'+(s.warmup?T('sr.warmOff'):T('sr.warmOn'))+'" aria-pressed="'+(!!s.warmup)+'" onclick="toggleWarmup('+ei+','+si+')">W</button>'+
         '<button class="setmenu" title="'+T('sr.setOptions')+'" aria-label="'+T('sr.setOptions')+'" onclick="setMenu('+ei+','+si+')">⋯</button>'+
+        '</div>'+
         '</div>'+
         /* F36 PR chip + F45 beat hint on a micro-line under the inputs — keeps the
            set row itself from ever overflowing at 375px. One row keeps at most one
@@ -2711,7 +2762,7 @@ function wireRoList(){
   document.querySelectorAll('#rolist [data-ro]').forEach(row=>
     row.addEventListener('pointerdown',e=>armRoHold(e,row)));
 }
-let roHold=null;
+let roHold=null,_roDiagAt=0;
 function armRoHold(e,row){
   if(e.target.closest('[data-rodrag]'))return;   // handle path already handles it
   cancelRoHold();
@@ -2725,7 +2776,14 @@ function armRoHold(e,row){
   roHold={timer,px,py,pid};
   const mv=ev=>{
     if(!roHold)return;
-    if(Math.abs(ev.clientX-roHold.px)>8||Math.abs(ev.clientY-roHold.py)>8)cancelRoHold();  // it's a scroll
+    const rdx=Math.abs(ev.clientX-roHold.px),rdy=Math.abs(ev.clientY-roHold.py);
+    if(rdx>8||rdy>8){
+      /* Items 1&2 instrument: the hold was cancelled before it armed (read as a
+         scroll). If the owner "can't drag," his export shows reorderCancel with
+         SMALL deltas and NO reorderArm → the 8px/200ms gate is too twitchy on iOS. */
+      const now=Date.now();if(now-_roDiagAt>800){_roDiagAt=now;try{diagLog('event',{name:'reorderCancel',dx:Math.round(rdx),dy:Math.round(rdy)});}catch(_){}}
+      cancelRoHold();
+    }
   };
   const up=()=>cancelRoHold();
   roHold.mv=mv;roHold.up=up;
@@ -2744,6 +2802,7 @@ function cancelRoHold(){
 let roDrag=null;
 function startRoDrag(e,row,captureEl){
   if(!row)return;
+  try{diagLog('event',{name:'reorderArm',from:+row.dataset.ro});}catch(_){}   // Items 1&2 instrument: a drag actually began
   const rows=[...document.querySelectorAll('#rolist [data-ro]')];
   const from=+row.dataset.ro;
   const rowH=row.getBoundingClientRect().height;
@@ -5232,6 +5291,16 @@ function swipeCopy(ei,si){closeSwipe();copySet(ei,si);toast(T('toast.setCopied')
 function swipeRemoveSet(ei,si){closeSwipe();removeSet(ei,si);}
 function swipeRemoveEx(ei){closeSwipe();removeEntry(ei);}
 function swipeDeleteWorkout(id){closeSwipe();deleteWorkout(id);}
+/* Items 1&2 (2026-07-08): the owner reports swipe-to-delete "sticks" and is hard
+   to trigger — but the swipe code is unchanged since 0.9.24 and can't be reproduced
+   on desktop, so we instrument the REAL device instead of guessing. The prime
+   suspect is horizontal PAGE overflow: when the page can scroll sideways, iOS pans
+   it and steals the gesture (the F16 family). docHOverflow() measures that at the
+   moment a swipe starts; swipeDiag rate-limits so a session logs a handful, not
+   hundreds. Same playbook that cracked the nav-bar bug (F70b watchdog). */
+function docHOverflow(){try{const e=document.documentElement;return Math.max(0,(e.scrollWidth||0)-(e.clientWidth||0));}catch(_){return 0;}}
+let _swDiagAt=0;
+function swipeDiag(name,data){const now=Date.now();if(now-_swDiagAt<900)return;_swDiagAt=now;try{diagLog('event',Object.assign({name},data));}catch(_){}}
 function swipeStart(ev){
   _swMoved=false;_swClosedTap=false;
   if(ev.touches.length!==1){_sw=null;return;}
@@ -5244,7 +5313,7 @@ function swipeStart(ev){
   if(ev.target.closest('[data-drag],button,input,textarea,select,a')){_sw=null;return;}
   const dirs=SWDIRS[el.dataset.swipe]||{};
   _sw={el,fg:el.querySelector('.swipe-fg'),x0:ev.touches[0].clientX,y0:ev.touches[0].clientY,
-    dx:0,axis:0,dirs,
+    dx:0,axis:0,dirs,hOver:docHOverflow(),
     base:el.classList.contains('open-r')?-SWW:el.classList.contains('open-l')?SWW:0,
     vx:0,lx:ev.touches[0].clientX,lt:ev.timeStamp};
 }
@@ -5256,7 +5325,9 @@ function swipeMove(ev){
     if(ax<12&&ay<12)return;
     /* only clearly horizontal gestures swipe; anything diagonal scrolls */
     if(ax>ay*1.6){_sw.axis='x';_sw.el.classList.add('swiping');_sw.el.classList.remove('open-l','open-r');}
-    else{_sw=null;return;}
+    /* Items 1&2 instrument: a swipe abandoned as "diagonal" — if these show mostly-
+       horizontal dx (or hOver>0), the axis gate is too strict / the page is panning. */
+    else{swipeDiag('swipeAbort',{dx:Math.round(dx),dy:Math.round(dy),hOver:_sw.hOver});_sw=null;return;}
   }
   ev.preventDefault();
   const dt=ev.timeStamp-_sw.lt;
@@ -5286,12 +5357,17 @@ function swipeEnd(ev){
     const stayOpen=!back&&Math.abs(s.dx)>=SWW/2&&Math.sign(s.dx)===Math.sign(s.base);
     if(stayOpen){s.el.classList.add(s.base<0?'open-r':'open-l');_swOpen=s.el;}
     else if(_swOpen===s.el)_swOpen=null;
+    swipeDiag('swipe',{dx:Math.round(s.dx),vx:+s.vx.toFixed(2),latched:_swOpen===s.el?1:0,base:Math.round(s.base),hOver:s.hOver,fromOpen:1});
     return;
   }
   const flickL=s.vx<-SWVEL&&s.dx<-28, flickR=s.vx>SWVEL&&s.dx>28;   // a quick flick latches too
   if(s.dirs.l&&(flickL||(s.dx<=-SWLATCH&&!flickR))){s.el.classList.add('open-r');_swOpen=s.el;}   // Delete/Remove on the right
   else if(s.dirs.r&&(flickR||(s.dx>=SWLATCH&&!flickL))){s.el.classList.add('open-l');_swOpen=s.el;}   // Copy on the left
   else if(_swOpen===s.el)_swOpen=null;
+  /* Items 1&2 instrument: a completed horizontal swipe — dx/vx vs SWLATCH/SWVEL,
+     whether it latched, and page overflow. "Sticks/hard to delete" shows as
+     latched:0 on big dx, or a recurring hOver>0 stealing the gesture. */
+  swipeDiag('swipe',{dx:Math.round(s.dx),vx:+s.vx.toFixed(2),latched:_swOpen===s.el?1:0,base:0,hOver:s.hOver});
 }
 /* after a swipe (or an outside-tap that closed an open row), swallow the
    click the browser synthesises so it can't open the workout / focus an input */
