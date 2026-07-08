@@ -443,7 +443,11 @@
     background:none; position:relative;}
   .checkbtn.on{background:var(--accent); border-color:var(--accent); color:#18100a;}
   .checkbtn::after{content:''; position:absolute; inset:-9px;}
-  .swipe-fg.done{background:var(--accent-soft);}
+  /* F85 (2026-07-08): OPAQUE tint — var(--accent-soft) is .14-alpha, so the
+     always-present Copy/Delete swipe buttons behind .swipe-fg bled through (a
+     red Delete box sat permanently at a done row's edge). color-mix over
+     var(--card) is the same hue, opaque, buttons stay hidden until swiped. */
+  .swipe-fg.done{background:color-mix(in srgb, var(--accent) 14%, var(--card));}
   .setcell{display:flex; flex-direction:column; gap:1px; position:relative;}
   .setcell label{font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--faint);}
   .setcell input{width:58px; text-align:left; padding:1px 0; font-size:18px; font-weight:800;
@@ -474,7 +478,7 @@
   /* F36 (2026-07-06): a live set that beats the pre-workout record lights up —
      same accent-soft glow + border as the latched swipe state. Petite PR chip
      sits in the row; one accent line ("New e1RM record…") sits under the card. */
-  .swipe.pr .swipe-fg{background:var(--accent-soft);}
+  .swipe.pr .swipe-fg{background:color-mix(in srgb, var(--accent) 14%, var(--card));}  /* F85: opaque, same reason as .done above */
   .swipe.pr{border-radius:12px; box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);}
   /* F36/F37: PR chip + beat-last-time hint share a micro-line under the set
      inputs (aligned left with the set number), so the input row never widens. */
@@ -542,8 +546,14 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.24';
+const APP_VERSION='0.9.25';
 const CHANGELOG=[
+  {v:'0.9.25', date:'2026-07-08', items:[
+    'Fixed the broken row highlight after tapping ✓ — a done set no longer shows a stray red strip peeking out of its edge.',
+    'Replacing an exercise mid-workout now shows the new exercise’s own previous numbers as ghost targets, instead of leaving the old exercise’s numbers behind.',
+    'You can now watch how to perform an exercise during a workout: open its ⋯ menu and tap “How to perform” for the demo and step-by-step instructions.',
+    'New “Substitute exercise” option in an exercise’s ⋯ menu suggests alternatives that train the same muscles — handy when a machine is taken. Pick one and it swaps in, keeping all your logged sets.',
+  ]},
   {v:'0.9.24', date:'2026-07-08', items:[
     'Each set now has a ✓ button — tap it to mark the set done, tint the row, and start the rest timer. The "+ Set" button no longer starts rest on its own.',
     'Tapping ✓ on an empty set that has a ghost target fills the ghost values for you — no retyping.',
@@ -1035,6 +1045,10 @@ const STRINGS={
     'xm.notesPh':'Notes for this exercise (grip, tempo, machine setting…)',
     'xm.unlinkSS':'Unlink from superset','xm.linkSS':'Superset with exercise above',
     'xm.replace':'Replace exercise','xm.remove':'Remove exercise',
+    'xm.howto':'How to perform','xm.substitute':'Substitute exercise',   // F86 / F87
+    // F87 substitute sheet
+    'sub.title':'Substitute exercise','sub.help':'Alternatives that train the same muscles, from the exercise database.',
+    'sub.none':'No factual match found for this exercise.','sub.noData':'No exercise data linked — can’t suggest a factual substitute.',
     // set ⋯ menu + set-row chrome
     'sm.title':'Set {0}','sm.copy':'Copy set','sm.copyRest':'Copy to remaining sets',
     'sm.dropOn':'Mark as drop set','sm.dropOff':'Unmark as drop set','sm.remove':'Remove set',
@@ -1238,6 +1252,9 @@ const STRINGS={
     'xm.notesPh':'Notater for denne øvelsen (grep, tempo, maskininnstilling…)',
     'xm.unlinkSS':'Koble fra supersett','xm.linkSS':'Supersett med øvelsen over',
     'xm.replace':'Bytt øvelse','xm.remove':'Fjern øvelse',
+    'xm.howto':'Slik utfører du','xm.substitute':'Bytt til lignende',   // F86 / F87
+    'sub.title':'Bytt til lignende øvelse','sub.help':'Alternativer som trener de samme musklene, fra øvelsesdatabasen.',
+    'sub.none':'Fant ingen faktisk match for denne øvelsen.','sub.noData':'Ingen øvelsesdata koblet – kan ikke foreslå et faktisk bytte.',
     'sm.title':'Sett {0}','sm.copy':'Kopier sett','sm.copyRest':'Kopier til resten av settene',
     'sm.dropOn':'Merk som dropsett','sm.dropOff':'Fjern dropsett-merket','sm.remove':'Fjern sett',
     'sr.copy':'Kopier','sr.remove':'Fjern','sr.warmup':'Oppvarmingssett','sr.drop':'Dropsett',
@@ -2657,7 +2674,14 @@ function setEntryNote(ei,v){const a=store.active;if(a&&a.entries[ei]){a.entries[
 /* F14: swap the exercise, keep everything logged (sets, targets, notes, superset) */
 function replaceEntryExercise(ei,name){
   const a=store.active;if(!a||!a.entries[ei])return false;
-  ensureEx(name);a.entries[ei].name=name;cleanSS();save();return true;
+  ensureEx(name);const e=a.entries[ei];e.name=name;
+  /* F84 (2026-07-08): the ghosts (each set's tgt) were seeded from the OLD
+     exercise's history when the entry was built, so a bare name swap left the
+     old numbers showing under the new exercise. Re-seed every set's tgt from
+     the NEW exercise's previous session — null where it has no history, so the
+     ghost reads "—" instead of stale numbers. */
+  e.sets.forEach((s,si)=>{s.tgt=prevSessionSet(name,si);});
+  cleanSS();save();return true;
 }
 /* F13 reorder overview + F21 (2026-07-06) — OWNER SPEC: "just holding on the
    exercise should allow you to reorder it in the submenu. Don't really need the
@@ -2809,8 +2833,17 @@ function exMenu(ei){
     '</div>'+
     '<textarea class="howto" placeholder="'+T('xm.notesPh')+'" oninput="setEntryNote('+ei+',this.value)" style="margin-bottom:8px">'+esc(e.note||'')+'</textarea>'+
     '<div class="menu">'+
+    /* F86 (2026-07-08): watch the how-to DURING a workout — the catalog's demo
+       image + instruction steps for the entry's linked visual, read-only (the
+       viewer built in F62, reused view-only). Only when a catalog visual is
+       linked; custom exercises with no vid have nothing to show. */
+    (meta.vid&&CAT_BY_ID[meta.vid]?'<button data-hv="'+esc(meta.vid)+'" onclick="catalogPreview(this.dataset.hv,false,true)">'+ico('play')+T('xm.howto')+'</button>':'')+
     (ei>0?'<button onclick="toggleSS('+ei+');closeModal()">'+ico('link')+(e.ss!=null?T('xm.unlinkSS'):T('xm.linkSS'))+'</button>':'')+
     '<button onclick="openPicker(\'replace:'+ei+'\')">'+ico('repeat')+T('xm.replace')+'</button>'+
+    /* F87 (2026-07-08): factual substitutes — catalog exercises ranked by REAL
+       muscle overlap (.p/.s) from the linked visual. Needs a vid for the muscle
+       data; picking one runs the F84 replace path (keeps sets, re-seeds ghosts). */
+    (meta.vid&&CAT_BY_ID[meta.vid]?'<button onclick="openSubstitute('+ei+')">'+ico('refresh')+T('xm.substitute')+'</button>':'')+
     (a.entries.length>1?'<button onclick="openReorder()">'+ico('sort')+T('ro.title')+'</button>':'')+
     '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+T('xm.remove')+'</button>'+
     '</div>');
@@ -2827,6 +2860,63 @@ function setMenu(ei,si){
     '<button onclick="toggleDrop('+ei+','+si+');closeModal()">'+ico('down')+(s.drop?T('sm.dropOff'):T('sm.dropOn'))+'</button>'+
     '<button class="del" onclick="removeSet('+ei+','+si+');closeModal()">'+ico('trash')+T('sm.remove')+'</button>'+
     '</div>');
+}
+/* ===================== F87: factual substitute exercises (2026-07-08) =====================
+   Owner: "Useful if a machine is taken, or you don't want to do that particular
+   exercise… It has to be factual, so the replacements need to make sense and not
+   just be based on vibes and instead real data." Ranks CATALOG exercises by REAL
+   muscle overlap with the current exercise's linked catalog entry: a shared PRIMARY
+   muscle weighs most, then primary↔secondary crossover, then a shared secondary,
+   with a small nudge for the same movement category. Deterministic from .p/.s/.c —
+   no LLM, no guessing. Equipment DIFFERENCE is surfaced as a feature (machine taken
+   → free-weight alt for the same muscle), never penalised. Picking one runs the F84
+   replace path (keeps sets, re-seeds ghosts from the substitute's own history). */
+function substituteRank(vid){
+  const c0=CAT_BY_ID[vid];if(!c0)return [];
+  const p0=new Set((c0.p||[]).map(m=>m.toLowerCase()));
+  const s0=new Set((c0.s||[]).map(m=>m.toLowerCase()));
+  const out=[];
+  for(const id in CAT_BY_ID){
+    if(id===vid)continue;
+    const c=CAT_BY_ID[id];
+    const p=(c.p||[]).map(m=>m.toLowerCase()), s=(c.s||[]).map(m=>m.toLowerCase());
+    let sc=0;
+    for(const m of p)if(p0.has(m))sc+=10;   // shared primary muscle — the strongest signal
+    for(const m of p)if(s0.has(m))sc+=3;     // its primary is our secondary
+    for(const m of s)if(p0.has(m))sc+=3;     // its secondary is our primary
+    for(const m of s)if(s0.has(m))sc+=1;     // shared secondary
+    if(sc===0)continue;                       // no muscle overlap → not a substitute
+    if(c.c===c0.c)sc+=2;                       // same movement category, small nudge
+    out.push({id,c,sc,diffEquip:(c.q||'')!==(c0.q||'')});
+  }
+  out.sort((a,b)=>b.sc-a.sc || a.c.n.localeCompare(b.c.n));
+  return out.slice(0,15);
+}
+function openSubstitute(ei){
+  const a=store.active;if(!a)return;const e=a.entries[ei];if(!e)return;
+  const vid=(store.ex[e.name]||{}).vid;
+  if(!vid||!CAT_BY_ID[vid]){toast(T('sub.noData'));return;}
+  const list=substituteRank(vid);
+  let h='<h2>'+T('sub.title')+'</h2><p class="tiny muted" style="margin-bottom:8px">'+T('sub.help')+'</p>';
+  if(!list.length){h+='<p class="muted" style="margin-top:12px">'+T('sub.none')+'</p>';}
+  else{
+    /* F63 law: inline dataset onclick so restored rows keep their taps after a push→pop. */
+    for(const r of list){
+      const c=r.c;const primary=catalogPrimaryGroup(r.id)||(CATS.includes(c.c)?c.c:'Other');
+      h+='<div class="listrow" data-sub-ei="'+ei+'" data-sub-id="'+esc(r.id)+'" onclick="pickSubstitute(this.dataset.subEi,this.dataset.subId)" style="cursor:pointer">'+
+        '<img class="thumb" loading="lazy" src="exercises/'+esc(r.id)+'/0.jpg" alt="">'+
+        '<div class="grow"><div style="font-weight:600">'+esc(c.n)+'</div>'+
+        '<div class="row" style="gap:4px;margin-top:3px;flex-wrap:wrap">'+catChip(primary)+
+          (r.diffEquip&&c.q?'<span class="chip sec2">'+esc(c.q)+'</span>':'')+'</div></div>'+
+        '</div>';
+    }
+  }
+  openModal(h);
+}
+function pickSubstitute(ei,id){
+  const name=catalogEnsureLibrary(id);if(!name){closeModal();return;}
+  if(replaceEntryExercise(+ei,name))toast(T('toast.replacedWith',name));
+  closeModal();render();
 }
 /* ============================== rest timer ============================== */
 let restTimer=null, restEnd=0, restTotal=0, _actx=null;
@@ -3376,7 +3466,7 @@ function catalogRowTap(id){const c=CAT_BY_ID[id];if(c)catalogPreview(id,false);}
    button reflects state: already-in-library shows an "open in library" action;
    pick mode reads "Add to workout"; otherwise "Add to library". replace===true
    re-renders in place after an add (no back-stack churn). */
-function catalogPreview(id,replace){
+function catalogPreview(id,replace,viewOnly){
   const c=CAT_BY_ID[id];if(!c)return;
   const inLib=!!store.ex[c.n];const pick=!!state.catalogPick;
   const primary=catalogPrimaryGroup(id)||(CATS.includes(c.c)?c.c:'Other');
@@ -3390,16 +3480,19 @@ function catalogPreview(id,replace){
     '<div><div class="l">'+T('xs.equipment')+'</div><div class="v">'+esc(c.q||'—')+'</div></div>'+
     (c.s&&c.s.length?'<div style="grid-column:1/-1"><div class="l">'+T('xs.secondaryMuscles')+'</div><div class="v">'+esc(c.s.join(', '))+'</div></div>':'')+
     '</div>';
-  /* primary action */
-  h+='<div class="row" style="margin:12px 0 4px">';
-  if(pick){
-    h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddWorkout(this.dataset.cadd)">'+T('cb.addWorkout')+'</button>';
-  }else if(inLib){
-    h+='<button class="btn primary grow" data-n="'+esc(c.n)+'" onclick="catalogOpenLibrary(this.dataset.n)">'+T('cb.openLib')+'</button>';
-  }else{
-    h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddLibrary(this.dataset.cadd)">'+T('cb.addLib')+'</button>';
+  /* primary action — F86 (2026-07-08): viewOnly opens this same sheet purely as
+     a how-to (from the live workout menu), with no add/library action button. */
+  if(!viewOnly){
+    h+='<div class="row" style="margin:12px 0 4px">';
+    if(pick){
+      h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddWorkout(this.dataset.cadd)">'+T('cb.addWorkout')+'</button>';
+    }else if(inLib){
+      h+='<button class="btn primary grow" data-n="'+esc(c.n)+'" onclick="catalogOpenLibrary(this.dataset.n)">'+T('cb.openLib')+'</button>';
+    }else{
+      h+='<button class="btn primary grow" data-cadd="'+esc(id)+'" onclick="catalogAddLibrary(this.dataset.cadd)">'+T('cb.addLib')+'</button>';
+    }
+    h+='</div>';
   }
-  h+='</div>';
   if(c.t&&c.t.length)h+='<div class="card"><h3>'+T('xs.instructions')+'</h3><ol class="instructions">'+
     c.t.map(step=>'<li>'+esc(step)+'</li>').join('')+'</ol></div>';
   openModal(h,{replace:!!replace});
@@ -5331,7 +5424,12 @@ if('serviceWorker' in navigator&&location.protocol!=='file:'){
         }
       });
     });
-    if(autoUpdateOn())reg.update();      // auto-check on every entry
+    /* (2026-07-08) reg.update() rejects with "Script sw.js load failed" when the
+       GitHub Pages edge briefly can't serve a freshly-deployed sw.js — the outer
+       .catch only covers register(), so this fire-and-forget update leaked an
+       unhandledrejection the diag log flagged as an error minutes after a deploy.
+       Swallow it: a failed auto-check is a no-op, the next entry retries. */
+    if(autoUpdateOn())reg.update().catch(()=>{});      // auto-check on every entry
   }).catch(e=>console.warn('sw failed',e));
 }
 </script>
