@@ -598,7 +598,7 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.32';
+const APP_VERSION='0.9.33';
 /* Changelog convention (2026-07-08, owner ask): a version only gets an entry once
    its change is CONFIRMED working on device. Internal/fix-attempt bumps (needed for
    the service-worker cache to update) do NOT get a changelog line — otherwise the
@@ -5288,6 +5288,13 @@ function logShellGeom(){
     }catch(e){}
     let tbPadB=null;try{tbPadB=Math.round(parseFloat(window.getComputedStyle(tb).paddingBottom)||0);}catch(e){}
     let vp=null;try{const m=document.querySelector('meta[name=viewport]');vp=m?m.getAttribute('content'):null;}catch(e){}
+    /* F78e: measure what each CSS height unit ACTUALLY resolves to in px on this
+       device — the crux question is which (if any) reaches the physical screen
+       (screenH). measCssH sizes a throwaway fixed div and reads it back; fixedVpH
+       measures a position:fixed;top:0;bottom:0 element = the true fixed-positioning
+       viewport height. All guarded (null in a non-DOM env). */
+    const measCssH=val=>{try{const d=document.createElement('div');d.style.cssText='position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;height:'+val;b.appendChild(d);const px=Math.round(d.getBoundingClientRect().height);b.removeChild(d);return px;}catch(e){return null;}};
+    let fixedVpH=null;try{const d=document.createElement('div');d.style.cssText='position:fixed;left:0;top:0;bottom:0;width:0;visibility:hidden;pointer-events:none;';b.appendChild(d);fixedVpH=Math.round(d.getBoundingClientRect().height);b.removeChild(d);}catch(e){}
     diagLog('event',{name:'shellGeom',
       innerH:Math.round(window.innerHeight||0),
       clientH:Math.round((de&&de.clientHeight)||0),
@@ -5297,6 +5304,7 @@ function logShellGeom(){
       screenH:Math.round((window.screen&&window.screen.height)||0),
       availH:Math.round((window.screen&&window.screen.availHeight)||0),
       docElH:Math.round((de&&de.getBoundingClientRect?de.getBoundingClientRect().height:0)||0),
+      vhPx:measCssH('100vh'),dvhPx:measCssH('100dvh'),svhPx:measCssH('100svh'),lvhPx:measCssH('100lvh'),fillPx:measCssH('-webkit-fill-available'),fixedVpH:fixedVpH,
       safeTop:safeTop,safeBottom:safeBottom,tbPadB:tbPadB,
       tbTop:tbr?Math.round(tbr.top):null,
       tbBottom:tbr?Math.round(tbr.bottom):null,
