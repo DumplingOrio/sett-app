@@ -595,7 +595,7 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.34';
+const APP_VERSION='0.9.35';
 /* Changelog convention (2026-07-08, owner ask): a version only gets an entry once
    its change is CONFIRMED working on device. Internal/fix-attempt bumps (needed for
    the service-worker cache to update) do NOT get a changelog line — otherwise the
@@ -603,6 +603,10 @@ const APP_VERSION='0.9.34';
    (v0.9.29 onward: drift, background-scroll, bar position) is HELD here until the
    whole thing is confirmed on-device, then lands as ONE honest consolidated entry. */
 const CHANGELOG=[
+  {v:'0.9.35', date:'2026-07-08', items:[
+    'The bottom navigation bar now stays put along the bottom of the screen — it no longer drifts when you scroll or sits too high up.',
+    'Menus and sheets no longer let the page scroll behind them.',
+  ]},
   {v:'0.9.28', date:'2026-07-08', items:[
     'Swiping a set now works from anywhere on the row, including over the weight and reps — not just from the edge.',
     'Reordering exercises is more reliable: a small finger movement no longer cancels the drag, and dragging no longer scrolls the page behind the menu.',
