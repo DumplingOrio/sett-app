@@ -569,8 +569,11 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.26';
+const APP_VERSION='0.9.27';
 const CHANGELOG=[
+  {v:'0.9.27', date:'2026-07-08', items:[
+    'Reordering exercises is fixed — dragging a row now moves the row instead of scrolling the page behind the menu.',
+  ]},
   {v:'0.9.26', date:'2026-07-08', items:[
     'Fixed the set row on narrow phones — the ✓, W and ⋯ buttons no longer get pushed off the edge of the card.',
     'The highlight on a completed set now fills the whole row instead of floating in the middle.',
@@ -2800,6 +2803,14 @@ function cancelRoHold(){
   roHold=null;
 }
 let roDrag=null;
+/* iOS FIX (2026-07-08, from the owner's v0.9.26 diag: reorderArm fired 8× but the
+   drag scrolled the BACKGROUND — "can't drag to reorder"). Two reasons the drag
+   leaked into a scroll: (1) the row's touch-action:pan-y made iOS commit the
+   gesture to a vertical pan at touchstart, and flipping to touch-action:none at
+   arm-time (200ms later) can't undo that mid-gesture; (2) roDragMove preventDefaults
+   a POINTERmove, which iOS ignores for scrolling. The only thing that halts the
+   native scroll is a non-passive TOUCHmove preventDefault held for the whole drag. */
+function roTouchBlock(e){if(roDrag)e.preventDefault();}
 function startRoDrag(e,row,captureEl){
   if(!row)return;
   try{diagLog('event',{name:'reorderArm',from:+row.dataset.ro});}catch(_){}   // Items 1&2 instrument: a drag actually began
@@ -2817,6 +2828,7 @@ function startRoDrag(e,row,captureEl){
      NO transition (it must track the finger 1:1). */
   for(const r of rows)if(r!==row)r.style.transition='transform .18s ease';
   document.addEventListener('pointermove',roDragMove,{passive:false});
+  document.addEventListener('touchmove',roTouchBlock,{passive:false});   // iOS: the ONLY thing that stops the background scrolling during the drag
   document.addEventListener('pointerup',roDragEnd);
   document.addEventListener('pointercancel',roDragEnd);
   if(e.preventDefault)e.preventDefault();
@@ -2845,6 +2857,7 @@ function roDragMove(e){
 function roDragEnd(){
   if(!roDrag)return;
   document.removeEventListener('pointermove',roDragMove);
+  document.removeEventListener('touchmove',roTouchBlock);
   document.removeEventListener('pointerup',roDragEnd);
   document.removeEventListener('pointercancel',roDragEnd);
   const from=roDrag.from;let to=roDrag.target;if(to>from)to--;
@@ -5288,8 +5301,8 @@ const SWDIRS={set:{l:1,r:1}, ex:{l:1}, wk:{l:1}};   // l = left-swipe allowed (d
 let _sw=null, _swOpen=null, _swMoved=false, _swClosedTap=false;
 function closeSwipe(){if(_swOpen){_swOpen.classList.remove('open-l','open-r');_swOpen=null;}}
 function swipeCopy(ei,si){closeSwipe();copySet(ei,si);toast(T('toast.setCopied'));}
-function swipeRemoveSet(ei,si){closeSwipe();removeSet(ei,si);}
-function swipeRemoveEx(ei){closeSwipe();removeEntry(ei);}
+function swipeRemoveSet(ei,si){try{diagLog('event',{name:'swipeDelete',kind:'set'});}catch(_){}closeSwipe();removeSet(ei,si);}
+function swipeRemoveEx(ei){try{diagLog('event',{name:'swipeDelete',kind:'ex'});}catch(_){}closeSwipe();removeEntry(ei);}
 function swipeDeleteWorkout(id){closeSwipe();deleteWorkout(id);}
 /* Items 1&2 (2026-07-08): the owner reports swipe-to-delete "sticks" and is hard
    to trigger — but the swipe code is unchanged since 0.9.24 and can't be reproduced
@@ -5372,7 +5385,17 @@ function swipeEnd(ev){
 /* after a swipe (or an outside-tap that closed an open row), swallow the
    click the browser synthesises so it can't open the workout / focus an input */
 function swipeClickGuard(ev){
-  if(_swMoved||_swClosedTap){_swMoved=false;_swClosedTap=false;ev.stopPropagation();ev.preventDefault();}
+  if(_swMoved||_swClosedTap){
+    /* Items 1&2 instrument (2026-07-08): the v0.9.26 export showed swipes LATCHING
+       fine (no page-pan steal), so a "delete sticks" is most likely the guard
+       eating the delete TAP after a swipe. Log ONLY when the swallowed click landed
+       on a Copy/Delete action button (eating the row's own click is intended, so we
+       skip that to keep the noise down). swipeClickEaten act:del right after a
+       latched swipe = the bug. */
+    const act=ev.target.closest&&ev.target.closest('.swipe-act');
+    if(act){try{diagLog('event',{name:'swipeClickEaten',act:act.classList.contains('del')?'del':act.classList.contains('copy')?'copy':'act'});}catch(_){}}
+    _swMoved=false;_swClosedTap=false;ev.stopPropagation();ev.preventDefault();
+  }
 }
 function wireSwipe(){
   const m=$('main');if(!m||m._swWired)return;m._swWired=true;
