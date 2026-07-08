@@ -569,8 +569,12 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.27';
+const APP_VERSION='0.9.28';
 const CHANGELOG=[
+  {v:'0.9.28', date:'2026-07-08', items:[
+    'Swiping a set now works from anywhere on the row, including over the weight and reps — not just from the edge.',
+    'Reordering exercises is more reliable: a small finger movement no longer cancels the drag, and dragging no longer scrolls the page behind the menu.',
+  ]},
   {v:'0.9.27', date:'2026-07-08', items:[
     'Reordering exercises is fixed — dragging a row now moves the row instead of scrolling the page behind the menu.',
   ]},
@@ -2739,13 +2743,18 @@ function replaceEntryExercise(ei,name){
 }
 /* F13 reorder overview + F21 (2026-07-06) — OWNER SPEC: "just holding on the
    exercise should allow you to reorder it in the submenu. Don't really need the
-   arrow reordering." Press-and-hold (~200ms) anywhere on a row arms the drag so
-   normal list scrolling still works; the ⠿ handle drags immediately. */
+   arrow reordering." Press-and-drag (or hold ~200ms) on a row arms the drag; the
+   ⠿ handle drags immediately.
+   (2026-07-08) Rows are touch-action:none so iOS never treats a row touch as a
+   scroll — the v0.9.27 diag proved the old pan-y let the gesture scroll the page
+   behind the sheet AND made the hold cancel on finger-drift. Trade-off: a reorder
+   list longer than the sheet can't be scrolled by dragging a row (touch the
+   title/Done areas to scroll the sheet); acceptable for typical short lists. */
 function openReorder(){
   const a=store.active;if(!a||a.entries.length<2)return;
   let h='<h2>'+T('ro.title')+'</h2><p class="tiny muted" style="margin-bottom:4px">'+T('ro.help')+'</p><div id="rolist">';
   a.entries.forEach((e,ei)=>{
-    h+='<div class="listrow" data-ro="'+ei+'" style="cursor:grab; touch-action:pan-y">'+
+    h+='<div class="listrow" data-ro="'+ei+'" style="cursor:grab; touch-action:none">'+
       '<span class="draghandle" data-rodrag="'+ei+'">⠿</span>'+
       '<div class="grow"><div class="small" style="font-weight:600">'+esc(e.name)+'</div>'+
       '<div class="tiny muted">'+nPlur('u.set',e.sets.length)+(e.ss!=null?' · '+T('ro.superset')+' '+String.fromCharCode(65+e.ss%26):'')+'</div></div>'+
@@ -2765,27 +2774,31 @@ function wireRoList(){
   document.querySelectorAll('#rolist [data-ro]').forEach(row=>
     row.addEventListener('pointerdown',e=>armRoHold(e,row)));
 }
-let roHold=null,_roDiagAt=0;
+let roHold=null;
 function armRoHold(e,row){
   if(e.target.closest('[data-rodrag]'))return;   // handle path already handles it
   cancelRoHold();
   const px=e.clientX,py=e.clientY,pid=e.pointerId;
+  /* Hold-in-place fallback: pressing still for ~200ms also arms the drag. */
   const timer=setTimeout(()=>{
     /* B2 (sweep 2026-07-06): cancelRoHold removes the 3 document listeners —
        a bare roHold=null leaked them on every completed hold */
     cancelRoHold();
     startRoDrag({clientY:py,clientX:px,pointerId:pid,preventDefault(){}},row,row);
   },200);
-  roHold={timer,px,py,pid};
+  roHold={timer,px,py,pid,row};
   const mv=ev=>{
     if(!roHold)return;
     const rdx=Math.abs(ev.clientX-roHold.px),rdy=Math.abs(ev.clientY-roHold.py);
-    if(rdx>8||rdy>8){
-      /* Items 1&2 instrument: the hold was cancelled before it armed (read as a
-         scroll). If the owner "can't drag," his export shows reorderCancel with
-         SMALL deltas and NO reorderArm → the 8px/200ms gate is too twitchy on iOS. */
-      const now=Date.now();if(now-_roDiagAt>800){_roDiagAt=now;try{diagLog('event',{name:'reorderCancel',dx:Math.round(rdx),dy:Math.round(rdy)});}catch(_){}}
-      cancelRoHold();
+    /* (2026-07-08) The v0.9.27 export showed the drag arming (reorderArm) but ALSO
+       cancelling repeatedly (reorderCancel, dy 9-14px): the owner's finger drifts
+       ~10px while pressing, and the old 8px gate ABORTED the hold, so reordering
+       "stopped working." The rows are now touch-action:none, so a move is never a
+       scroll — that drift is drag INTENT. Arm the drag from the current point
+       instead of cancelling; a still hold still arms via the 200ms timer above. */
+    if(rdx>10||rdy>10){
+      const p=roHold.pid,r=roHold.row;cancelRoHold();
+      startRoDrag({clientX:ev.clientX,clientY:ev.clientY,pointerId:p,preventDefault(){}},r,r);
     }
   };
   const up=()=>cancelRoHold();
@@ -2866,7 +2879,7 @@ function roDragEnd(){
      the settle lands without a re-render fighting the eased transforms. */
   for(const r of allRows){r.style.transition='';r.style.transform='';}
   row.style.transform='';row.style.position='';row.style.zIndex='';row.style.background='';
-  row.style.boxShadow='';row.style.borderRadius='';row.style.touchAction='pan-y';
+  row.style.boxShadow='';row.style.borderRadius='';row.style.touchAction='none';
   if(to!==from&&to>=0&&store.active){
     const es=store.active.entries;const[m]=es.splice(from,1);es.splice(to,0,m);cleanSS();save();
     /* F29 (2026-07-06): move the existing DOM row in place — NO openReorder()
@@ -5323,7 +5336,14 @@ function swipeStart(ev){
      dragged back from its open position (or tap-closed on release) */
   if(_swOpen&&el!==_swOpen){closeSwipe();_swClosedTap=true;}
   if(!el||!el.dataset.swipe){_sw=null;return;}
-  if(ev.target.closest('[data-drag],button,input,textarea,select,a')){_sw=null;return;}
+  /* (2026-07-08) the owner: a swipe from the MIDDLE of a set row "locks itself"
+     while from the edge it works — because the KG/REPS number INPUTS cover the
+     middle and inputs used to abort the swipe entirely. Inputs are no longer
+     excluded: a horizontal swipe that STARTS on an input still swipes the row
+     (swipeMove's axis-lock + preventDefault claims it), while a plain TAP never
+     locks an axis, so touchend leaves it alone and the input focuses to type as
+     before. Buttons / handles / links stay excluded — they own their taps. */
+  if(ev.target.closest('[data-drag],button,textarea,select,a')){_sw=null;return;}
   const dirs=SWDIRS[el.dataset.swipe]||{};
   _sw={el,fg:el.querySelector('.swipe-fg'),x0:ev.touches[0].clientX,y0:ev.touches[0].clientY,
     dx:0,axis:0,dirs,hOver:docHOverflow(),
