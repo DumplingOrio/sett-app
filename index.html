@@ -382,6 +382,8 @@
     z-index:60; background:var(--card2); border:1px solid var(--line); color:var(--text);
     padding:10px 18px; border-radius:12px; font-weight:600; font-size:14px; display:none;
     max-width:88vw; text-align:center; pointer-events:none;}   /* F61: toasts are plain text — never eat taps on what they cover */
+  .undo-btn{pointer-events:auto; background:none; border:none; color:var(--accent);
+    font-weight:800; font-size:14px; margin-left:8px; padding:4px 8px; cursor:pointer;}
 
   textarea.howto{width:100%; min-height:90px; resize:vertical;}
   .visual{background:#fff; border-radius:14px; overflow:hidden; margin:12px 0; text-align:center;}
@@ -434,12 +436,28 @@
   .wtog{width:26px; height:26px; flex:none; border:1px solid var(--line); border-radius:8px;
     background:var(--card2); color:var(--faint); font-size:12px; font-weight:800; margin-right:2px;}
   .wtog.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
-  .setcell{display:flex; flex-direction:column; gap:1px;}
+  .wtog{position:relative;}
+  .wtog::after{content:''; position:absolute; inset:-9px;}
+  .checkbtn{width:26px; height:26px; flex:none; border:1.6px solid var(--line); border-radius:50%;
+    display:grid; place-items:center; font-size:14px; font-weight:700; color:var(--faint);
+    background:none; position:relative;}
+  .checkbtn.on{background:var(--accent); border-color:var(--accent); color:#18100a;}
+  .checkbtn::after{content:''; position:absolute; inset:-9px;}
+  .swipe-fg.done{background:var(--accent-soft);}
+  .setcell{display:flex; flex-direction:column; gap:1px; position:relative;}
   .setcell label{font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--faint);}
   .setcell input{width:58px; text-align:left; padding:1px 0; font-size:18px; font-weight:800;
     background:transparent; border:none; border-radius:0;}
+  .setcell .steppers{display:none; flex-direction:row; gap:4px; margin-top:2px;}
+  .setcell.focus .steppers{display:flex;}
+  .steppers button{width:28px; height:28px; padding:0; border:1px solid var(--line); border-radius:8px;
+    background:var(--card2); color:var(--text); font-size:16px; font-weight:800;
+    display:grid; place-items:center; position:relative;}
+  .steppers button:active{background:var(--accent-soft); border-color:var(--accent);}
+  .steppers button::after{content:''; position:absolute; inset:-8px;}
   .setrow2 .sp{flex:1;}
-  .setmenu{width:30px; height:30px; font-size:16px;}
+  .setmenu{width:30px; height:30px; font-size:16px; position:relative;}
+  .setmenu::after{content:''; position:absolute; inset:-7px;}
   /* F25 (2026-07-06): pills + the three icon buttons stay on ONE row that
      never wraps at 375px (owner's item-2 complaint was the icons wrapping
      BELOW the pills). nowrap + compact pills/icons keeps them in-bounds. */
@@ -524,8 +542,14 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.23';
+const APP_VERSION='0.9.24';
 const CHANGELOG=[
+  {v:'0.9.24', date:'2026-07-08', items:[
+    'Each set now has a ✓ button — tap it to mark the set done, tint the row, and start the rest timer. The "+ Set" button no longer starts rest on its own.',
+    'Tapping ✓ on an empty set that has a ghost target fills the ghost values for you — no retyping.',
+    'Weight and rep inputs now show − / ＋ steppers while focused, stepping ±2.5 kg or ±1 rep.',
+    'Swiping to remove a set or exercise now shows a 5-second undo toast — tap UNDO to put it back.',
+  ]},
   {v:'0.9.23', date:'2026-07-08', items:[
     'Norwegian is now complete: every menu, popup, rest timer, records screen and date reads in Norwegian when you pick it — not just the main tabs. Switch anytime under Settings → Appearance.',
   ]},
@@ -963,7 +987,7 @@ const STRINGS={
     'set.theme':'{0} theme','set.language':'Language',
     'set.strengthRanks':'Strength ranks','set.ranksSub':'Liftoff-style tiers for your big lifts. Turn off if you would rather just track the numbers.',
     'set.standard':'Standard','set.restTimer':'Rest timer',
-    'set.restAutoOn':'A rest countdown starts automatically each time you add a set. You can also start it yourself with the timer button in the top corner of the workout.',
+    'set.restAutoOn':'A rest countdown starts automatically each time you complete a set with ✓. You can also start it yourself with the timer button in the top corner of the workout.',
     'set.restAutoOff':'Start the rest timer yourself with the timer button in the top corner of the workout.',
     'set.defaultRest':'Default rest','set.countWarm':'Count warmup sets in stats',
     'set.warmOn':'Warmup sets count toward volume, records, e1RM and ranks.',
@@ -1016,6 +1040,7 @@ const STRINGS={
     'sm.dropOn':'Mark as drop set','sm.dropOff':'Unmark as drop set','sm.remove':'Remove set',
     'sr.copy':'Copy','sr.remove':'Remove','sr.warmup':'Warmup set','sr.drop':'Drop set',
     'sr.warmOff':'Warmup — tap to unmark','sr.warmOn':'Mark as warmup','sr.setOptions':'Set options',
+    'sr.check':'Mark set done','sr.unchk':'Unmark set',
     // reorder sheet
     'ro.title':'Reorder exercises',
     'ro.help':'Press and hold a row, then drag to reorder — or drag the ⠿ handle. Changes apply right away.',
@@ -1083,6 +1108,7 @@ const STRINGS={
     'fb.topGroups':'Top groups','fb.weeklyAvg':'Weekly average','fb.mostWorked':'Most worked',
     'fb.highestMonth':'Highest month','fb.range':'Range','fb.netChange':'Net change','fb.latest':'Latest','fb.min':'min',
     // toasts
+    'toast.setRemoved':'Set removed','toast.exRemoved':'Exercise removed','toast.undo':'UNDO',
     'toast.storageFull':'Could not save — storage full?','toast.setCopied':'Set copied',
     'toast.visualLinked':'Visual linked','toast.addedLib':'Added to your library','toast.saved':'Saved',
     'toast.replacedWith':'Replaced with “{0}”',
@@ -1169,7 +1195,7 @@ const STRINGS={
     'set.theme':'{0}-tema','set.language':'Språk',
     'set.strengthRanks':'Styrkeranger','set.ranksSub':'Liftoff-stil tiere for de store løftene dine. Skru av om du heller vil bare følge tallene.',
     'set.standard':'Standard','set.restTimer':'Pausetimer',
-    'set.restAutoOn':'En pausenedtelling starter automatisk hver gang du legger til et sett. Du kan også starte den selv med timerknappen øverst i hjørnet av økta.',
+    'set.restAutoOn':'En pausenedtelling starter automatisk hver gang du fullfører et sett med ✓. Du kan også starte den selv med timerknappen øverst i hjørnet av økta.',
     'set.restAutoOff':'Start pausetimeren selv med timerknappen øverst i hjørnet av økta.',
     'set.defaultRest':'Standard pause','set.countWarm':'Tell oppvarmingssett i statistikk',
     'set.warmOn':'Oppvarmingssett teller mot volum, rekorder, e1RM og ranger.',
@@ -1216,6 +1242,7 @@ const STRINGS={
     'sm.dropOn':'Merk som dropsett','sm.dropOff':'Fjern dropsett-merket','sm.remove':'Fjern sett',
     'sr.copy':'Kopier','sr.remove':'Fjern','sr.warmup':'Oppvarmingssett','sr.drop':'Dropsett',
     'sr.warmOff':'Oppvarming — trykk for å fjerne merket','sr.warmOn':'Merk som oppvarming','sr.setOptions':'Settvalg',
+    'sr.check':'Marker sett ferdig','sr.unchk':'Fjern markering',
     'ro.title':'Endre rekkefølge',
     'ro.help':'Hold på en rad og dra for å endre rekkefølgen — eller dra i ⠿-håndtaket. Endringene gjelder med en gang.',
     'ro.superset':'supersett','ro.done':'Ferdig',
@@ -1270,6 +1297,7 @@ const STRINGS={
     'fb.mvl':'Denne måneden mot forrige','fb.bestMonth':'Beste måned','fb.perWorkout':'Per økt',
     'fb.topGroups':'Toppgrupper','fb.weeklyAvg':'Ukesnitt','fb.mostWorked':'Mest trent',
     'fb.highestMonth':'Høyeste måned','fb.range':'Spenn','fb.netChange':'Netto endring','fb.latest':'Sist','fb.min':'min',
+    'toast.setRemoved':'Sett fjernet','toast.exRemoved':'Øvelse fjernet','toast.undo':'ANGRE',
     'toast.storageFull':'Kunne ikke lagre — er lagringen full?','toast.setCopied':'Sett kopiert',
     'toast.visualLinked':'Figur koblet','toast.addedLib':'Lagt til i biblioteket ditt','toast.saved':'Lagret',
     'toast.replacedWith':'Byttet til “{0}”',
@@ -1344,6 +1372,15 @@ function statWorkouts(){
 }
 function repRange(t){if(!t)return '';const lo=t.rlo,hi=t.rhi;if(lo==null&&hi==null)return '';if(lo!=null&&hi!=null)return lo===hi?String(lo):lo+'–'+hi;return String(lo!=null?lo:hi);}
 function toast(msg,ms){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>t.style.display='none',ms||2400);}
+let _undo=null;
+function toastUndo(msg){const t=$('toast');t.innerHTML=esc(msg)+' <button class="undo-btn" onmousedown="undoRemove()">'+T('toast.undo')+'</button>';t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>{t.style.display='none';},5000);}
+function finalizeUndo(){if(_undo){clearTimeout(_undo.timer);_undo=null;}$('toast').style.display='none';}
+function undoRemove(){
+  if(!_undo||!store.active)return;
+  if(_undo.type==='set'){store.active.entries[_undo.ei].sets.splice(_undo.si,0,_undo.obj);}
+  else{store.active.entries.splice(_undo.ei,0,_undo.obj);cleanSS();}
+  clearTimeout(_undo.timer);_undo=null;$('toast').style.display='none';save();render();
+}
 const newWid=()=>'w'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 
 /* ============================== store ============================== */
@@ -2321,13 +2358,15 @@ function renderActive(){
       h+='<div class="swipe'+(isPr?' pr':'')+'" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
         '<button class="swipe-act copy" aria-label="'+T('sm.copy')+'" title="'+T('sr.copy')+'" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'</button>'+
         '<button class="swipe-act del" aria-label="'+T('sm.remove')+'" title="'+T('sr.remove')+'" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'</button>'+
-        '<div class="swipe-fg">'+
+        '<div class="swipe-fg'+(s.done?' done':'')+'">'+
         '<div class="setrow2">'+
         /* F26: warmup circle shows W (distinct from drop's D) */
         '<span class="setnum'+(s.warmup?' warm':s.drop?' drop':'')+'" title="'+(s.warmup?T('sr.warmup'):s.drop?T('sr.drop'):'')+'">'+(s.warmup?'W':s.drop?'D':si+1)+'</span>'+
         '<div class="setcell"><label>'+T('act.kg')+'</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
         '<div class="setcell"><label>'+T('act.repsLbl')+'</label><input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'></div>'+
         '<span class="sp"></span>'+
+        (a.editing?'':
+        '<button class="checkbtn'+(s.done?' on':'')+'" title="'+(s.done?T('sr.unchk'):T('sr.check'))+'" aria-pressed="'+(!!s.done)+'" onclick="toggleDone('+ei+','+si+')">✓</button>')+
         /* F26: petite, non-invading W toggle beside the ⋯ menu */
         '<button class="wtog'+(s.warmup?' on':'')+'" title="'+(s.warmup?T('sr.warmOff'):T('sr.warmOn'))+'" aria-pressed="'+(!!s.warmup)+'" onclick="toggleWarmup('+ei+','+si+')">W</button>'+
         '<button class="setmenu" title="'+T('sr.setOptions')+'" aria-label="'+T('sr.setOptions')+'" onclick="setMenu('+ei+','+si+')">⋯</button>'+
@@ -2569,13 +2608,12 @@ function prevSessionSet(name,idx){
   return null;
 }
 function addSet(ei){const e=store.active.entries[ei];
-  e.sets.push({w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:prevSessionSet(e.name,e.sets.length)});save();render();
-  if(store.active&&!store.active.editing&&restAutoOn())startRest();}
+  e.sets.push({w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:prevSessionSet(e.name,e.sets.length)});save();render();}
 /* F15: on-card "+ Drop set" — adds a set already marked D, seeded from the last weight */
 function addDropSet(ei){const e=store.active.entries[ei];const p=e.sets[e.sets.length-1];
-  e.sets.push({w:p?p.w:null,r:null,dur:null,dist:null,note:'',drop:true});save();render();
-  if(store.active&&!store.active.editing&&restAutoOn())startRest();}
-function removeSet(ei,si){store.active.entries[ei].sets.splice(si,1);save();render();}
+  e.sets.push({w:p?p.w:null,r:null,dur:null,dist:null,note:'',drop:true});save();render();}
+function removeSet(ei,si){finalizeUndo();const obj=store.active.entries[ei].sets.splice(si,1)[0];
+  _undo={type:'set',ei,si,obj,timer:setTimeout(finalizeUndo,5000)};save();render();toastUndo(T('toast.setRemoved'));}
 function copySet(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
   e.sets.splice(si+1,0,{w:s.w,r:s.r,dur:s.dur,dist:s.dist,note:'',drop:false,tgt:s.tgt?{...s.tgt}:null});
   save();render();}
@@ -2585,6 +2623,20 @@ function toggleDrop(ei,si){const s=store.active.entries[ei].sets[si];s.drop=!s.d
 /* F26 (2026-07-06): warmup flag — mutually exclusive with drop on the circle
    (a warmup isn't a drop). Default OFF-in-stats via the settings toggle. */
 function toggleWarmup(ei,si){const s=store.active.entries[ei].sets[si];s.warmup=!s.warmup;if(s.warmup)s.drop=false;save();render();}
+function toggleDone(ei,si){
+  const a=store.active;if(!a)return;
+  const s=a.entries[ei].sets[si];
+  if(!s.done){
+    if(s.w==null&&s.r==null){
+      if(s.tgt&&(s.tgt.tw!=null||s.tgt.rlo!=null)){
+        s.w=s.tgt.tw;s.r=s.tgt.rlo;
+      }else return;
+    }
+    s.done=true;
+    if(!a.editing&&restAutoOn())startRest();
+  }else{s.done=false;}
+  save();render();
+}
 /* F22 (2026-07-06): any superset group with fewer than 2 members is not a
    superset — clear the orphan's ss so no stale "SUPERSET A" badge lingers.
    Called after every op that can dissolve a pair (unlink/remove/replace/reorder). */
@@ -2593,7 +2645,8 @@ function cleanSS(){
   const count={};for(const e of es)if(e.ss!=null)count[e.ss]=(count[e.ss]||0)+1;
   for(const e of es)if(e.ss!=null&&count[e.ss]<2)e.ss=null;
 }
-function removeEntry(ei){store.active.entries.splice(ei,1);cleanSS();save();render();}
+function removeEntry(ei){finalizeUndo();const obj=store.active.entries.splice(ei,1)[0];cleanSS();
+  _undo={type:'entry',ei,obj,timer:setTimeout(finalizeUndo,5000)};save();render();toastUndo(T('toast.exRemoved'));}
 function toggleSS(ei){
   const es=store.active.entries,e=es[ei],prev=es[ei-1];if(!prev)return;
   if(e.ss!=null&&e.ss===prev.ss){e.ss=null;cleanSS();}
@@ -2871,7 +2924,7 @@ function discardWorkout(){
 }
 function finishWorkout(){
   const a=store.active;
-  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
+  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,done,...s})=>s)})).filter(e=>e.sets.length);
   if(!entries.length){toast(T('fin.logFirst'));return;}
   if(a.editing){
     const idx=store.workouts.findIndex(x=>x.id===a.editing);
@@ -5007,6 +5060,30 @@ function wireInputs(){
       /* F25/F36/F37/F38: live cues under this exercise card, no full re-render */
       updateLiveCues(+el.dataset.ei);
     });
+    if(el.dataset.si!=null&&(el.dataset.f==='w'||el.dataset.f==='r')){
+      const cell=el.closest('.setcell');if(!cell)return;
+      if(!cell.querySelector('.steppers')){
+        const wrap=document.createElement('div');wrap.className='steppers';
+        const isW=el.dataset.f==='w';const step=isW?2.5:1;
+        ['−','＋'].forEach((label,i)=>{
+          const b=document.createElement('button');b.type='button';b.textContent=label;
+          b.addEventListener('mousedown',e=>e.preventDefault());
+          b.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
+          b.addEventListener('click',()=>{
+            let v=el.value===''?null:parseFloat(el.value);
+            if(v==null){const s=store.active.entries[+el.dataset.ei].sets[+el.dataset.si];
+              const tgt=s&&s.tgt;v=(isW?(tgt&&tgt.tw):( tgt&&tgt.rlo))||0;}
+            v=i===0?v-step:v+step;if(v<0)v=0;
+            el.value=isW?v:Math.round(v);
+            el.dispatchEvent(new Event('input',{bubbles:true}));
+          });
+          wrap.appendChild(b);
+        });
+        cell.appendChild(wrap);
+      }
+      el.addEventListener('focus',()=>cell.classList.add('focus'));
+      el.addEventListener('blur',()=>setTimeout(()=>{if(!cell.contains(document.activeElement))cell.classList.remove('focus');},150));
+    }
   });
   document.querySelectorAll('#main [data-act]').forEach(el=>{
     el.addEventListener('input',()=>{
@@ -5191,7 +5268,7 @@ function autoStopStale(){
   if(!a||a.editing)return false;
   const t=a.touch||toDate(a.start).getTime();
   if(Date.now()-t<AUTOSTOP_MS)return false;
-  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,...s})=>s)})).filter(e=>e.sets.length);
+  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,done,...s})=>s)})).filter(e=>e.sets.length);
   if(!entries.length){store.active=null;save();toast(T('toast.autoDiscard'));return true;}
   for(const e of entries)ensureEx(e.name);
   const w={id:newWid(),start:a.start,end:nowStr(new Date(t)),routine:(a.routine||'').trim(),bw:a.bw||null,entries};
