@@ -587,7 +587,11 @@
   .platebox{margin:7px 0 2px; padding:7px 8px; border-radius:11px; background:var(--card2);
     display:flex; flex-direction:column; align-items:center; gap:7px; cursor:pointer;}
   .platebox:active{background:color-mix(in srgb, var(--accent) 9%, var(--card2));}
-  .platebar-wrap{max-width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch;}
+  /* NO -webkit-overflow-scrolling:touch — it forces a GPU layer that, on iOS Safari,
+     is a known cause of ADJACENT elements (the ✓ checkmark above) vanishing. Modern
+     iOS has momentum scroll without it. (Owner bug 2026-07-09: checkmark disappeared
+     the moment the plate visual landed.) overflow-x keeps the heavy-load scroll. */
+  .platebar-wrap{max-width:100%; overflow-x:auto; overflow-y:hidden;}
   .platestage{display:flex; justify-content:center; padding:10px 0 4px;}
   .platestage .platebar-wrap{padding-bottom:3px;}
   /* the loaded barbell */
@@ -1644,6 +1648,19 @@ function normalizeStore(){
   const scrub=es=>{for(const e of es||[])for(const s of e.sets||[])if('undefined' in s){delete s.undefined;changed=true;}};
   for(const w of store.workouts)scrub(w.entries);
   if(store.active)scrub(store.active.entries);
+  /* RepCount-free counter fix (2026-07-09): existing workouts predate the
+     imported/native flags. If the bundled RepCount CSV is present, mark every
+     workout whose start|end matches a CSV row as imported — so the counter excludes
+     the imported history. Runs once, only when the CSV is present (so it can still
+     run later if the CSV shows up); Sett-logged workouts stay unmarked → counted. */
+  if(!store._rcMig && typeof window!=='undefined' && window.SETT_LOCAL_CSV){
+    try{
+      const rows=parseCsv(window.SETT_LOCAL_CSV);const keys=new Set();
+      for(let i=1;i<rows.length;i++){const r=rows[i];if(r&&r.length>=2)keys.add((r[0]||'')+'|'+(r[1]||''));}
+      for(const w of store.workouts)if(!w.imported&&!w.native&&keys.has(w.start+'|'+w.end)){w.imported=true;}
+    }catch(e){}
+    store._rcMig=1;changed=true;
+  }
   if(changed)save();
 }
 let store=null, firstRun=false;
@@ -1729,9 +1746,10 @@ function diagVersionGate(){
 const CATALOG=window.SETT_CATALOG||[];
 const CAT_BY_ID={};for(const c of CATALOG)CAT_BY_ID[c.i]=c;
 function autoVisual(name){
+  if(!name)return null;
   if(window.SETT_ALIAS&&window.SETT_ALIAS[name])return window.SETT_ALIAS[name];
   const n=name.trim().toLowerCase();
-  for(const c of CATALOG)if(c.n.toLowerCase()===n)return c.i;
+  for(const c of CATALOG)if(c&&c.n&&c.n.toLowerCase()===n)return c.i;   // guard malformed catalog entries (cf. REG 75)
   return null;
 }
 function ensureEx(name,cat){
@@ -1804,7 +1822,7 @@ function importCsv(text){
   const rows=parseCsv(text);
   if(!rows.length||!/workout start/i.test(rows[0][0]||''))
     return {ok:false,msg:'Not a RepCount export — expected a header starting with "Workout Start".'};
-  const existing=new Set(store.workouts.map(w=>w.start+'|'+w.end));
+  const existing=new Map(store.workouts.map(w=>[w.start+'|'+w.end,w]));
   const byKey=new Map();
   let sets=0;
   for(let i=1;i<rows.length;i++){
@@ -1813,7 +1831,7 @@ function importCsv(text){
     const name=exRaw.trim();if(!name||!start)continue;
     const key=start+'|'+end;
     if(!byKey.has(key))byKey.set(key,{id:newWid(),start,end,
-      routine:routine.trim(),bw:bw?parseFloat(bw):null,entries:[]});
+      routine:routine.trim(),bw:bw?parseFloat(bw):null,imported:true,entries:[]});   // imported = NOT RepCount-free
     const w=byKey.get(key);
     if(routine.trim()&&!w.routine)w.routine=routine.trim();
     if(bw&&w.bw==null)w.bw=parseFloat(bw);
@@ -1830,7 +1848,8 @@ function importCsv(text){
   }
   let added=0,skipped=0;
   for(const w of byKey.values()){
-    if(existing.has(w.start+'|'+w.end)){skipped++;continue;}
+    const dup=existing.get(w.start+'|'+w.end);
+    if(dup){if(!dup.imported)dup.imported=true;skipped++;continue;}   // re-import marks the existing one imported (fixes the RepCount-free count retroactively)
     store.workouts.push(w);added++;
   }
   store.workouts.sort((a,b)=>a.start<b.start?1:-1);
@@ -3292,7 +3311,9 @@ function finishWorkout(){
   if(!entries.length){toast(T('fin.logFirst'));return;}
   if(a.editing){
     const idx=store.workouts.findIndex(x=>x.id===a.editing);
+    const orig=idx>=0?store.workouts[idx]:null;   // preserve the workout's origin (imported vs native)
     const w={id:a.editing,start:a.start,end:a.end||a.start,routine:a.routine.trim(),bw:a.bw||null,entries};
+    if(orig&&orig.imported)w.imported=true; if(orig&&orig.native)w.native=true;
     for(const e of entries)ensureEx(e.name);
     if(idx>=0)store.workouts[idx]=w;else store.workouts.unshift(w);
     store.workouts.sort((x,y)=>x.start<y.start?1:-1);
@@ -3307,7 +3328,7 @@ function finishWorkout(){
     if(best!=null&&best>0&&(before==null||best>before))prs.push({name:e.name,e1:best});
     ensureEx(e.name);
   }
-  const w={id:newWid(),start:a.start,end:nowStr(),routine:a.routine.trim(),bw:a.bw||null,entries};
+  const w={id:newWid(),start:a.start,end:nowStr(),routine:a.routine.trim(),bw:a.bw||null,native:true,entries};   // native = a RepCount-free Sett workout
   store.workouts.unshift(w);store.workouts.sort((x,y)=>x.start<y.start?1:-1);
   store.active=null;diagCount('workoutFinished');save();clearInterval(tick);
   const vol=entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+(statSet(s)?setVol(s):0),0),0);   // F26
@@ -4988,7 +5009,12 @@ function renderDiagCard(){
    alongside the version bump (sett-change-control §roadmap). English by house
    law (dev surface). The counter reads real workout history — never hard-coded.
    Dev-teased, not changelogged (round-12 law: dev features stay secret). */
-function rcFreeCount(){return (store.workouts||[]).length;}
+/* RepCount-FREE = workouts logged in Sett, not imported from RepCount. Imported
+   workouts carry imported:true (importCsv + the SETT_LOCAL_CSV migration in
+   normalizeStore); Sett-logged ones carry native:true (finishWorkout). Count the
+   ones that are NOT imported. (Bug fix 2026-07-09: was store.workouts.length, which
+   counted the owner's whole imported RepCount history as "RepCount-free".) */
+function rcFreeCount(){return (store.workouts||[]).filter(w=>!w.imported).length;}
 const ROADMAP={
   shipped:[
     ['v0.9.0','Trust','bug sweep + test harness'],
@@ -5798,16 +5824,21 @@ function wireInputs(){
         const isW=el.dataset.f==='w';const step=isW?2.5:1;
         ['−','＋'].forEach((label,i)=>{
           const b=document.createElement('button');b.type='button';b.textContent=label;
-          b.addEventListener('mousedown',e=>e.preventDefault());
-          b.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
-          b.addEventListener('click',()=>{
+          const bump=()=>{
             let v=el.value===''?null:numv(el.value);
             if(v==null){const s=store.active.entries[+el.dataset.ei].sets[+el.dataset.si];
-              const tgt=s&&s.tgt;v=(isW?(tgt&&tgt.tw):( tgt&&tgt.rlo))||0;}
+              const tgt=s&&s.tgt;v=(isW?(tgt&&tgt.tw):(tgt&&tgt.rlo))||0;}
             v=i===0?v-step:v+step;if(v<0)v=0;
             el.value=isW?v:Math.round(v);
             el.dispatchEvent(new Event('input',{bubbles:true}));
-          });
+          };
+          /* BUG (since R24, iOS): the steppers had touchstart+preventDefault (to keep the
+             input focused) plus the action on `click` — but iOS Safari CANCELS the
+             synthesized click when touchstart is preventDefaulted, so the tap did nothing
+             on device. Do the bump on `pointerdown` (fires for touch AND mouse) and
+             preventDefault there — it keeps the input focused (keyboard stays up) and
+             needs no click. */
+          b.addEventListener('pointerdown',e=>{e.preventDefault();bump();});
           wrap.appendChild(b);
         });
         cell.appendChild(wrap);
