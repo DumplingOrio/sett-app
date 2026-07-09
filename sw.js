@@ -3,7 +3,7 @@
    -bN suffix = an UNCONFIRMED test build (plate calc + consistency, 2026-07-09):
    APP_VERSION stays 0.9.35 until the owner confirms on device; only this cache
    string changes so the PWA still updates (sett-change-control confirmed-only law). */
-const CACHE = 'sett-v0.9.35-b1';
+const CACHE = 'sett-v0.9.35-b2';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './exercises.js',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 

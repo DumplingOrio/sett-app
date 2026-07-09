@@ -582,18 +582,56 @@
   .swipe .swipe-act .ico{width:18px; height:18px;}
   .swipe:last-child .listrow{border-bottom:none;}
 
-  /* Plate calculator (2026-07-09) — inline per-side breakdown under a set input */
-  .plateline{display:flex; align-items:center; gap:5px; margin:3px 0 1px; padding-left:2px;
-    font-size:11px; color:var(--faint); font-weight:600; font-variant-numeric:tabular-nums;}
-  .plateline .ico{width:12px; height:12px; flex:none; color:var(--muted);}
-  .plateline .pl-x{color:var(--accent); font-weight:700;}
-  .platewrap{display:flex; flex-wrap:wrap; gap:8px;}
-  .platechip{padding:7px 12px; border-radius:99px; background:var(--card2); border:1px solid var(--line);
-    color:var(--muted); font-weight:700; font-size:13px; font-variant-numeric:tabular-nums;}
-  .platechip.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
-  .platepreview{display:flex; align-items:center; gap:8px; margin-top:16px; padding:10px 12px;
-    border-radius:12px; background:var(--card2); color:var(--muted); font-size:12px; font-weight:600;}
-  .platepreview .ico{width:15px; height:15px; flex:none; color:var(--accent);}
+  /* Plate calculator v2 (2026-07-09) — loaded-barbell visual + poker-chip plates.
+     Researched against StrengthLog / Legend / Stronger. */
+  .platebox{margin:7px 0 2px; padding:7px 8px; border-radius:11px; background:var(--card2);
+    display:flex; flex-direction:column; align-items:center; gap:7px; cursor:pointer;}
+  .platebox:active{background:color-mix(in srgb, var(--accent) 9%, var(--card2));}
+  .platebar-wrap{max-width:100%; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch;}
+  .platestage{display:flex; justify-content:center; padding:10px 0 4px;}
+  .platestage .platebar-wrap{padding-bottom:3px;}
+  /* the loaded barbell */
+  .platebar{display:inline-flex; align-items:center; min-width:min-content; padding:6px 0;}
+  .pb-side{display:inline-flex; align-items:center; gap:1.5px;}
+  .pb-shaft{width:58px; height:5px; flex:none; border-radius:3px;
+    background:repeating-linear-gradient(90deg, rgba(0,0,0,.15) 0 1px, transparent 1px 3px),
+      linear-gradient(180deg,#e2e6ec,#aeb4be 45%,#767c86); box-shadow:0 1px 2px rgba(0,0,0,.5);}
+  .pb-stub{width:8px; height:9px; flex:none; border-radius:2px;
+    background:linear-gradient(180deg,#d3d8df,#9096a0 55%,#666c76); box-shadow:0 1px 2px rgba(0,0,0,.45);}
+  .pb-cap{width:4px; height:13px; flex:none; border-radius:2px;
+    background:linear-gradient(180deg,#e6eaef,#8b919c); box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
+  .pb-col{width:4.5px; height:17px; flex:none; border-radius:2px;
+    background:linear-gradient(180deg,#f4f6f9,#cfd4db 50%,#9aa0aa); box-shadow:inset 0 0 0 1px rgba(255,255,255,.35);}
+  .pbplate{flex:none; border-radius:2.5px;
+    background:linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,0) 26%, rgba(0,0,0,.32)), var(--pc);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.14), 0 2px 4px rgba(0,0,0,.5);}
+  /* per-side result chips + inline chips */
+  .platechips{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; align-items:center;}
+  .pl-x{color:var(--accent); font-weight:800; font-size:12px; align-self:center;}
+  .perlabel{font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin:14px 0 10px;}
+  .psums{display:flex; flex-wrap:wrap; gap:14px; justify-content:center; padding-top:3px;}
+  .short{color:var(--accent); font-size:11.5px; font-weight:600; margin-top:11px; text-align:center;}
+  .pk-none{color:var(--muted); font-size:13px;}
+  /* poker-chip plate: coloured disc, weight + unit, concentric ring (Legend/StrengthLog) */
+  .platewrap{display:flex; flex-wrap:wrap; gap:11px;}
+  .pk{width:46px; height:46px; border-radius:50%; flex:none; position:relative; cursor:pointer;
+    display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+    font-variant-numeric:tabular-nums; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.35);
+    background:radial-gradient(circle at 50% 33%, rgba(255,255,255,.32), rgba(255,255,255,0) 52%), var(--pc);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.20), inset 0 0 0 5px color-mix(in srgb,var(--pc) 62%, transparent),
+      0 2px 5px rgba(0,0,0,.45);}
+  .pk .pkw{font-size:14px; font-weight:800; line-height:1;}
+  .pk .pku{font-size:7.5px; font-weight:700; opacity:.82; margin-top:1px; text-transform:uppercase; letter-spacing:.04em;}
+  .pk.lite{color:#20242b; text-shadow:none;}
+  .pk.off{filter:grayscale(.9) brightness(.62); opacity:.5;}
+  .pk .pkn{position:absolute; top:-4px; right:-4px; min-width:19px; height:19px; border-radius:10px; padding:0 5px;
+    background:var(--text); color:var(--bg); font-size:10.5px; font-weight:800; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 1px 3px rgba(0,0,0,.5);}
+  .pk.sm{width:31px; height:31px; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.20),
+      inset 0 0 0 4px color-mix(in srgb,var(--pc) 62%, transparent), 0 1px 3px rgba(0,0,0,.4);}
+  .pk.sm .pkw{font-size:11px;}
+  .pk.sm .pku{display:none;}
+  .pk.sm .pkn{min-width:15px; height:15px; top:-3px; right:-3px; font-size:9px;}
 
   /* Consistency (2026-07-09) — weekly ring + 52-week day grid */
   .concard{display:flex; align-items:center; gap:14px; width:100%; text-align:left; cursor:pointer;}
@@ -1239,7 +1277,10 @@ const STRINGS={
     'toast.autoDiscard':'Forgotten empty workout discarded',
     'toast.autoStop':'Workout auto-stopped and saved (ended {0})',
     // Plate calculator + Manage equipment (2026-07-09)
-    'plate.enable':'Plate calculator','plate.enableSub':'Show which plates to load per side under each weight you log.',
+    'plate.enable':'Plate calculator','plate.enableSub':'Show a loaded barbell under each barbell set, so you know what to rack.',
+    'plate.title':'Plate calculator','plate.putEach':'Put these on each side',
+    'plate.justBar':'Just the bar — no plates','plate.short':'{0} kg short — closest your plates reach',
+    'plate.tapAdjust':'Tap to adjust your plates',
     'plate.manage':'Manage equipment','plate.countBar':'Count the bar',
     'plate.countBarOn':'The weight you log includes the bar — it’s subtracted before showing plates per side.',
     'plate.countBarOff':'The weight you log is the plates only — the bar isn’t counted.',
@@ -1449,7 +1490,10 @@ const STRINGS={
     'toast.autoDiscard':'Glemt tom økt forkastet',
     'toast.autoStop':'Økta ble stoppet og lagret automatisk (sluttet {0})',
     // Plate calculator + Manage equipment (2026-07-09)
-    'plate.enable':'Vektskive-kalkulator','plate.enableSub':'Vis hvilke skiver du skal laste per side under hver vekt du logger.',
+    'plate.enable':'Vektskive-kalkulator','plate.enableSub':'Vis en lastet stang under hver stang-øvelse, så du vet hva du skal legge på.',
+    'plate.title':'Vektskive-kalkulator','plate.putEach':'Sett disse på hver side',
+    'plate.justBar':'Bare stanga — ingen skiver','plate.short':'{0} kg for lite — nærmest med skivene dine',
+    'plate.tapAdjust':'Trykk for å justere skivene',
     'plate.manage':'Administrer utstyr','plate.countBar':'Tell med stanga',
     'plate.countBarOn':'Vekta du logger inkluderer stanga — den trekkes fra før skivene per side vises.',
     'plate.countBarOff':'Vekta du logger er kun skivene — stanga telles ikke med.',
@@ -2576,9 +2620,10 @@ function renderActive(){
         '<button class="setmenu" title="'+T('sr.setOptions')+'" aria-label="'+T('sr.setOptions')+'" onclick="setMenu('+ei+','+si+')">⋯</button>'+
         '</div>'+
         '</div>'+
-        /* Plate calculator (2026-07-09): per-side breakdown under the inputs, live-
-           updated on keystroke (wireInputs) via the id host. Empty when off/blank. */
-        '<div id="pl'+ei+'_'+si+'">'+plateLineHtml(s.w)+'</div>'+
+        /* Plate calculator (2026-07-09): loaded-barbell visual + per-side chips under a
+           BARBELL set, live-updated on keystroke (wireInputs) via the id host; taps into
+           the adjust sheet. Empty when off / not a barbell / blank. */
+        '<div id="pl'+ei+'_'+si+'">'+plateVisualHtml(ei,si)+'</div>'+
         /* F36 PR chip + F45 beat hint on a micro-line under the inputs — keeps the
            set row itself from ever overflowing at 375px. One row keeps at most one
            chip: PR wins on the same row; the hint only lands on an empty row. */
@@ -4559,20 +4604,37 @@ function openStatChart(key){
    ring, a confirm-early streak, and a 52-week day grid — all derived from history.
    Every figure routes through statWorkouts() so the live workout counts (F24). */
 
-/* ---- Plate calculator ---- */
-const DEFAULT_PLATES=[25,20,15,10,5,2.5,1.25];      // per-side kg the user is assumed to own
-const PLATE_OPTIONS=[25,20,15,10,5,2.5,1.25];       // togglable master list in Manage equipment
+/* ---- Plate calculator (v2 — researched visual, 2026-07-09) ---- */
+/* Loaded-barbell visual + adjustable poker-chip inventory. Researched (firecrawl) against
+   StrengthLog / Legend / Stronger: plates load in the standard 20 kg "plate" convention
+   (25 kg OFF by default → 100 kg racks as 20+20, not 25+15), sized by weight on the bar
+   (25 big+thick, 1.25 petite) and coloured by the Olympic scheme. Shown ONLY on BARBELL
+   lifts; tap the bar to adjust plates / bar weight / count-the-bar. */
+const PLATE_OPTIONS=[25,20,15,10,5,2.5,1.25];   // all togglable denominations (kg)
+const DEFAULT_PLATES=[20,15,10,5,2.5,1.25];     // 25 kg OFF by default (the "plate" is the 20)
+/* colour + on-bar disc size (h = diameter, w = thickness) — both scale with weight */
+const PLATE_META={
+  25:  {c:'#c0392b', h:44, w:13},
+  20:  {c:'#2e6da4', h:38, w:11},
+  15:  {c:'#d4a017', h:32, w:9},
+  10:  {c:'#3a9d5d', h:26, w:7.5},
+  5:   {c:'#dfe2e7', h:20, w:6.5, lite:true},
+  2.5: {c:'#7a2f2f', h:15, w:5.5},
+  1.25:{c:'#9aa0ac', h:12, w:4.5},
+};
+let _plateSheetW=100;   // weight the adjust sheet is currently showing a load for
 /* fmtW rounds to ONE decimal (1.25→"1.3"); plate labels need two — dedicated formatter. */
 function fmtP(v){return (Math.round(v*100)/100).toString();}
 function plateCalcOn(){return !(store.settings&&store.settings.plateCalc===false);}   // default ON
 function setPlateCalc(on){store.settings=store.settings||{};store.settings.plateCalc=on;save();toast(on?T('toast.plateOn'):T('toast.plateOff'));render();}
-function countBar(){return !(store.settings&&store.settings.countBar===false);}        // default: count/subtract the bar
+function countBar(){return !(store.settings&&store.settings.countBar===false);}   // default: count/subtract the bar
 function barKg(){const b=store.settings&&store.settings.barKg;return (typeof b==='number'&&b>=0&&b<=100)?b:20;}
 function availPlates(){const p=store.settings&&store.settings.plates;return Array.isArray(p)?p.filter(x=>typeof x==='number'&&x>0):DEFAULT_PLATES;}
-/* Greedy per-side breakdown for a logged weight. countBar() ON → subtract the bar
-   (the logged weight is the total lifted); OFF → the logged weight is plates only.
-   Integer hundredths sidestep the 1.25 kg float trap. Returns
-   {perSide, plates:[...], leftover, bar} or {belowBar} or null (nothing to show). */
+/* only barbell lifts get a plate calc — catalog equipment must be 'barbell' */
+function isBarbell(name){const m=store.ex&&store.ex[name];const c=m&&m.vid&&CAT_BY_ID[m.vid];return !!(c&&c.q==='barbell');}
+/* Greedy per-side breakdown, biggest-first from the AVAILABLE plates (so with 25 kg off,
+   40/side = 20+20 — how lifters actually rack it). Integer hundredths sidestep the 1.25 kg
+   float trap. Returns {perSide, plates:[...], leftover, bar} or {belowBar} or null. */
 function plateBreakdown(total){
   if(total==null||!(total>0))return null;
   const bar=countBar()?barKg():0;
@@ -4584,53 +4646,83 @@ function plateBreakdown(total){
   for(const p of avail){const pc=Math.round(p*100);while(rem>=pc){out.push(p);rem-=pc;}}
   return {perSide,plates:out,leftover:rem/100,bar};
 }
-/* The compact inline line under a set input: "▮ 20 · 10 · 2.5 /side". Empty string
-   when the feature is off, the weight is blank/below the bar, or it's just the bar. */
-function plateLineHtml(w){
-  if(!plateCalcOn())return '';
-  const b=plateBreakdown(w);
-  if(!b||b.belowBar||(!b.plates.length&&!(b.leftover>0)))return '';
-  const stack=b.plates.length?b.plates.map(fmtP).join(' · '):'—';
-  const extra=b.leftover>0?' <span class="pl-x">+'+fmtP(b.leftover)+'</span>':'';
-  return '<div class="plateline">'+ico('plate')+'<span>'+stack+extra+' '+T('plate.perSideShort')+'</span></div>';
+/* group identical plates → [{w,n}] biggest-first (plates arrive biggest-first) */
+function groupPlates(plates){const g=[];for(const p of plates){const x=g.find(y=>y.w===p);if(x)x.n++;else g.push({w:p,n:1});}return g;}
+/* a poker-chip plate — coloured disc, weight (+ "kg" unless inline-small), ×count badge */
+function pokerChipHtml(w,n,small){
+  const m=PLATE_META[w];if(!m)return '';
+  return '<span class="pk'+(m.lite?' lite':'')+(small?' sm':'')+'" style="--pc:'+m.c+'">'+
+    '<span class="pkw">'+fmtP(w)+'</span><span class="pku">kg</span>'+
+    (n>1?'<span class="pkn">×'+n+'</span>':'')+'</span>';
 }
-/* Manage-equipment sheet: enable, count-the-bar, bar weight, available plates, and a
-   live 100 kg preview. Controls mutate + refresh the sheet body in place (the global
-   render() keeps the Settings view under the modal fresh too). */
-function equipBody(){
-  const on=plateCalcOn(),cb=countBar(),bar=barKg(),plates=availPlates();
-  const lbl=t=>'<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">'+t+'</div>';
+function plateChipsHtml(plates,small){return groupPlates(plates).map(g=>pokerChipHtml(g.w,g.n,small)).join('');}
+/* the loaded barbell: end cap · sleeve · plates(outer→inner) · collar · shaft · collar ·
+   plates(inner→outer) · sleeve · end cap. Discs sized per PLATE_META, biggest by the collar. */
+function plateBarHtml(plates){
+  const disc=p=>{const m=PLATE_META[p];return '<span class="pbplate'+(m.lite?' lite':'')+'" style="height:'+m.h+'px;width:'+m.w+'px;--pc:'+m.c+'"></span>';};
+  const left=plates.slice().reverse().map(disc).join('');   // outer→inner (small→large)
+  const right=plates.map(disc).join('');                    // inner→outer (large→small)
+  return '<div class="platebar"><span class="pb-cap"></span><span class="pb-stub"></span>'+
+    '<span class="pb-side">'+left+'</span><span class="pb-col"></span><span class="pb-shaft"></span>'+
+    '<span class="pb-col"></span><span class="pb-side">'+right+'</span><span class="pb-stub"></span><span class="pb-cap"></span></div>';
+}
+/* Inline block under a barbell set: the loaded bar + per-side poker chips; taps into the
+   adjust sheet. Empty when off / not a barbell / blank / below the bar. */
+function plateVisualHtml(ei,si){
+  const a=store.active;if(!a)return '';
+  const e=a.entries[ei];if(!e||!plateCalcOn()||!isBarbell(e.name))return '';
+  const s=e.sets[si];if(!s)return '';
+  const b=plateBreakdown(s.w);
+  if(!b||b.belowBar||(!b.plates.length&&!(b.leftover>0)))return '';
+  const chips=b.plates.length?plateChipsHtml(b.plates,true):'<span class="pk-none">'+T('plate.justBar')+'</span>';
+  const lo=b.leftover>0?'<span class="pl-x">+'+fmtP(b.leftover)+'</span>':'';
+  return '<div class="platebox" onclick="openPlateSheet('+ei+','+si+')" title="'+esc(T('plate.tapAdjust'))+'">'+
+    '<div class="platebar-wrap">'+plateBarHtml(b.plates)+'</div>'+
+    '<div class="platechips">'+chips+lo+'</div></div>';
+}
+/* the adjust sheet — the loaded bar for this set's weight + per-side chips + the adjustable
+   inventory + bar weight + count-the-bar. Weight-aware; edits refresh the sheet live. */
+function openPlateSheet(ei,si){
+  const a=store.active;let w=100;
+  if(a&&a.entries[ei]&&a.entries[ei].sets[si]&&a.entries[ei].sets[si].w>0)w=a.entries[ei].sets[si].w;
+  _plateSheetW=w;
+  openModal('<h2>'+T('plate.title')+'</h2><div id="platesheet">'+plateSheetBody()+'</div>');
+}
+function plateSheetBody(){
+  const on=plateCalcOn(),cb=countBar(),bar=barKg(),plates=availPlates(),w=_plateSheetW;
+  const lbl=t=>'<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px">'+t+'</div>';
   let h='<div class="row" style="align-items:flex-start"><div class="grow"><h3 style="margin:0">'+T('plate.enable')+'</h3>'+
     '<p class="small muted" style="margin:6px 0 0">'+T('plate.enableSub')+'</p></div>'+
-    '<button class="toggle'+(on?' on':'')+'" onclick="equipTogglePlateCalc()"><span class="knob"></span></button></div>';
+    '<button class="toggle'+(on?' on':'')+'" onclick="plateSheetToggle()"><span class="knob"></span></button></div>';
   if(on){
-    h+='<div class="row" style="margin-top:20px;align-items:flex-start"><div class="grow"><h3 style="margin:0">'+T('plate.countBar')+'</h3>'+
+    const b=plateBreakdown(w);
+    if(b&&!b.belowBar){
+      h+='<div class="platestage"><div class="platebar-wrap">'+plateBarHtml(b.plates)+'</div></div>'+
+        '<div class="perlabel" style="text-align:center">'+T('plate.putEach')+'</div>';
+      const chips=b.plates.length?plateChipsHtml(b.plates,false):'<span class="pk-none">'+T('plate.justBar')+'</span>';
+      h+='<div class="psums">'+chips+'</div>';
+      if(b.leftover>0)h+='<div class="short">'+T('plate.short',fmtP(b.leftover))+'</div>';
+    }
+    h+='<div style="margin-top:22px">'+lbl(T('plate.plates'))+
+      '<p class="small muted" style="margin:-2px 0 12px">'+T('plate.platesSub')+'</p>'+
+      '<div class="platewrap">'+PLATE_OPTIONS.map(p=>{const m=PLATE_META[p];const inc=plates.includes(p);
+        return '<div class="pk'+(m.lite?' lite':'')+(inc?'':' off')+'" style="--pc:'+m.c+'" onclick="plateSheetTogglePlate('+p+')"><span class="pkw">'+fmtP(p)+'</span><span class="pku">kg</span></div>';}).join('')+'</div></div>';
+    h+='<div class="row" style="margin-top:22px;align-items:flex-start"><div class="grow"><h3 style="margin:0">'+T('plate.countBar')+'</h3>'+
       '<p class="small muted" style="margin:6px 0 0">'+(cb?T('plate.countBarOn'):T('plate.countBarOff'))+'</p></div>'+
-      '<button class="toggle'+(cb?' on':'')+'" onclick="equipToggleCountBar()"><span class="knob"></span></button></div>';
+      '<button class="toggle'+(cb?' on':'')+'" onclick="plateSheetCountBar()"><span class="knob"></span></button></div>';
     if(cb)h+='<div class="row" style="margin-top:18px"><span class="small muted grow">'+T('plate.barWeight')+'</span>'+
-      '<button class="btn small" onclick="equipBar(-2.5)">−2.5</button>'+
+      '<button class="btn small" onclick="plateSheetBar(-2.5)">−2.5</button>'+
       '<span style="min-width:66px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums">'+fmtP(bar)+' kg</span>'+
-      '<button class="btn small" onclick="equipBar(2.5)">+2.5</button></div>';
-    h+='<div style="margin-top:20px">'+lbl(T('plate.plates'))+
-      '<p class="small muted" style="margin:-2px 0 10px">'+T('plate.platesSub')+'</p>'+
-      '<div class="platewrap">'+PLATE_OPTIONS.map(v=>
-        '<button class="platechip'+(plates.includes(v)?' on':'')+'" onclick="equipTogglePlate('+v+')">'+fmtP(v)+'</button>').join('')+'</div></div>';
-    const ex=plateBreakdown(100);
-    const prev=(ex&&!ex.belowBar&&ex.plates.length)
-      ?T('plate.example',fmtP(ex.perSide),ex.plates.map(fmtP).join(' · '))
-      :T('plate.exampleNone');
-    h+='<div class="platepreview">'+ico('plate')+'<span>'+prev+'</span></div>';
+      '<button class="btn small" onclick="plateSheetBar(2.5)">+2.5</button></div>';
   }
   return h;
 }
-function openEquipment(){openModal('<h2>'+T('plate.manage')+'</h2><div id="equipbody">'+equipBody()+'</div>');}
-function equipRefresh(){const h=$('equipbody');if(h)h.innerHTML=equipBody();render();}
-function equipTogglePlateCalc(){store.settings=store.settings||{};store.settings.plateCalc=!plateCalcOn();save();equipRefresh();}
-function equipToggleCountBar(){store.settings=store.settings||{};store.settings.countBar=!countBar();save();equipRefresh();}
-function equipBar(delta){store.settings=store.settings||{};store.settings.barKg=Math.max(0,Math.min(100,Math.round((barKg()+delta)*2)/2));save();equipRefresh();}
-function equipTogglePlate(v){store.settings=store.settings||{};const p=availPlates().slice();
-  const i=p.indexOf(v);if(i>=0)p.splice(i,1);else p.push(v);
-  p.sort((a,b)=>b-a);store.settings.plates=p;save();equipRefresh();}
+function plateSheetRefresh(){const h=$('platesheet');if(h)h.innerHTML=plateSheetBody();render();}
+function plateSheetToggle(){store.settings=store.settings||{};store.settings.plateCalc=!plateCalcOn();save();plateSheetRefresh();}
+function plateSheetCountBar(){store.settings=store.settings||{};store.settings.countBar=!countBar();save();plateSheetRefresh();}
+function plateSheetBar(delta){store.settings=store.settings||{};store.settings.barKg=Math.max(0,Math.min(100,Math.round((barKg()+delta)*2)/2));save();plateSheetRefresh();}
+function plateSheetTogglePlate(v){store.settings=store.settings||{};const p=availPlates().slice();
+  const i=p.indexOf(v);if(i>=0)p.splice(i,1);else p.push(v);p.sort((a,b)=>b-a);store.settings.plates=p;save();plateSheetRefresh();}
 
 /* ---- Consistency ---- */
 function weeklyGoal(){const g=store.settings&&store.settings.weeklyGoal;return (typeof g==='number'&&g>=1&&g<=14)?g:3;}
@@ -4760,12 +4852,12 @@ function renderSettings(){
   const warmBody='<div class="card"><div class="row"><h3 class="grow">'+T('set.countWarm')+'</h3>'+
     '<button class="'+(warmOn?'toggle on':'toggle')+'" onclick="setCountWarmup('+(!warmOn)+')"><span class="knob"></span></button></div>'+
     '<p class="small muted" style="margin:6px 0 0">'+(warmOn?T('set.warmOn'):T('set.warmOff'))+'</p></div>';
-  // Plate calculator (2026-07-09): on/off + a Manage-equipment sheet.
+  // Plate calculator (2026-07-09): on/off + the adjust sheet (bar, plates, count-the-bar).
   const plateOn=plateCalcOn();
   const plateBody='<div class="card"><div class="row"><h3 class="grow">'+T('plate.enable')+'</h3>'+
     '<button class="'+(plateOn?'toggle on':'toggle')+'" onclick="setPlateCalc('+(!plateOn)+')"><span class="knob"></span></button></div>'+
     '<p class="small muted" style="margin:6px 0 12px">'+T('plate.enableSub')+'</p>'+
-    '<button class="btn wide" onclick="openEquipment()">'+ico('dumbbell')+' '+T('plate.manage')+'</button></div>';
+    '<button class="btn wide" onclick="openPlateSheet()">'+ico('dumbbell')+' '+T('plate.manage')+'</button></div>';
   // Weekly goal (2026-07-09): drives the consistency ring + streak.
   const goal=weeklyGoal();
   const goalBody='<div class="card"><div class="row"><span class="small muted grow">'+T('set.weeklyGoal')+'</span>'+
@@ -5694,10 +5786,10 @@ function wireInputs(){
       save();
       /* F25/F36/F37/F38: live cues under this exercise card, no full re-render */
       updateLiveCues(+el.dataset.ei);
-      /* Plate calculator: refresh this set's per-side line as the weight changes
+      /* Plate calculator: reload this set's barbell visual as the weight changes
          (runs while editing a past workout too, where updateLiveCues bails). */
       if(el.dataset.f==='w'){const ph=$('pl'+el.dataset.ei+'_'+el.dataset.si);
-        if(ph)ph.innerHTML=plateLineHtml(store.active.entries[+el.dataset.ei].sets[+el.dataset.si].w);}
+        if(ph)ph.innerHTML=plateVisualHtml(+el.dataset.ei,+el.dataset.si);}
     });
     if(el.dataset.si!=null&&(el.dataset.f==='w'||el.dataset.f==='r')){
       const cell=el.closest('.setcell');if(!cell)return;
