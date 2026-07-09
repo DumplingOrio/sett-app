@@ -1,9 +1,10 @@
 /* Sett service worker — offline cache + auto-update.
    Bump CACHE on every release so old assets are dropped.
-   -bN suffix = an UNCONFIRMED test build (plate calc + consistency, 2026-07-09):
-   APP_VERSION stays 0.9.35 until the owner confirms on device; only this cache
-   string changes so the PWA still updates (sett-change-control confirmed-only law). */
-const CACHE = 'sett-v0.9.35-b3';
+   Confirmed release: clean CACHE string, no -bN suffix (the -b1/-b2/-b3 test
+   builds of plate calc + consistency were confirmed on device 2026-07-09).
+   For an UNCONFIRMED test build, append -bN and leave APP_VERSION untouched
+   (sett-change-control confirmed-only law). */
+const CACHE = 'sett-v0.9.36';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './exercises.js',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 

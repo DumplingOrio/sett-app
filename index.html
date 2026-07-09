@@ -675,7 +675,7 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.35';
+const APP_VERSION='0.9.36';
 /* Changelog convention (2026-07-08, owner ask): a version only gets an entry once
    its change is CONFIRMED working on device. Internal/fix-attempt bumps (needed for
    the service-worker cache to update) do NOT get a changelog line — otherwise the
@@ -683,6 +683,13 @@ const APP_VERSION='0.9.35';
    (v0.9.29 onward: drift, background-scroll, bar position) is HELD here until the
    whole thing is confirmed on-device, then lands as ONE honest consolidated entry. */
 const CHANGELOG=[
+  {v:'0.9.36', date:'2026-07-09', items:[
+    'New plate calculator — for barbell lifts, Sett now shows a loaded barbell and exactly which plates to put on each side for your working weight.',
+    'New consistency tracking — your Home screen shows a weekly-goal ring and streak, and Stats has a year-long activity grid so you can see your training at a glance.',
+    'The − / ＋ steppers on the weight and reps boxes now work on iPhone.',
+    'Typing decimal weights with the comma keypad now works.',
+    'Fixed the set row on narrow phones so the ✓, weight and ⋯ buttons stay inside the card.',
+  ]},
   {v:'0.9.35', date:'2026-07-08', items:[
     'The bottom navigation bar now stays put along the bottom of the screen — it no longer drifts when you scroll or sits too high up.',
     'Menus and sheets no longer let the page scroll behind them.',
@@ -5022,18 +5029,12 @@ const ROADMAP={
     ['v0.9.8','Fire','PR moments, beat-hints, recaps, badger'],
     ['→0.9.20','Polish','dialogs, Exercises tab, i18n, dev panel'],
     ['.21–.25','Hardening','cancel-safe, restore-safe, logging loop, substitutes'],
-    ['v0.9.35','Nav bar','app-shell layout — closed, confirmed on device']
+    ['v0.9.35','Nav bar','app-shell layout — closed, confirmed on device'],
+    ['v0.9.36','Load & rhythm','plate calculator + consistency streak — confirmed on device']
   ],
   ahead:[
-    ['Next · fix & build',[
-      ['Decimal weights','comma keypad now works'],
-      ['Set-box jump','steppers reserve space, no reflow'],
-      ['Substitute undo','direct swap + one-tap undo'],
-      ['This roadmap','you are reading it']
-    ]],
-    ['In the oven · features',[
-      ['Plate calculator','per-side load + nearest-loadable (mockup)'],
-      ['Consistency','heatmap · streak · weekly goal (mockup)'],
+    ['Next · build',[
+      ['Rest presets','per-exercise rest times'],
       ['Auto rest timer','folded into the timer toggle']
     ]],
     ['Before 1.0 · gym-proof',[
@@ -5047,6 +5048,7 @@ const ROADMAP={
     ]]
   ],
   parked:[
+    ['Reverse plate','type the bar you loaded → total weight'],
     ['Fire-list','backup nudge · wake lock · bodyweight (Apple Health)'],
     ['Post-1.0','light theme · 2nd user · routine folders · richer stats · backend'],
     ['Minor','set inputs ≥16px (iOS zoom) · 4 unmatched visuals · paid GIF catalog']
