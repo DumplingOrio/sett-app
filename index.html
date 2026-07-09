@@ -452,7 +452,11 @@
   /* #1 RepCount-style set rows: circled number + compact left-packed Kg/Reps,
      values hug the left so the row no longer fills the whole bar */
   .excard{padding:14px 16px;}
-  .setrow2{display:flex; align-items:center; gap:20px; padding:8px 0;}
+  /* gap was 20px: setnum+2 cells+setctrls (242px) + 4×20 gaps overflowed the 309px
+     card interior, pushing the ⋯ ~13px past the card edge at 375px (present since
+     v0.9.35 — REG 120 checked the .setctrls STRUCTURE, never the geometry). 14px
+     seats the cluster inside with an 11px buffer. */
+  .setrow2{display:flex; align-items:center; gap:14px; padding:5px 0;}
   /* Item 3 (2026-07-08): the right-side ✓/W/⋯ cluster — tight 8px gaps so the
      three controls fit inside the card at 375px (the row's own 20px gap between
      each was clipping the ⋯ off the card edge once R24 added the ✓). */
@@ -492,10 +496,15 @@
   .setcell label{font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--faint);}
   .setcell input{width:58px; text-align:left; padding:1px 0; font-size:18px; font-weight:800;
     background:transparent; border:none; border-radius:0;}
-  .setcell .steppers{display:none; flex-direction:row; gap:4px; margin-top:2px;}
-  .setcell.focus .steppers{display:flex;}
-  .steppers button{width:28px; height:28px; padding:0; border:1px solid var(--line); border-radius:8px;
-    background:var(--card2); color:var(--text); font-size:16px; font-weight:800;
+  /* Steppers reserve their space ALWAYS (visibility, not display) so focusing a
+     set input never grows the row and shoves the layout — the owner's "box jumps
+     up" bug (2026-07-09). They only become VISIBLE on focus. Reserving beats
+     floating here: .swipe is overflow:hidden, so an absolute stepper below the
+     cell would be clipped. Trade-off: set rows are ~28px taller during logging. */
+  .setcell .steppers{display:flex; visibility:hidden; flex-direction:row; gap:3px; margin-top:1px;}
+  .setcell.focus .steppers{visibility:visible;}
+  .steppers button{width:26px; height:22px; padding:0; border:1px solid var(--line); border-radius:7px;
+    background:var(--card2); color:var(--text); font-size:15px; font-weight:800;
     display:grid; place-items:center; position:relative;}
   .steppers button:active{background:var(--accent-soft); border-color:var(--accent);}
   .steppers button::after{content:''; position:absolute; inset:-8px;}
@@ -572,6 +581,35 @@
     border:1px solid color-mix(in srgb, var(--bad) 40%, transparent); color:var(--bad);}
   .swipe .swipe-act .ico{width:18px; height:18px;}
   .swipe:last-child .listrow{border-bottom:none;}
+
+  /* Plate calculator (2026-07-09) — inline per-side breakdown under a set input */
+  .plateline{display:flex; align-items:center; gap:5px; margin:3px 0 1px; padding-left:2px;
+    font-size:11px; color:var(--faint); font-weight:600; font-variant-numeric:tabular-nums;}
+  .plateline .ico{width:12px; height:12px; flex:none; color:var(--muted);}
+  .plateline .pl-x{color:var(--accent); font-weight:700;}
+  .platewrap{display:flex; flex-wrap:wrap; gap:8px;}
+  .platechip{padding:7px 12px; border-radius:99px; background:var(--card2); border:1px solid var(--line);
+    color:var(--muted); font-weight:700; font-size:13px; font-variant-numeric:tabular-nums;}
+  .platechip.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+  .platepreview{display:flex; align-items:center; gap:8px; margin-top:16px; padding:10px 12px;
+    border-radius:12px; background:var(--card2); color:var(--muted); font-size:12px; font-weight:600;}
+  .platepreview .ico{width:15px; height:15px; flex:none; color:var(--accent);}
+
+  /* Consistency (2026-07-09) — weekly ring + 52-week day grid */
+  .concard{display:flex; align-items:center; gap:14px; width:100%; text-align:left; cursor:pointer;}
+  .concard:active{background:var(--card2);}
+  .ring{flex:none;}
+  .conscroll{overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; padding-bottom:4px;}
+  .congrid{display:inline-flex; gap:3px;}
+  .concol{display:flex; flex-direction:column; gap:3px;}
+  .concell{width:11px; height:11px; border-radius:2px; background:var(--card2); flex:none;}
+  .concell.l1{background:color-mix(in srgb, var(--accent) 30%, var(--card2));}
+  .concell.l2{background:color-mix(in srgb, var(--accent) 62%, var(--card2));}
+  .concell.l3{background:var(--accent);}
+  .concell.fut{background:transparent; border:1px dashed var(--line);}
+  .conlegend{display:flex; align-items:center; gap:4px; justify-content:flex-end; margin-top:8px;
+    font-size:10px; color:var(--faint);}
+  .conlegend .concell{width:10px; height:10px;}
 
   @media(prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important;}}
 </style>
@@ -1200,6 +1238,24 @@ const STRINGS={
     'toast.restored':'Backup restored — {0} {1}','toast.notBackup':'That file is not a Sett backup.',
     'toast.autoDiscard':'Forgotten empty workout discarded',
     'toast.autoStop':'Workout auto-stopped and saved (ended {0})',
+    // Plate calculator + Manage equipment (2026-07-09)
+    'plate.enable':'Plate calculator','plate.enableSub':'Show which plates to load per side under each weight you log.',
+    'plate.manage':'Manage equipment','plate.countBar':'Count the bar',
+    'plate.countBarOn':'The weight you log includes the bar — it’s subtracted before showing plates per side.',
+    'plate.countBarOff':'The weight you log is the plates only — the bar isn’t counted.',
+    'plate.barWeight':'Bar weight','plate.plates':'Available plates',
+    'plate.platesSub':'Tap the plate sizes you own (per side).',
+    'plate.perSideShort':'/side',
+    'plate.example':'e.g. 100 kg → {0} kg/side: {1}',
+    'plate.exampleNone':'e.g. 100 kg → can’t be made with these plates',
+    'toast.plateOn':'Plate calculator on','toast.plateOff':'Plate calculator off',
+    // Consistency (2026-07-09)
+    'con.title':'Consistency','con.goal':'Goal {0}/week',
+    'con.streak':'{0}-week streak','con.noStreak':'No streak yet',
+    'con.streakNone':'Train {0}× this week to start a streak',
+    'con.thisWeekN':'{0} {1} this week','con.less':'Less','con.more':'More','con.year':'Last 52 weeks',
+    'set.weeklyGoal':'Weekly goal','set.week':'week',
+    'set.weeklyGoalSub':'Workouts per week for your consistency ring and streak.',
   },
   no:{
     'tab.home':'Hjem','tab.log':'Logg','tab.routines':'Rutiner','tab.stats':'Statistikk','tab.exercises':'Øvelser','tab.settings':'Innstillinger',
@@ -1392,6 +1448,24 @@ const STRINGS={
     'toast.restored':'Sikkerhetskopi gjenopprettet — {0} {1}','toast.notBackup':'Den fila er ikke en Sett-sikkerhetskopi.',
     'toast.autoDiscard':'Glemt tom økt forkastet',
     'toast.autoStop':'Økta ble stoppet og lagret automatisk (sluttet {0})',
+    // Plate calculator + Manage equipment (2026-07-09)
+    'plate.enable':'Vektskive-kalkulator','plate.enableSub':'Vis hvilke skiver du skal laste per side under hver vekt du logger.',
+    'plate.manage':'Administrer utstyr','plate.countBar':'Tell med stanga',
+    'plate.countBarOn':'Vekta du logger inkluderer stanga — den trekkes fra før skivene per side vises.',
+    'plate.countBarOff':'Vekta du logger er kun skivene — stanga telles ikke med.',
+    'plate.barWeight':'Stangvekt','plate.plates':'Tilgjengelige skiver',
+    'plate.platesSub':'Trykk på skivestørrelsene du har (per side).',
+    'plate.perSideShort':'/side',
+    'plate.example':'f.eks. 100 kg → {0} kg/side: {1}',
+    'plate.exampleNone':'f.eks. 100 kg → kan ikke lages med disse skivene',
+    'toast.plateOn':'Vektskive-kalkulator på','toast.plateOff':'Vektskive-kalkulator av',
+    // Consistency (2026-07-09)
+    'con.title':'Konsistens','con.goal':'Mål {0}/uke',
+    'con.streak':'{0} uker på rad','con.noStreak':'Ingen streak enda',
+    'con.streakNone':'Tren {0} ganger denne uka for å starte en streak',
+    'con.thisWeekN':'{0} {1} denne uka','con.less':'Mindre','con.more':'Mer','con.year':'Siste 52 uker',
+    'set.weeklyGoal':'Ukesmål','set.week':'uke',
+    'set.weeklyGoalSub':'Antall økter per uke for konsistensringen og streaken.',
   },
 };
 function lang(){return (store&&store.settings&&store.settings.lang==='no')?'no':'en';}
@@ -1466,6 +1540,7 @@ function finalizeUndo(){if(_undo){clearTimeout(_undo.timer);_undo=null;}$('toast
 function undoRemove(){
   if(!_undo||!store.active)return;
   if(_undo.type==='set'){store.active.entries[_undo.ei].sets.splice(_undo.si,0,_undo.obj);}
+  else if(_undo.type==='replace'){if(store.active.entries[_undo.ei])store.active.entries[_undo.ei]=_undo.obj;cleanSS();}
   else{store.active.entries.splice(_undo.ei,0,_undo.obj);cleanSS();}
   clearTimeout(_undo.timer);_undo=null;$('toast').style.display='none';save();render();
 }
@@ -1583,8 +1658,16 @@ function diagKeySizeKB(key){
    store (log+counts) — never store, so no workout data can ride along. */
 function diagExport(){
   const d=diagLoad();
+  /* Leaner export (2026-07-09 owner ask — copying/pasting the string back was the
+     annoying part). Drop the pretty-print whitespace AND the per-entry v/os/sa:
+     the header carries them once, and the version gate clears the log each update,
+     so they're identical on every row. Result is one compact line, easy to
+     select-all and paste. All event/error context (type, name/msg, timings,
+     event numbers) and the usage counts are kept. Still ONLY the diag store —
+     no workout data can ride along (REG 68). */
+  const log=(d.log||[]).map(e=>{const o={};for(const k in e)if(k!=='v'&&k!=='os'&&k!=='sa')o[k]=e[k];return o;});
   return JSON.stringify({version:APP_VERSION, os:platformOS(), standalone:isStandalone(),
-    'exported-at':nowStr(), diag:d}, null, 1);
+    at:nowStr(), entries:log.length, log:log, counts:d.counts||{}});
 }
 function diagClear(){try{diagPersist({log:[],counts:{}});}catch(e){}}
 /* Item 4 (2026-07-08): clear the diag LOG on the first boot of a new app version,
@@ -1919,6 +2002,8 @@ const ICO={
   dumbbell:'<path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/>',
   database:'<ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
   refresh:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+  /* weight plate seen face-on — outer rim + centre hole (plate calculator, 2026-07-09) */
+  plate:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/>',
 };
 function ico(name,sz){return '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(sz?' style="width:'+sz+'px;height:'+sz+'px"':'')+'>'+(ICO[name]||'')+'</svg>';}
 /* F44 (2026-07-07): the badger cameo rebuilt to MATCH the app icon (icon-512.png)
@@ -2137,6 +2222,15 @@ function renderHome(){
       T('home.rankLine','<b>'+esc(cru.name)+'</b>',esc(cru.gap.text))+'</button>';
   }
 
+  // CONSISTENCY (2026-07-09) — compact weekly-goal ring + streak; taps into full Stats.
+  if(statWorkouts().length){
+    const cgoal=weeklyGoal(),cdone=weekWorkoutCount(weekStart().getTime()),cstreak=consistencyStreak();
+    h+='<button class="card concard" onclick="setView(\'stats\')">'+ringSVG(cdone/cgoal,58,cdone+'/'+cgoal)+
+      '<div class="grow"><div class="small" style="font-weight:700">'+T('con.title')+'</div>'+
+      '<div class="tiny muted">'+(cstreak>0?T('con.streak',cstreak):T('con.streakNone',cgoal))+'</div></div>'+
+      '<span class="muted">›</span></button>';
+  }
+
   // RECAP — monthly recap card stays as-is, below the glance strip (F41).
   h+=recapCardHtml();
 
@@ -2294,7 +2388,7 @@ function renderRoutineEditor(){
       '<div class="tgtgrid"><span class="sethead">'+T('rt.set')+'</span><span class="sethead">kg</span><span class="sethead">'+T('rt.min')+'</span><span class="sethead">'+T('rt.max')+'</span><span></span>';
     ex.sets.forEach((t,si)=>{
       h+='<span class="setidx">'+(si+1)+'</span>'+
-        '<input type="number" inputmode="decimal" step="0.5" data-rx="'+xi+'" data-rs="'+si+'" data-rf="tw" value="'+(t.tw??'')+'" placeholder="—">'+
+        '<input type="text" inputmode="decimal" step="0.5" data-rx="'+xi+'" data-rs="'+si+'" data-rf="tw" value="'+(t.tw??'')+'" placeholder="—">'+
         '<input type="number" inputmode="numeric" data-rx="'+xi+'" data-rs="'+si+'" data-rf="rlo" value="'+(t.rlo??'')+'" placeholder="—">'+
         '<input type="number" inputmode="numeric" data-rx="'+xi+'" data-rs="'+si+'" data-rf="rhi" value="'+(t.rhi??'')+'" placeholder="—">'+
         '<button class="iconbtn" title="'+T('act.removeSet')+'" onclick="removeTgtSet('+xi+','+si+')">✕</button>';
@@ -2437,7 +2531,7 @@ function renderActive(){
       '<div class="row" style="margin-top:8px"><span class="small muted" style="width:40px">'+T('act.end')+'</span>'+
       '<input class="grow" type="datetime-local" data-act="wend" value="'+dtVal(a.end)+'"></div>':'')+
     '<div class="row" style="margin-top:10px"><span class="small muted">'+T('act.bodyweight')+'</span>'+
-    '<input style="width:90px;text-align:center" type="number" inputmode="decimal" data-act="bw" value="'+(a.bw??'')+'"><span class="small muted">kg</span></div></div>';
+    '<input style="width:90px;text-align:center" type="text" inputmode="decimal" data-act="bw" value="'+(a.bw??'')+'"><span class="small muted">kg</span></div></div>';
   const ssColors=['#ff7a3c','#4cc2ff','#7ee081','#ffd166','#c792ea'];
   a.entries.forEach((e,ei)=>{
     const meta=store.ex[e.name]||{cat:'Other'};
@@ -2467,7 +2561,7 @@ function renderActive(){
         '<div class="setrow2">'+
         /* F26: warmup circle shows W (distinct from drop's D) */
         '<span class="setnum'+(s.warmup?' warm':s.drop?' drop':'')+'" title="'+(s.warmup?T('sr.warmup'):s.drop?T('sr.drop'):'')+'">'+(s.warmup?'W':s.drop?'D':si+1)+'</span>'+
-        '<div class="setcell"><label>'+T('act.kg')+'</label><input type="number" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
+        '<div class="setcell"><label>'+T('act.kg')+'</label><input type="text" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
         '<div class="setcell"><label>'+T('act.repsLbl')+'</label><input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'></div>'+
         '<span class="sp"></span>'+
         /* Item 3 (2026-07-08): the ✓/W/⋯ controls live in ONE tight cluster (8px
@@ -2482,6 +2576,9 @@ function renderActive(){
         '<button class="setmenu" title="'+T('sr.setOptions')+'" aria-label="'+T('sr.setOptions')+'" onclick="setMenu('+ei+','+si+')">⋯</button>'+
         '</div>'+
         '</div>'+
+        /* Plate calculator (2026-07-09): per-side breakdown under the inputs, live-
+           updated on keystroke (wireInputs) via the id host. Empty when off/blank. */
+        '<div id="pl'+ei+'_'+si+'">'+plateLineHtml(s.w)+'</div>'+
         /* F36 PR chip + F45 beat hint on a micro-line under the inputs — keeps the
            set row itself from ever overflowing at 375px. One row keeps at most one
            chip: PR wins on the same row; the hint only lands on an empty row. */
@@ -2580,6 +2677,7 @@ function prMoment(ei){
   let bestE1=null,bestE1Si=-1,bestReps=null,bestRepsSi=-1;
   e.sets.forEach((s,si)=>{
     if(!statSet(s))return;                        // warmups excluded unless the setting counts them
+    if(!s.done)return;                            // (2026-07-09 owner): celebrate a COMPLETED set — the PR glow/chip/line wait for the ✓, not the typed value
     if(s.w!=null&&s.w>0){
       const v=epley(s.w,s.r);
       if(v!=null&&(bestE1==null||v>bestE1)){bestE1=v;bestE1Si=si;}
@@ -2627,6 +2725,7 @@ function beatHint(e){
   let trigWeight=null,trigReps=null,trigIdx=-1;
   e.sets.forEach((s,si)=>{
     if(s.warmup)return;                            // warmups never trigger
+    if(!s.done)return;                             // (2026-07-09 owner): only a COMPLETED set triggers the hint — same ✓-gate as the PR moment
     if(s.w!=null&&s.w>0){                          // logged working (weighted) set
       if(histW!=null&&s.w>=histW){trigWeight=s.w;trigReps=null;trigIdx=si;}
     }else if(s.r!=null&&s.r>0){                    // logged rep-based / bodyweight set
@@ -3035,9 +3134,18 @@ function openSubstitute(ei){
   openModal(h);
 }
 function pickSubstitute(ei,id){
+  ei=+ei;
   const name=catalogEnsureLibrary(id);if(!name){closeModal();return;}
-  if(replaceEntryExercise(+ei,name))toast(T('toast.replacedWith',name));
-  closeModal();render();
+  /* F87 (2026-07-09, owner): swap directly, no confirm — but snapshot the entry
+     first so the toast offers a quick Undo. A substitute is a bigger change than
+     a set edit; one tap restores the original exercise and its ghost targets. */
+  const snap=(store.active&&store.active.entries[ei])?JSON.parse(JSON.stringify(store.active.entries[ei])):null;
+  finalizeUndo();
+  if(replaceEntryExercise(ei,name)){
+    if(snap)_undo={type:'replace',ei,obj:snap,timer:setTimeout(finalizeUndo,5000)};
+    closeModal();render();
+    toastUndo(T('toast.replacedWith',name));
+  }else{closeModal();render();}
 }
 /* ============================== rest timer ============================== */
 let restTimer=null, restEnd=0, restTotal=0, _actx=null;
@@ -4195,6 +4303,10 @@ function renderStats(){
     '<div class="stat"><div class="v">'+(fs.vol/1000).toFixed(1)+' t</div><div class="l">'+T('st.volume')+'</div></div>'+
     '<div class="stat"><div class="v">'+fs.records+'</div><div class="l">'+plur('u.record',fs.records)+'</div></div></div></div>';
 
+  /* MODULE — CONSISTENCY (2026-07-09): weekly-goal ring + confirm-early streak +
+     the 52-week day grid. Frame-independent (always the rolling year / this week). */
+  h+=consistencyCard();
+
   /* MODULE — INTERACTIVE VOLUME CHART: buckets adapt to the frame; tap pins a bar
      (readout in the header line), tap again opens the volume detail. */
   const buckets=frameVolumeBuckets(frame);
@@ -4439,6 +4551,148 @@ function openStatChart(key){
     statFactBox(key));
 }
 
+/* ===================== Plate calculator + Consistency (2026-07-09) =====================
+   Two owner-approved features off the mockup round. Plate calc: an inline per-side
+   plate breakdown under each logged weight + a Manage-equipment sheet (bar weight,
+   available plates, and a "count the bar" toggle — some people, e.g. logging bench,
+   record only the plates they add, not the 20 kg bar). Consistency: a weekly-goal
+   ring, a confirm-early streak, and a 52-week day grid — all derived from history.
+   Every figure routes through statWorkouts() so the live workout counts (F24). */
+
+/* ---- Plate calculator ---- */
+const DEFAULT_PLATES=[25,20,15,10,5,2.5,1.25];      // per-side kg the user is assumed to own
+const PLATE_OPTIONS=[25,20,15,10,5,2.5,1.25];       // togglable master list in Manage equipment
+/* fmtW rounds to ONE decimal (1.25→"1.3"); plate labels need two — dedicated formatter. */
+function fmtP(v){return (Math.round(v*100)/100).toString();}
+function plateCalcOn(){return !(store.settings&&store.settings.plateCalc===false);}   // default ON
+function setPlateCalc(on){store.settings=store.settings||{};store.settings.plateCalc=on;save();toast(on?T('toast.plateOn'):T('toast.plateOff'));render();}
+function countBar(){return !(store.settings&&store.settings.countBar===false);}        // default: count/subtract the bar
+function barKg(){const b=store.settings&&store.settings.barKg;return (typeof b==='number'&&b>=0&&b<=100)?b:20;}
+function availPlates(){const p=store.settings&&store.settings.plates;return Array.isArray(p)?p.filter(x=>typeof x==='number'&&x>0):DEFAULT_PLATES;}
+/* Greedy per-side breakdown for a logged weight. countBar() ON → subtract the bar
+   (the logged weight is the total lifted); OFF → the logged weight is plates only.
+   Integer hundredths sidestep the 1.25 kg float trap. Returns
+   {perSide, plates:[...], leftover, bar} or {belowBar} or null (nothing to show). */
+function plateBreakdown(total){
+  if(total==null||!(total>0))return null;
+  const bar=countBar()?barKg():0;
+  const both=total-bar;
+  if(both<0)return {belowBar:true,bar};
+  const perSide=both/2;
+  const avail=availPlates().slice().sort((a,b)=>b-a);
+  let rem=Math.round(perSide*100);const out=[];
+  for(const p of avail){const pc=Math.round(p*100);while(rem>=pc){out.push(p);rem-=pc;}}
+  return {perSide,plates:out,leftover:rem/100,bar};
+}
+/* The compact inline line under a set input: "▮ 20 · 10 · 2.5 /side". Empty string
+   when the feature is off, the weight is blank/below the bar, or it's just the bar. */
+function plateLineHtml(w){
+  if(!plateCalcOn())return '';
+  const b=plateBreakdown(w);
+  if(!b||b.belowBar||(!b.plates.length&&!(b.leftover>0)))return '';
+  const stack=b.plates.length?b.plates.map(fmtP).join(' · '):'—';
+  const extra=b.leftover>0?' <span class="pl-x">+'+fmtP(b.leftover)+'</span>':'';
+  return '<div class="plateline">'+ico('plate')+'<span>'+stack+extra+' '+T('plate.perSideShort')+'</span></div>';
+}
+/* Manage-equipment sheet: enable, count-the-bar, bar weight, available plates, and a
+   live 100 kg preview. Controls mutate + refresh the sheet body in place (the global
+   render() keeps the Settings view under the modal fresh too). */
+function equipBody(){
+  const on=plateCalcOn(),cb=countBar(),bar=barKg(),plates=availPlates();
+  const lbl=t=>'<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">'+t+'</div>';
+  let h='<div class="row" style="align-items:flex-start"><div class="grow"><h3 style="margin:0">'+T('plate.enable')+'</h3>'+
+    '<p class="small muted" style="margin:6px 0 0">'+T('plate.enableSub')+'</p></div>'+
+    '<button class="toggle'+(on?' on':'')+'" onclick="equipTogglePlateCalc()"><span class="knob"></span></button></div>';
+  if(on){
+    h+='<div class="row" style="margin-top:20px;align-items:flex-start"><div class="grow"><h3 style="margin:0">'+T('plate.countBar')+'</h3>'+
+      '<p class="small muted" style="margin:6px 0 0">'+(cb?T('plate.countBarOn'):T('plate.countBarOff'))+'</p></div>'+
+      '<button class="toggle'+(cb?' on':'')+'" onclick="equipToggleCountBar()"><span class="knob"></span></button></div>';
+    if(cb)h+='<div class="row" style="margin-top:18px"><span class="small muted grow">'+T('plate.barWeight')+'</span>'+
+      '<button class="btn small" onclick="equipBar(-2.5)">−2.5</button>'+
+      '<span style="min-width:66px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums">'+fmtP(bar)+' kg</span>'+
+      '<button class="btn small" onclick="equipBar(2.5)">+2.5</button></div>';
+    h+='<div style="margin-top:20px">'+lbl(T('plate.plates'))+
+      '<p class="small muted" style="margin:-2px 0 10px">'+T('plate.platesSub')+'</p>'+
+      '<div class="platewrap">'+PLATE_OPTIONS.map(v=>
+        '<button class="platechip'+(plates.includes(v)?' on':'')+'" onclick="equipTogglePlate('+v+')">'+fmtP(v)+'</button>').join('')+'</div></div>';
+    const ex=plateBreakdown(100);
+    const prev=(ex&&!ex.belowBar&&ex.plates.length)
+      ?T('plate.example',fmtP(ex.perSide),ex.plates.map(fmtP).join(' · '))
+      :T('plate.exampleNone');
+    h+='<div class="platepreview">'+ico('plate')+'<span>'+prev+'</span></div>';
+  }
+  return h;
+}
+function openEquipment(){openModal('<h2>'+T('plate.manage')+'</h2><div id="equipbody">'+equipBody()+'</div>');}
+function equipRefresh(){const h=$('equipbody');if(h)h.innerHTML=equipBody();render();}
+function equipTogglePlateCalc(){store.settings=store.settings||{};store.settings.plateCalc=!plateCalcOn();save();equipRefresh();}
+function equipToggleCountBar(){store.settings=store.settings||{};store.settings.countBar=!countBar();save();equipRefresh();}
+function equipBar(delta){store.settings=store.settings||{};store.settings.barKg=Math.max(0,Math.min(100,Math.round((barKg()+delta)*2)/2));save();equipRefresh();}
+function equipTogglePlate(v){store.settings=store.settings||{};const p=availPlates().slice();
+  const i=p.indexOf(v);if(i>=0)p.splice(i,1);else p.push(v);
+  p.sort((a,b)=>b-a);store.settings.plates=p;save();equipRefresh();}
+
+/* ---- Consistency ---- */
+function weeklyGoal(){const g=store.settings&&store.settings.weeklyGoal;return (typeof g==='number'&&g>=1&&g<=14)?g:3;}
+function setWeeklyGoal(n){n=Math.max(1,Math.min(14,Math.round(n)));store.settings=store.settings||{};store.settings.weeklyGoal=n;save();render();}
+function dayKeyMs(ms){const d=new Date(ms);d.setHours(0,0,0,0);return d.getTime();}
+/* day-start ms → number of workouts that day (live workout included). */
+function workoutDayCounts(){const m={};for(const w of statWorkouts()){const k=dayKeyMs(toDate(w.start).getTime());m[k]=(m[k]||0)+1;}return m;}
+/* workouts whose start falls in the Monday-start week beginning at weekMs. */
+function weekWorkoutCount(weekMs){let n=0;const end=weekMs+7*86400000;
+  for(const w of statWorkouts()){const t=toDate(w.start).getTime();if(t>=weekMs&&t<end)n++;}return n;}
+/* Confirm-early streak: the CURRENT week counts the moment its goal is met, and an
+   in-progress week that hasn't met the goal yet does NOT break the streak (you still
+   have time) — it just isn't counted. Then count back over completed weeks. */
+function consistencyStreak(){
+  const goal=weeklyGoal();let streak=0;let wk=weekStart().getTime();
+  if(weekWorkoutCount(wk)>=goal)streak++;
+  wk-=7*86400000;
+  while(weekWorkoutCount(wk)>=goal){streak++;wk-=7*86400000;}
+  return streak;
+}
+/* progress ring: frac 0–1, centred numeric label (language-neutral). */
+function ringSVG(frac,size,label){
+  size=size||64;const sw=Math.max(5,Math.round(size*0.12));const r=(size-sw)/2;const c=2*Math.PI*r;
+  const off=c*(1-Math.max(0,Math.min(1,frac)));
+  return '<svg class="ring" viewBox="0 0 '+size+' '+size+'" style="width:'+size+'px;height:'+size+'px">'+
+    '<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="var(--card2)" stroke-width="'+sw+'"/>'+
+    '<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="var(--accent)" stroke-width="'+sw+'" stroke-linecap="round" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 '+size/2+' '+size/2+')"/>'+
+    (label!=null?'<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" style="fill:var(--text);font-weight:800;font-size:'+Math.round(size*0.26)+'px;font-variant-numeric:tabular-nums">'+esc(label)+'</text>':'')+
+    '</svg>';
+}
+/* Stats module: big ring + streak + the 52-week grid. */
+function consistencyCard(){
+  const goal=weeklyGoal(),done=weekWorkoutCount(weekStart().getTime()),streak=consistencyStreak();
+  return '<div class="card"><div class="row" style="margin-bottom:12px"><h3 class="grow" style="margin:0">'+T('con.title')+'</h3>'+
+    '<span class="tiny muted">'+T('con.goal',goal)+'</span></div>'+
+    '<div class="row" style="gap:16px;align-items:center;margin-bottom:14px">'+ringSVG(done/goal,84,done+'/'+goal)+
+      '<div class="grow"><div style="font-size:15px;font-weight:800">'+(streak>0?T('con.streak',streak):T('con.noStreak'))+'</div>'+
+      '<div class="tiny muted" style="margin-top:3px">'+T('con.thisWeekN',done,plur('u.workout',done))+'</div></div></div>'+
+    consistencyGridHtml()+'</div>';
+}
+/* GitHub-style 52-week × 7-day grid; newest week rightmost. Contained in a
+   horizontal scroller so it never widens the page (wireInputs scrolls it to the
+   current week). Intensity by workouts/day (0,1,2,3+). */
+function consistencyGridHtml(){
+  const counts=workoutDayCounts();const weeks=52;const today=dayKeyMs(Date.now());
+  const start=weekStart().getTime()-(weeks-1)*7*86400000;
+  const lvl=n=>n<=0?0:n===1?1:n===2?2:3;
+  let cols='';
+  for(let wi=0;wi<weeks;wi++){const wm=start+wi*7*86400000;let cells='';
+    for(let d=0;d<7;d++){const dk=dayKeyMs(wm+d*86400000);
+      if(dk>today){cells+='<span class="concell fut"></span>';continue;}
+      const c=counts[dk]||0;const dd=new Date(dk);
+      const t=dd.getDate()+' '+monthName(dd.getMonth()).slice(0,3)+(c?' · '+nPlur('u.workout',c):'');
+      cells+='<span class="concell l'+lvl(c)+'" title="'+esc(t)+'"></span>';}
+    cols+='<span class="concol">'+cells+'</span>';}
+  return '<div class="tiny muted" style="margin-bottom:6px">'+T('con.year')+'</div>'+
+    '<div class="conscroll" id="conscroll"><div class="congrid">'+cols+'</div></div>'+
+    '<div class="conlegend"><span>'+T('con.less')+'</span>'+
+      '<span class="concell l0"></span><span class="concell l1"></span><span class="concell l2"></span><span class="concell l3"></span>'+
+      '<span>'+T('con.more')+'</span></div>';
+}
+
 /* ============================== SETTINGS view (gear) ============================== */
 /* F66 (2026-07-07) OWNER PICK: one page, four collapsible accordion sections
    (Appearance / Workout / Your data / Updates and about). Each header shows an
@@ -4506,8 +4760,21 @@ function renderSettings(){
   const warmBody='<div class="card"><div class="row"><h3 class="grow">'+T('set.countWarm')+'</h3>'+
     '<button class="'+(warmOn?'toggle on':'toggle')+'" onclick="setCountWarmup('+(!warmOn)+')"><span class="knob"></span></button></div>'+
     '<p class="small muted" style="margin:6px 0 0">'+(warmOn?T('set.warmOn'):T('set.warmOff'))+'</p></div>';
+  // Plate calculator (2026-07-09): on/off + a Manage-equipment sheet.
+  const plateOn=plateCalcOn();
+  const plateBody='<div class="card"><div class="row"><h3 class="grow">'+T('plate.enable')+'</h3>'+
+    '<button class="'+(plateOn?'toggle on':'toggle')+'" onclick="setPlateCalc('+(!plateOn)+')"><span class="knob"></span></button></div>'+
+    '<p class="small muted" style="margin:6px 0 12px">'+T('plate.enableSub')+'</p>'+
+    '<button class="btn wide" onclick="openEquipment()">'+ico('dumbbell')+' '+T('plate.manage')+'</button></div>';
+  // Weekly goal (2026-07-09): drives the consistency ring + streak.
+  const goal=weeklyGoal();
+  const goalBody='<div class="card"><div class="row"><span class="small muted grow">'+T('set.weeklyGoal')+'</span>'+
+    '<button class="btn small" onclick="setWeeklyGoal('+(goal-1)+')">−</button>'+
+    '<span style="min-width:64px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums">'+goal+' /'+T('set.week')+'</span>'+
+    '<button class="btn small" onclick="setWeeklyGoal('+(goal+1)+')">＋</button></div>'+
+    '<p class="small muted" style="margin:8px 0 0">'+T('set.weeklyGoalSub')+'</p></div>';
   const workoutSum=T('set.workoutSum',Math.floor(restT/60)+':'+pad2(restT%60),ranksOn?T('set.on'):T('set.off'),warmOn?T('set.on'):T('set.off'));
-  h+=accSection('workout','dumbbell',T('set.workout'),workoutSum,ranksBody+restBody+warmBody);
+  h+=accSection('workout','dumbbell',T('set.workout'),workoutSum,ranksBody+restBody+warmBody+plateBody+goalBody);
 
   // ---- Your data ----
   let dataBody='<p class="small muted" style="margin:0 0 12px">'+T('set.dataIntro')+'</p>'+
@@ -4617,12 +4884,87 @@ function renderDiagCard(){
     '<span style="font-variant-numeric:tabular-nums;font-weight:700">'+diagKeySizeKB(DIAG_KEY)+' KB</span></div></div>';
   // actions
   h+='<div style="margin-top:14px">'+
+    '<button class="btn wide" style="margin-bottom:10px" onclick="openRoadmap()">Roadmap</button>'+
     '<button class="btn wide" style="margin-bottom:10px" onclick="diagCopy()">Copy diagnostics</button>'+
     '<button class="btn wide" style="margin-bottom:10px" onclick="diagClearLog()">Clear log</button>'+
     '<button class="btn wide ghost" onclick="devHide()">Hide</button></div>';
   h+='</div>';
   return h;
 }
+/* ===== In-app roadmap (dev tools, 2026-07-09 owner ask) =====================
+   A living snapshot of where Sett stands. UPDATE THIS OBJECT every release,
+   alongside the version bump (sett-change-control §roadmap). English by house
+   law (dev surface). The counter reads real workout history — never hard-coded.
+   Dev-teased, not changelogged (round-12 law: dev features stay secret). */
+function rcFreeCount(){return (store.workouts||[]).length;}
+const ROADMAP={
+  shipped:[
+    ['v0.9.0','Trust','bug sweep + test harness'],
+    ['0.9.1–7','Feel','swipe, Home, PR screen, warmups, live stats'],
+    ['v0.9.8','Fire','PR moments, beat-hints, recaps, badger'],
+    ['→0.9.20','Polish','dialogs, Exercises tab, i18n, dev panel'],
+    ['.21–.25','Hardening','cancel-safe, restore-safe, logging loop, substitutes'],
+    ['v0.9.35','Nav bar','app-shell layout — closed, confirmed on device']
+  ],
+  ahead:[
+    ['Next · fix & build',[
+      ['Decimal weights','comma keypad now works'],
+      ['Set-box jump','steppers reserve space, no reflow'],
+      ['Substitute undo','direct swap + one-tap undo'],
+      ['This roadmap','you are reading it']
+    ]],
+    ['In the oven · features',[
+      ['Plate calculator','per-side load + nearest-loadable (mockup)'],
+      ['Consistency','heatmap · streak · weekly goal (mockup)'],
+      ['Auto rest timer','folded into the timer toggle']
+    ]],
+    ['Before 1.0 · gym-proof',[
+      ['Offline visuals','pre-cache your own library'],
+      ['Offline session test','airplane mode in the gym'],
+      ['Backup round-trip','export → restore, proven'],
+      ['Bokmål review','native read-through']
+    ]],
+    ['The finish',[
+      ['v1.0.0','two clean RepCount-free weeks + backup proven']
+    ]]
+  ],
+  parked:[
+    ['Fire-list','backup nudge · wake lock · bodyweight (Apple Health)'],
+    ['Post-1.0','light theme · 2nd user · routine folders · richer stats · backend'],
+    ['Minor','set inputs ≥16px (iOS zoom) · 4 unmatched visuals · paid GIF catalog']
+  ]
+};
+function rmHead(t){return '<div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 7px">'+esc(t)+'</div>';}
+function renderRoadmap(){
+  let h='<h2>Roadmap</h2>';
+  h+='<div class="row" style="gap:6px;flex-wrap:wrap;margin:2px 0 12px">'+
+    '<span class="chip">v'+esc(APP_VERSION)+'</span><span class="chip">live</span><span class="chip">dev</span></div>';
+  const n=rcFreeCount();
+  h+='<div class="card" style="display:flex;align-items:center;gap:14px;margin:0">'+
+    '<div style="font-size:42px;font-weight:800;color:var(--accent);line-height:.9;font-variant-numeric:tabular-nums">'+n+'</div>'+
+    '<div><div style="font-weight:700;font-size:14px">RepCount-free sessions logged</div>'+
+    '<div class="tiny muted" style="margin-top:2px">Two clean weeks in Sett alone → v1.0. On the right track.</div></div></div>';
+  h+=rmHead('Shipped');
+  for(const row of ROADMAP.shipped)
+    h+='<div class="row" style="padding:3px 0;gap:10px;align-items:baseline">'+
+      '<span class="tiny" style="font-family:ui-monospace,Menlo,monospace;color:var(--accent);min-width:64px;flex:none">'+esc(row[0])+'</span>'+
+      '<span class="small grow"><b>'+esc(row[1])+'</b> <span class="muted">'+esc(row[2])+'</span></span></div>';
+  h+=rmHead('The road ahead');
+  for(const grp of ROADMAP.ahead){
+    h+='<div class="small" style="font-weight:700;color:var(--accent);margin:12px 0 4px">'+esc(grp[0])+'</div>';
+    for(const it of grp[1])
+      h+='<div class="row" style="padding:3px 0;gap:8px;align-items:baseline">'+
+        '<span style="color:var(--accent);flex:none">›</span>'+
+        '<span class="small grow"><b>'+esc(it[0])+'</b> <span class="muted">— '+esc(it[1])+'</span></span></div>';
+  }
+  h+=rmHead('Parked');
+  for(const row of ROADMAP.parked)
+    h+='<div style="padding:4px 0"><div class="small" style="font-weight:700">'+esc(row[0])+'</div>'+
+      '<div class="tiny muted">'+esc(row[1])+'</div></div>';
+  h+='<p class="tiny muted" style="margin-top:16px">Updated with each release. Badgers know: keep digging.</p>';
+  return h;
+}
+function openRoadmap(){openModal(renderRoadmap());}
 /* F72: compact key-number string for an event/warn entry (navPin/tabbarDrift and
    their offsets), skipping the common stamp fields already shown on the line. */
 function diagEventNums(e){
@@ -5333,6 +5675,11 @@ function startTabbarWatch(){
   },TABBAR_WATCH_MS);
   if(_tbWatchTimer&&_tbWatchTimer.unref)_tbWatchTimer.unref();
 }
+/* Locale-safe number read: a Norwegian iOS keypad's decimal key is a COMMA,
+   which type=number silently REJECTS — so the weight / bodyweight / target
+   fields are type=text inputmode=decimal and we normalise ',' → '.' here.
+   Blank or garbage → null. (Owner bug, 2026-07-09: "can't add decimals".) */
+function numv(v){const n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n;}
 function wireInputs(){
   /* [data-f] filter is load-bearing: .excard/.swipe containers also carry
      data-ei (for updateLiveCues + gestures) and input events bubble to
@@ -5343,10 +5690,14 @@ function wireInputs(){
       const e=store.active.entries[+el.dataset.ei];
       if(el.dataset.f==='note'){e.note=el.value;}
       else{const s=e.sets[+el.dataset.si];
-        s[el.dataset.f]=el.value===''?null:(el.dataset.f==='r'?parseInt(el.value,10):parseFloat(el.value));}
+        s[el.dataset.f]=el.value===''?null:(el.dataset.f==='r'?parseInt(el.value,10):numv(el.value));}
       save();
       /* F25/F36/F37/F38: live cues under this exercise card, no full re-render */
       updateLiveCues(+el.dataset.ei);
+      /* Plate calculator: refresh this set's per-side line as the weight changes
+         (runs while editing a past workout too, where updateLiveCues bails). */
+      if(el.dataset.f==='w'){const ph=$('pl'+el.dataset.ei+'_'+el.dataset.si);
+        if(ph)ph.innerHTML=plateLineHtml(store.active.entries[+el.dataset.ei].sets[+el.dataset.si].w);}
     });
     if(el.dataset.si!=null&&(el.dataset.f==='w'||el.dataset.f==='r')){
       const cell=el.closest('.setcell');if(!cell)return;
@@ -5358,7 +5709,7 @@ function wireInputs(){
           b.addEventListener('mousedown',e=>e.preventDefault());
           b.addEventListener('touchstart',e=>e.preventDefault(),{passive:false});
           b.addEventListener('click',()=>{
-            let v=el.value===''?null:parseFloat(el.value);
+            let v=el.value===''?null:numv(el.value);
             if(v==null){const s=store.active.entries[+el.dataset.ei].sets[+el.dataset.si];
               const tgt=s&&s.tgt;v=(isW?(tgt&&tgt.tw):( tgt&&tgt.rlo))||0;}
             v=i===0?v-step:v+step;if(v<0)v=0;
@@ -5376,7 +5727,7 @@ function wireInputs(){
   document.querySelectorAll('#main [data-act]').forEach(el=>{
     el.addEventListener('input',()=>{
       if(el.dataset.act==='routine'){store.active.routine=el.value;save();}
-      else if(el.dataset.act==='bw'){store.active.bw=el.value===''?null:parseFloat(el.value);save();}
+      else if(el.dataset.act==='bw'){store.active.bw=el.value===''?null:numv(el.value);save();}
       else if(el.dataset.act==='wstart'){if(el.value)store.active.start=el.value.replace('T',' ');save();}
       else if(el.dataset.act==='wend'){if(el.value)store.active.end=el.value.replace('T',' ');save();}
       else if(el.dataset.act==='exq'){state.exQuery=el.value;
@@ -5389,7 +5740,7 @@ function wireInputs(){
     const ex=state.editRoutine.exercises[+el.dataset.rx];if(!ex)return;
     const s=ex.sets[+el.dataset.rs];if(!s)return;
     const f=el.dataset.rf;
-    s[f]=el.value===''?null:(f==='tw'?parseFloat(el.value):parseInt(el.value,10));
+    s[f]=el.value===''?null:(f==='tw'?numv(el.value):parseInt(el.value,10));
   }));
   document.querySelectorAll('#main .draghandle').forEach(h=>h.addEventListener('pointerdown',e=>startDrag(e,h)));
   document.querySelectorAll('#main [data-ex]').forEach(el=>el.onclick=()=>openExercise(el.dataset.ex));
@@ -5406,6 +5757,8 @@ function wireInputs(){
       }catch(e){toast(T('toast.notBackup'));}
     });
   };
+  /* Consistency grid opens scrolled to the current (rightmost) week. */
+  const cs=$('conscroll');if(cs)cs.scrollLeft=cs.scrollWidth;
 }
 
 /* #5 swipe-to-reveal — OWNER SPEC, verbatim: "when you swipe left, show the
