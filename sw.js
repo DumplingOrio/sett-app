@@ -4,7 +4,7 @@
    builds of plate calc + consistency were confirmed on device 2026-07-09).
    For an UNCONFIRMED test build, append -bN and leave APP_VERSION untouched
    (sett-change-control confirmed-only law). */
-const CACHE = 'sett-v0.9.36';
+const CACHE = 'sett-v0.9.36-b1';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './exercises.js',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 

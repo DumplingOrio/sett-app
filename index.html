@@ -237,8 +237,10 @@
   .nudge{display:flex; align-items:center; gap:10px; margin:10px 0; padding:11px 14px;
     background:var(--accent-soft); border:1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
     border-radius:12px; cursor:pointer;}
+  /* U3 (2026-07-12): the label wraps — a second line beats the mid-word ellipsis
+     ("…fullscreen and of…") that greeted new users at 375px. */
   .nudge .grow{min-width:0; font-size:13px; font-weight:600; color:var(--text);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    line-height:1.35;}
   .nudge .ico{width:18px; height:18px; color:var(--accent); flex:none;}
 
   .hero{padding:26px 18px; text-align:center;}
@@ -426,6 +428,10 @@
     bottom:calc(84px + env(safe-area-inset-bottom)); pointer-events:none;}
   /* F76: the F65 vv pin translate is gone here too — see .tabbar note. */
   #restbar.show{display:block; animation:up .18s ease-out;}
+  /* U1 (2026-07-12): while the rest bar is up, the pane needs extra bottom inset —
+     otherwise the logger's last ~51px sits behind the fixed bar and can never be
+     scrolled clear (F60/F61 overlay family). body.rest-on mirrors #restbar.show. */
+  body.rest-on main{padding-bottom:calc(96px + var(--kb,0px));}
   #restbar .inner{max-width:616px; margin:0 auto; pointer-events:auto; display:flex; align-items:center; gap:8px;
     background:var(--card2); border:1px solid var(--accent); border-radius:14px;
     box-shadow:0 10px 30px rgba(0,0,0,.45); padding:9px 12px;}
@@ -1127,7 +1133,7 @@ const STRINGS={
     'act.reorder':'Reorder','act.discard':'Discard',
     // Stats
     'st.noneTitle':'No data yet','st.noneSub':'Stats appear after your first workout.',
-    'st.overallRank':'Overall rank','st.acrossLifts':'across {0} ranked lifts',
+    'st.overallRank':'Overall rank','st.acrossLifts':'across {0} ranked lifts','st.acrossLift':'across 1 ranked lift',
     'st.bwUnlock':'Log your bodyweight in a workout to unlock strength ranks.',
     'st.frame.week':'Week','st.frame.month':'Month','st.frame.year':'Year','st.frame.all':'All',
     'st.strip.week':'This week','st.strip.month':'This month','st.strip.year':'This year','st.strip.all':'All time',
@@ -1288,7 +1294,7 @@ const STRINGS={
     'toast.autoDiscard':'Forgotten empty workout discarded',
     'toast.autoStop':'Workout auto-stopped and saved (ended {0})',
     // Plate calculator + Manage equipment (2026-07-09)
-    'plate.enable':'Plate calculator','plate.enableSub':'Show a loaded barbell under each barbell set, so you know what to rack.',
+    'plate.enable':'Plate calculator','plate.show':'Show under sets','plate.enableSub':'Show a loaded barbell under each barbell set, so you know what to rack.',
     'plate.title':'Plate calculator','plate.putEach':'Put these on each side',
     'plate.justBar':'Just the bar — no plates','plate.short':'{0} kg short — closest your plates reach',
     'plate.tapAdjust':'Tap to adjust your plates',
@@ -1364,7 +1370,7 @@ const STRINGS={
     'act.kg':'Kg','act.repsLbl':'Reps',
     'act.reorder':'Endre rekkefølge','act.discard':'Forkast',
     'st.noneTitle':'Ingen data ennå','st.noneSub':'Statistikk dukker opp etter din første økt.',
-    'st.overallRank':'Samlet rang','st.acrossLifts':'over {0} rangerte løft',
+    'st.overallRank':'Samlet rang','st.acrossLifts':'over {0} rangerte løft','st.acrossLift':'over 1 rangert løft',
     'st.bwUnlock':'Logg kroppsvekta i en økt for å låse opp styrkeranger.',
     'st.frame.week':'Uke','st.frame.month':'Måned','st.frame.year':'År','st.frame.all':'Alt',
     'st.strip.week':'Denne uka','st.strip.month':'Denne måneden','st.strip.year':'I år','st.strip.all':'Hele tida',
@@ -1501,7 +1507,7 @@ const STRINGS={
     'toast.autoDiscard':'Glemt tom økt forkastet',
     'toast.autoStop':'Økta ble stoppet og lagret automatisk (sluttet {0})',
     // Plate calculator + Manage equipment (2026-07-09)
-    'plate.enable':'Vektskive-kalkulator','plate.enableSub':'Vis en lastet stang under hver stang-øvelse, så du vet hva du skal legge på.',
+    'plate.enable':'Vektskive-kalkulator','plate.show':'Vis under settene','plate.enableSub':'Vis en lastet stang under hver stang-øvelse, så du vet hva du skal legge på.',
     'plate.title':'Vektskive-kalkulator','plate.putEach':'Sett disse på hver side',
     'plate.justBar':'Bare stanga — ingen skiver','plate.short':'{0} kg for lite — nærmest med skivene dine',
     'plate.tapAdjust':'Trykk for å justere skivene',
@@ -1665,8 +1671,8 @@ function normalizeStore(){
       const rows=parseCsv(window.SETT_LOCAL_CSV);const keys=new Set();
       for(let i=1;i<rows.length;i++){const r=rows[i];if(r&&r.length>=2)keys.add((r[0]||'')+'|'+(r[1]||''));}
       for(const w of store.workouts)if(!w.imported&&!w.native&&keys.has(w.start+'|'+w.end)){w.imported=true;}
+      store._rcMig=1;changed=true;   /* H3: only when the parse ran — a malformed CSV must retry next boot */
     }catch(e){}
-    store._rcMig=1;changed=true;
   }
   if(changed)save();
 }
@@ -3233,6 +3239,7 @@ function startRest(sec){
   primeBeep();
   restTotal=sec||restDefault();restEnd=Date.now()+restTotal*1000;
   $('restbar').classList.add('show');
+  document.body.classList.add('rest-on');
   clearInterval(restTimer);restTimer=setInterval(tickRest,200);tickRest();
 }
 function tickRest(){
@@ -3257,7 +3264,8 @@ function finishRest(){
   clearTimeout(finishRest._t);finishRest._t=setTimeout(stopRest,6000);
 }
 function stopRest(){clearInterval(restTimer);restTimer=null;clearTimeout(finishRest._t);
-  const b=$('restbar');b.classList.remove('show');b.innerHTML='';}
+  const b=$('restbar');b.classList.remove('show');b.innerHTML='';
+  document.body.classList.remove('rest-on');}
 /* ============================== drag-to-reorder (active workout) ============================== */
 let drag=null;
 function dragCards(){return [...document.querySelectorAll('#main .excard')];}
@@ -4358,7 +4366,7 @@ function renderStats(){
     if(ov){
       const t=TIERS[ov.tier];
       h+='<div class="card"><div class="row"><div class="grow"><h3 style="margin:0">'+T('st.overallRank')+'</h3>'+
-        '<div class="tiny muted">'+T('st.acrossLifts',ov.count)+'</div></div>'+rankBadge(ov.tier)+'</div>'+
+        '<div class="tiny muted">'+(ov.count===1?T('st.acrossLift'):T('st.acrossLifts',ov.count))+'</div></div>'+rankBadge(ov.tier)+'</div>'+
         '<div class="rankbar"><i style="width:'+Math.round(ov.prog*100)+'%;background:'+t.color+'"></i></div></div>';
     }else if(!latestBW()){
       h+='<div class="banner">'+T('st.bwUnlock')+'</div>';
@@ -4687,7 +4695,7 @@ function plateChipsHtml(plates,small){return groupPlates(plates).map(g=>pokerChi
 /* the loaded barbell: end cap · sleeve · plates(outer→inner) · collar · shaft · collar ·
    plates(inner→outer) · sleeve · end cap. Discs sized per PLATE_META, biggest by the collar. */
 function plateBarHtml(plates){
-  const disc=p=>{const m=PLATE_META[p];return '<span class="pbplate'+(m.lite?' lite':'')+'" style="height:'+m.h+'px;width:'+m.w+'px;--pc:'+m.c+'"></span>';};
+  const disc=p=>{const m=PLATE_META[p];if(!m)return '';return '<span class="pbplate'+(m.lite?' lite':'')+'" style="height:'+m.h+'px;width:'+m.w+'px;--pc:'+m.c+'"></span>';};
   const left=plates.slice().reverse().map(disc).join('');   // outer→inner (small→large)
   const right=plates.map(disc).join('');                    // inner→outer (large→small)
   return '<div class="platebar"><span class="pb-cap"></span><span class="pb-stub"></span>'+
@@ -4719,7 +4727,8 @@ function openPlateSheet(ei,si){
 function plateSheetBody(){
   const on=plateCalcOn(),cb=countBar(),bar=barKg(),plates=availPlates(),w=_plateSheetW;
   const lbl=t=>'<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px">'+t+'</div>';
-  let h='<div class="row" style="align-items:flex-start"><div class="grow"><h3 style="margin:0">'+T('plate.enable')+'</h3>'+
+  /* U4: the toggle row must not repeat the sheet's own h2 ("Plate calculator" twice) */
+  let h='<div class="row" style="align-items:flex-start"><div class="grow"><h3 style="margin:0">'+T('plate.show')+'</h3>'+
     '<p class="small muted" style="margin:6px 0 0">'+T('plate.enableSub')+'</p></div>'+
     '<button class="toggle'+(on?' on':'')+'" onclick="plateSheetToggle()"><span class="knob"></span></button></div>';
   if(on){
