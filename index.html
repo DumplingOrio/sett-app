@@ -223,6 +223,10 @@
   .rankline{display:block; width:100%; text-align:left; font-size:12px; color:var(--muted);
     margin:0 0 6px; padding:2px 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .rankline b{color:var(--text); font-weight:700;}
+  /* F90 — "NEXT RANK" eyebrow above the rank-up line, in the .gtile .gl voice
+     (10.5px / 700 / uppercase / muted / .04em). Renders only with the rankline. */
+  .rankeyebrow{font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; margin:2px 2px 1px; line-height:1;}
   /* Routines as a horizontally scrollable chip row — must NOT widen the page. */
   .routerow{display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none;
     scroll-snap-type:x proximity;}
@@ -642,6 +646,29 @@
   .pk.sm .pkw{font-size:11px;}
   .pk.sm .pku{display:none;}
   .pk.sm .pkn{min-width:15px; height:15px; top:-3px; right:-3px; font-size:9px;}
+  /* F88 (2026-07-12): the plate host holds BOTH the full loaded-bar and a petite
+     chip summary; the row's .actset class (moved on focus WITHOUT a re-render)
+     reveals exactly one — the full bar only under the ACTIVE set, the mini under
+     every other barbell set. Empty pieces collapse (no phantom margin). */
+  .platehost .pfull:empty, .platehost .pmini:empty{display:none;}
+  .swipe[data-swipe="set"]:not(.actset) .pfull{display:none;}
+  .swipe[data-swipe="set"].actset .pmini{display:none;}
+  .pmini{display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:6px 0 2px;}
+  .pk-more{color:var(--muted); font-size:12px; font-weight:800; letter-spacing:.02em; padding:0 2px;}
+  /* F89 (2026-07-12): per-exercise rest chip in the card header — QUIET (card2/
+     line/muted) inheriting settings.restTime, ACCENT (accent-soft/accent) when
+     the exercise overrides. The ::after inset lifts the effective hit target to
+     ≥44px without widening the row. */
+  .restchip{display:inline-flex; align-items:center; gap:4px; flex:none; position:relative;
+    padding:3px 9px 3px 7px; border-radius:999px; background:var(--card2); border:1px solid var(--line);
+    color:var(--muted); font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1;}
+  .restchip .ico{width:13px; height:13px;}
+  .restchip.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+  .restchip::after{content:''; position:absolute; inset:-12px -6px;}
+  .restgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 0 4px;}
+  .rpreset{padding:12px 6px; border-radius:12px; background:var(--card2); border:1px solid var(--line);
+    color:var(--text); font-size:15px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .rpreset.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
 
   /* Consistency (2026-07-09) — weekly ring + 52-week day grid */
   .concard{display:flex; align-items:center; gap:14px; width:100%; text-align:left; cursor:pointer;}
@@ -1086,7 +1113,7 @@ const STRINGS={
     'home.unsaved':'unsaved changes','home.continue':'Continue','home.resume':'Resume',
     'home.startWorkout':'＋ Start workout',
     'home.thisWeek':'this week','home.bodyweight':'bodyweight','home.toRankUp':'rank up',
-    'home.rankLine':'{0} — {1}',
+    'home.rankLine':'{0} — {1}','home.nextRank':'Next rank',
     'home.routines':'Routines','home.all':'All ›','home.workout':'Workout',
     'home.noRoutines':'No routines yet — build one and it shows up here for a one-tap start.',
     'home.lastWorkout':'Last workout',
@@ -1225,6 +1252,11 @@ const STRINGS={
     'ro.superset':'superset','ro.done':'Done',
     // rest bar
     'rest.label':'Rest','rest.done':'Rest done','rest.skip':'Skip','rest.dismiss':'Dismiss',
+    // F89 per-exercise rest presets
+    'rest.off':'Off','rest.chipTitle':'Rest time','rest.sheetTitle':'Rest — {0}',
+    'rest.sheetSub':'Applies to this exercise everywhere. ✓ still starts it automatically.',
+    'rest.custom':'Custom','rest.inheritNote':'Using the workout default ({0}).',
+    'rest.overNote':'Overriding the workout default ({0}).','rest.useDefault':'Use default',
     // live chrome (stats line, PR line, beat hint, superset flow, last-time hint)
     'live.vol':'Vol','live.best':'Best','live.prE1':'PR e1RM',
     'live.newE1':'New e1RM record — {0} kg','live.newReps':'New reps record — {0} reps','live.was':', was {0}',
@@ -1329,7 +1361,7 @@ const STRINGS={
     'home.unsaved':'ulagrede endringer','home.continue':'Fortsett','home.resume':'Gjenoppta',
     'home.startWorkout':'＋ Start økt',
     'home.thisWeek':'denne uka','home.bodyweight':'kroppsvekt','home.toRankUp':'rang opp',
-    'home.rankLine':'{0} — {1}',
+    'home.rankLine':'{0} — {1}','home.nextRank':'Neste rang',
     'home.routines':'Rutiner','home.all':'Alle ›','home.workout':'Økt',
     'home.noRoutines':'Ingen rutiner ennå — lag én, så dukker den opp her for rask start.',
     'home.lastWorkout':'Siste økt',
@@ -1449,6 +1481,11 @@ const STRINGS={
     'ro.help':'Hold på en rad og dra for å endre rekkefølgen — eller dra i ⠿-håndtaket. Endringene gjelder med en gang.',
     'ro.superset':'supersett','ro.done':'Ferdig',
     'rest.label':'Pause','rest.done':'Pause ferdig','rest.skip':'Hopp over','rest.dismiss':'Lukk',
+    // F89 per-exercise rest presets
+    'rest.off':'Av','rest.chipTitle':'Pausetid','rest.sheetTitle':'Pause — {0}',
+    'rest.sheetSub':'Gjelder denne øvelsen overalt. ✓ starter den fortsatt automatisk.',
+    'rest.custom':'Egendefinert','rest.inheritNote':'Bruker øktstandarden ({0}).',
+    'rest.overNote':'Overstyrer øktstandarden ({0}).','rest.useDefault':'Bruk standard',
     'live.vol':'Vol','live.best':'Best','live.prE1':'PR e1RM',
     'live.newE1':'Ny e1RM-rekord — {0} kg','live.newReps':'Ny reps-rekord — {0} reps','live.was':', var {0}',
     'live.try':'▲ prøv {0}','live.tryReps':'▲ prøv {0} reps','live.last':' · sist: ','live.next':'Neste: ',
@@ -2294,7 +2331,8 @@ function renderHome(){
   // i18n'd). Absent entirely when ranks are off or nothing is close.
   const cru=showRanks()?closestRankUp():null;
   if(cru&&cru.gap&&!cru.gap.top){
-    h+='<button class="rankline" data-n="'+esc(cru.name)+'" onclick="openExercise(this.dataset.n)">'+
+    h+='<div class="rankeyebrow">'+T('home.nextRank')+'</div>'+   /* F90: eyebrow, gated with the rankline */
+      '<button class="rankline" data-n="'+esc(cru.name)+'" onclick="openExercise(this.dataset.n)">'+
       T('home.rankLine','<b>'+esc(cru.name)+'</b>',esc(cru.gap.text))+'</button>';
   }
 
@@ -2460,7 +2498,9 @@ function renderRoutineEditor(){
     const linked=ex.ss!=null;
     h+='<div class="card"><div class="row"><div class="grow"><span style="font-weight:800">'+esc(ex.name)+'</span> '+
       (linked?'<span class="ssbadge" style="color:'+ssColors[ex.ss%5]+';background:'+ssColors[ex.ss%5]+'22">'+T('rt.superset')+' '+String.fromCharCode(65+ex.ss%26)+'</span>':'')+
-      '<div class="tiny muted">'+esc(catName(meta.cat))+'</div></div></div>'+
+      '<div class="tiny muted">'+esc(catName(meta.cat))+'</div></div>'+
+      restChipHtml(ex.name)+   /* F89: SAME per-exercise chip; opens the same sheet (no per-routine storage) */
+      '</div>'+
       '<div class="tgtgrid"><span class="sethead">'+T('rt.set')+'</span><span class="sethead">kg</span><span class="sethead">'+T('rt.min')+'</span><span class="sethead">'+T('rt.max')+'</span><span></span>';
     ex.sets.forEach((t,si)=>{
       h+='<span class="setidx">'+(si+1)+'</span>'+
@@ -2620,17 +2660,19 @@ function renderActive(){
       '<div class="grow"><span style="font-weight:800">'+esc(e.name)+'</span> '+
       (linked?'<span class="ssbadge" style="color:'+ssColors[e.ss%5]+';background:'+ssColors[e.ss%5]+'22">'+T('rt.superset')+' '+String.fromCharCode(65+e.ss%26)+'</span>':'')+
       '<div class="tiny muted">'+esc(catName(meta.cat))+lastTimeHint(e.name)+'</div></div>'+
+      restChipHtml(e.name)+   /* F89: per-exercise rest chip, between name and ⋯ */
       '<button class="setmenu" title="'+T('act.exOptions')+'" aria-label="'+T('act.exOptions')+'" onclick="exMenu('+ei+')">⋯</button>'+
       '</div></div></div>';
     if(e.note)h+='<div class="tiny muted" style="margin-top:6px">'+ico('note')+' '+esc(e.note)+'</div>';
     const prm=a.editing?null:prMoment(ei);        // F36: PR-beating set (never while editing)
     const bh=a.editing?null:beatHint(e);          // F45: all-time-best beat hint (live only)
+    const activeSi=activePlateSet(e,null);        // F88: resting active set; focus moves it live (no re-render)
     e.sets.forEach((s,si)=>{
       const twPh=s.tgt&&s.tgt.tw!=null?' placeholder="'+s.tgt.tw+'"':' placeholder="—"';
       const rPh=s.tgt&&repRange(s.tgt)?' placeholder="'+repRange(s.tgt)+'"':' placeholder="—"';
       const isPr=prm&&prm.si===si;                 // F36
       const hint=(bh&&bh.si===si&&!isPr)?bh.text:'';   // F45 (PR wins on the same row)
-      h+='<div class="swipe'+(isPr?' pr':'')+'" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
+      h+='<div class="swipe'+(isPr?' pr':'')+(si===activeSi?' actset':'')+'" data-swipe="set" data-ei="'+ei+'" data-si="'+si+'">'+
         '<button class="swipe-act copy" aria-label="'+T('sm.copy')+'" title="'+T('sr.copy')+'" onclick="swipeCopy('+ei+','+si+')">'+ico('copy')+'</button>'+
         '<button class="swipe-act del" aria-label="'+T('sm.remove')+'" title="'+T('sr.remove')+'" onclick="swipeRemoveSet('+ei+','+si+')">'+ico('trash')+'</button>'+
         '<div class="swipe-fg'+(s.done?' done':'')+'">'+
@@ -2655,7 +2697,7 @@ function renderActive(){
         /* Plate calculator (2026-07-09): loaded-barbell visual + per-side chips under a
            BARBELL set, live-updated on keystroke (wireInputs) via the id host; taps into
            the adjust sheet. Empty when off / not a barbell / blank. */
-        '<div id="pl'+ei+'_'+si+'">'+plateVisualHtml(ei,si)+'</div>'+
+        '<div id="pl'+ei+'_'+si+'" class="platehost">'+plateHostInner(ei,si)+'</div>'+
         /* F36 PR chip + F45 beat hint on a micro-line under the inputs — keeps the
            set row itself from ever overflowing at 375px. One row keeps at most one
            chip: PR wins on the same row; the hint only lands on an empty row. */
@@ -2920,7 +2962,9 @@ function toggleDone(ei,si){
       }else return;
     }
     s.done=true;
-    if(!a.editing&&restAutoOn())startRest();
+    /* F89: auto-start uses this exercise's effective rest, and SKIPS entirely when
+       it's set to Off (0). The restAuto master toggle still gates globally. */
+    if(!a.editing&&restAutoOn()){const rs=restFor(a.entries[ei].name);if(rs>0)startRest(rs);}
   }else{s.done=false;}
   save();render();
 }
@@ -3230,6 +3274,47 @@ function restDefault(){return (store.settings&&store.settings.restTime)||90;}
 function restAutoOn(){return !(store.settings&&store.settings.restAuto===false);}
 function setRestTime(sec){sec=Math.max(15,Math.min(600,sec));store.settings=store.settings||{};store.settings.restTime=sec;save();render();}
 function setRestAuto(on){store.settings=store.settings||{};store.settings.restAuto=on;save();render();}
+/* F89 (2026-07-12): per-exercise rest override lives in store.ex[name].rest —
+   ABSENT/undefined = inherit the global default; 0 = Off (✓ does NOT auto-start
+   rest for this exercise); N = seconds. restFor resolves the effective value;
+   the ✓ handler (toggleDone) and the corner button route through it. rest rides
+   in store.ex, which the backup already exports/restores wholesale (no re-plumb). */
+function restFor(name){const m=store.ex&&store.ex[name];const r=m?m.rest:undefined;
+  return (r===undefined||r===null)?restDefault():r;}
+function restIsOverride(name){const m=store.ex&&store.ex[name];return !!(m&&typeof m.rest==='number');}
+const mmss=sec=>Math.floor(sec/60)+':'+pad2(Math.round(sec)%60);
+/* the header rest chip — clock icon + m:ss (or "Off"); QUIET inheriting, ACCENT
+   when the exercise overrides. The exercise name rides in data-n (apostrophe-safe). */
+function restChipHtml(name){
+  const ov=restIsOverride(name), sec=restFor(name);
+  const label=(ov&&sec===0)?T('rest.off'):mmss(sec);
+  return '<button class="restchip'+(ov?' on':'')+'" data-n="'+esc(name)+'" onclick="openRestSheet(this.dataset.n)" '+
+    'title="'+esc(T('rest.chipTitle'))+'" aria-label="'+esc(T('rest.chipTitle'))+'">'+ico('timer')+
+    '<span class="rcv">'+label+'</span></button>';
+}
+function openRestSheet(name){openModal('<h2>'+T('rest.sheetTitle',esc(name))+'</h2><div id="restsheet">'+restSheetBody(name)+'</div>');}
+function restSheetBody(name){
+  const ov=restIsOverride(name), cur=ov?store.ex[name].rest:null, def=restDefault(), eff=restFor(name);
+  const presets=[[T('rest.off'),0],['0:30',30],['1:00',60],['1:30',90],['2:00',120],['3:00',180]];
+  let h='<p class="small muted" style="margin:2px 0 16px">'+T('rest.sheetSub')+'</p>';
+  h+='<div class="restgrid">'+presets.map(p=>
+    '<button class="rpreset'+(ov&&cur===p[1]?' on':'')+'" data-n="'+esc(name)+'" data-v="'+p[1]+'" '+
+    'onclick="restPreset(this.dataset.n,+this.dataset.v)">'+p[0]+'</button>').join('')+'</div>';
+  const base=eff>0?eff:def;   // the custom stepper starts from the current effective value
+  h+='<div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:20px 0 10px">'+T('rest.custom')+'</div>'+
+    '<div class="row" style="justify-content:center;gap:16px">'+
+    '<button class="btn small" data-n="'+esc(name)+'" onclick="restStep(this.dataset.n,-15)">−15s</button>'+
+    '<span style="min-width:72px;text-align:center;font-weight:800;font-size:18px;font-variant-numeric:tabular-nums">'+mmss(base)+'</span>'+
+    '<button class="btn small" data-n="'+esc(name)+'" onclick="restStep(this.dataset.n,15)">+15s</button></div>';
+  h+='<p class="tiny muted" style="margin:16px 2px 0">'+(ov?T('rest.overNote',mmss(def)):T('rest.inheritNote',mmss(def)))+'</p>';
+  if(ov)h+='<button class="btn ghost small wide" style="margin-top:8px" data-n="'+esc(name)+'" onclick="restInherit(this.dataset.n)">'+T('rest.useDefault')+'</button>';
+  return h;
+}
+function restSheetRefresh(name){const h=$('restsheet');if(h)h.innerHTML=restSheetBody(name);render();}
+function restPreset(name,v){store.ex[name]=store.ex[name]||{};store.ex[name].rest=v;save();restSheetRefresh(name);}
+function restStep(name,d){const base=restFor(name)>0?restFor(name):restDefault();
+  const v=Math.max(15,Math.min(600,base+d));store.ex[name]=store.ex[name]||{};store.ex[name].rest=v;save();restSheetRefresh(name);}
+function restInherit(name){if(store.ex[name])delete store.ex[name].rest;save();restSheetRefresh(name);}
 function primeBeep(){try{_actx=_actx||new (window.AudioContext||window.webkitAudioContext)();if(_actx.state==='suspended')_actx.resume();}catch(e){}}
 function beep(){try{if(!_actx)return;const t=_actx.currentTime;const o=_actx.createOscillator(),g=_actx.createGain();
   o.frequency.value=880;o.connect(g);g.connect(_actx.destination);
@@ -4716,6 +4801,48 @@ function plateVisualHtml(ei,si){
     '<div class="platebar-wrap">'+plateBarHtml(b.plates)+'</div>'+
     '<div class="platechips">'+chips+lo+'</div></div>';
 }
+/* F88 (2026-07-12): 3 same-weight barbell sets stacked ~306px of loaded-bar
+   visuals. Now the FULL visual renders only under the ACTIVE set — the set whose
+   kg/reps input has focus, else the first not-done set, else the last — resolved
+   here. focusedSi (a currently-focused set) wins; the runtime passes it live and
+   moves the .actset class WITHOUT a re-render, so the focused input is never
+   rebuilt (a full render would drop focus and close the iOS keyboard). */
+function activePlateSet(e,focusedSi){
+  if(!e||!e.sets||!e.sets.length)return -1;
+  if(focusedSi!=null&&focusedSi>=0&&e.sets[focusedSi])return focusedSi;
+  const nd=e.sets.findIndex(s=>!s.done);
+  return nd>=0?nd:e.sets.length-1;
+}
+/* the petite summary under NON-active barbell sets: up to TWO grouped-denomination
+   pk.sm chips + a "+N" overflow tag when the rack has more groups; empty (like the
+   full visual) when off / not a barbell / blank / below the bar / just-the-bar. */
+function plateMiniHtml(ei,si){
+  const a=store.active;if(!a)return '';
+  const e=a.entries[ei];if(!e||!plateCalcOn()||!isBarbell(e.name))return '';
+  const s=e.sets[si];if(!s)return '';
+  const b=plateBreakdown(s.w);
+  if(!b||b.belowBar||!b.plates.length)return '';   // no plates → nothing to summarise
+  const g=groupPlates(b.plates);
+  const chips=g.slice(0,2).map(x=>pokerChipHtml(x.w,x.n,true)).join('');
+  const more=g.length>2?'<span class="pk-more">+'+(g.length-2)+'</span>':'';
+  return chips+more;
+}
+/* both pieces for a set's plate host; CSS shows exactly one via the row's .actset
+   class. Rebuilt live on weight keystroke (wireInputs) so the active bar tracks. */
+function plateHostInner(ei,si){
+  return '<div class="pfull">'+plateVisualHtml(ei,si)+'</div>'+
+    '<div class="pmini">'+plateMiniHtml(ei,si)+'</div>';
+}
+/* Move the .actset marker to set `si` of entry `ei` by toggling classes on the
+   swipe rows — NO re-render, so the focused input under the finger stays put. */
+function moveActivePlate(ei,si){
+  if(typeof document==='undefined')return;
+  const card=document.querySelector('#main .excard[data-ei="'+ei+'"]');
+  if(!card)return;
+  card.querySelectorAll('.swipe[data-swipe="set"]').forEach(sw=>{
+    sw.classList.toggle('actset',+sw.dataset.si===si);
+  });
+}
 /* the adjust sheet — the loaded bar for this set's weight + per-side chips + the adjustable
    inventory + bar weight + count-the-bar. Weight-aware; edits refresh the sheet live. */
 function openPlateSheet(ei,si){
@@ -5823,10 +5950,12 @@ function wireInputs(){
       save();
       /* F25/F36/F37/F38: live cues under this exercise card, no full re-render */
       updateLiveCues(+el.dataset.ei);
-      /* Plate calculator: reload this set's barbell visual as the weight changes
-         (runs while editing a past workout too, where updateLiveCues bails). */
+      /* Plate calculator: reload this set's barbell visual (full bar + F88 mini) as
+         the weight changes (runs while editing a past workout too, where
+         updateLiveCues bails). The host is BELOW the row, so the focused input is
+         untouched — no keyboard drop. */
       if(el.dataset.f==='w'){const ph=$('pl'+el.dataset.ei+'_'+el.dataset.si);
-        if(ph)ph.innerHTML=plateVisualHtml(+el.dataset.ei,+el.dataset.si);}
+        if(ph)ph.innerHTML=plateHostInner(+el.dataset.ei,+el.dataset.si);}
     });
     if(el.dataset.si!=null&&(el.dataset.f==='w'||el.dataset.f==='r')){
       const cell=el.closest('.setcell');if(!cell)return;
@@ -5854,8 +5983,20 @@ function wireInputs(){
         });
         cell.appendChild(wrap);
       }
-      el.addEventListener('focus',()=>cell.classList.add('focus'));
-      el.addEventListener('blur',()=>setTimeout(()=>{if(!cell.contains(document.activeElement))cell.classList.remove('focus');},150));
+      el.addEventListener('focus',()=>{cell.classList.add('focus');
+        /* F88: focusing a set input makes it the ACTIVE set — the full plate bar
+           moves to it WITHOUT a re-render (just a class swap on the rows). */
+        const e=store.active&&store.active.entries[+el.dataset.ei];
+        if(e)moveActivePlate(+el.dataset.ei,activePlateSet(e,+el.dataset.si));});
+      el.addEventListener('blur',()=>setTimeout(()=>{
+        if(!cell.contains(document.activeElement))cell.classList.remove('focus');
+        /* F88: when focus leaves this entry's set inputs entirely, the bar returns
+           to its resting set (first not-done, else last). If focus merely hopped to
+           another set in the same entry, that set's focusin already moved it. */
+        const ei=+el.dataset.ei, ae=document.activeElement;
+        const stillHere=ae&&ae.dataset&&ae.dataset.ei===String(ei)&&(ae.dataset.f==='w'||ae.dataset.f==='r');
+        if(!stillHere){const e=store.active&&store.active.entries[ei];if(e)moveActivePlate(ei,activePlateSet(e,null));}
+      },150));
     }
   });
   document.querySelectorAll('#main [data-act]').forEach(el=>{
