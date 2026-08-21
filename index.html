@@ -708,7 +708,7 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.36';
+const APP_VERSION='0.9.37';
 /* Changelog convention (2026-07-08, owner ask): a version only gets an entry once
    its change is CONFIRMED working on device. Internal/fix-attempt bumps (needed for
    the service-worker cache to update) do NOT get a changelog line — otherwise the
@@ -716,6 +716,13 @@ const APP_VERSION='0.9.36';
    (v0.9.29 onward: drift, background-scroll, bar position) is HELD here until the
    whole thing is confirmed on-device, then lands as ONE honest consolidated entry. */
 const CHANGELOG=[
+  {v:'0.9.37', date:'2026-08-21', items:[
+    'Each exercise can now have its own rest time — tap the rest chip on the exercise card for presets, ±15s steps, or Off. Off skips the auto-timer for that exercise; everything else keeps your default.',
+    'The loaded-barbell visual now follows the set you\'re actually on — the other sets show a small plate summary instead of repeating the full bar.',
+    'Home shows a "Next rank" label above your rank progress.',
+    'While the rest timer is running, the bottom of the workout stays reachable — the bar no longer covers the last sets.',
+    'Small fixes: singular wording on Stats, the install banner no longer cuts off mid-word, and the plate sheet lost its duplicate title.',
+  ]},
   {v:'0.9.36', date:'2026-07-09', items:[
     'New plate calculator — for barbell lifts, Sett now shows a loaded barbell and exactly which plates to put on each side for your working weight.',
     'New consistency tracking — your Home screen shows a weekly-goal ring and streak, and Stats has a year-long activity grid so you can see your training at a glance.',
@@ -5166,12 +5173,14 @@ const ROADMAP={
     ['→0.9.20','Polish','dialogs, Exercises tab, i18n, dev panel'],
     ['.21–.25','Hardening','cancel-safe, restore-safe, logging loop, substitutes'],
     ['v0.9.35','Nav bar','app-shell layout — closed, confirmed on device'],
-    ['v0.9.36','Load & rhythm','plate calculator + consistency streak — confirmed on device']
+    ['v0.9.36','Load & rhythm','plate calculator + consistency streak — confirmed on device'],
+    ['v0.9.37','Tuned rest','per-exercise rest presets + the plate bar follows your set — confirmed on device']
   ],
   ahead:[
     ['Next · build',[
-      ['Rest presets','per-exercise rest times'],
-      ['Auto rest timer','folded into the timer toggle']
+      ['Gym profiles','pick your gym — machine exercises track per gym'],
+      ['Rename exercises','fix a name without losing history'],
+      ['Half reps','decimal reps in the log']
     ]],
     ['Before 1.0 · gym-proof',[
       ['Offline visuals','pre-cache your own library'],
@@ -5184,6 +5193,7 @@ const ROADMAP={
     ]]
   ],
   parked:[
+    ['Pick-up rest','rest auto-starts when you pick the phone up'],
     ['Reverse plate','type the bar you loaded → total weight'],
     ['Fire-list','backup nudge · wake lock · bodyweight (Apple Health)'],
     ['Post-1.0','light theme · 2nd user · routine folders · richer stats · backend'],
