@@ -538,8 +538,15 @@
      same accent-soft glow + border as the latched swipe state. Petite PR chip
      sits in the row; one accent line ("New e1RM record…") sits under the card. */
   .swipe.pr .swipe-fg{background:color-mix(in srgb, var(--accent) 14%, var(--card));}  /* F85: opaque, same reason as .done above */
-  .swipe.pr{border-radius:12px; box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);}
-  /* F36/F37: PR chip + beat-last-time hint share a micro-line under the set
+  /* F97 (2026-09-24 owner: "the highlight bleeds out of the set"): Item 6b
+     full-bleeds the rows to the card's inner edge, so the ring + radius that sat
+     on .swipe.pr landed ON the card border — a rounded box poking through it. The
+     tint stays full-bleed (matches plain done rows); the ring moves to an inset
+     ::after on the fg, so it frames the set, clears the border, and slides with
+     the row on swipe. */
+  .excard .swipe.pr .swipe-fg::after{content:''; position:absolute; inset:3px 8px; border-radius:12px;
+    box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); pointer-events:none;}
+  .excard .swipe.pr .swipe-fg{padding-bottom:8px;}   /* chip clears the ring's bottom line (a .setextra margin collapses out of the fg) */  /* F36/F37: PR chip + beat-last-time hint share a micro-line under the set
      inputs (aligned left with the set number), so the input row never widens. */
   .setextra{display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 4px 46px;}
   .prchip{display:inline-flex; align-items:center; padding:1px 7px; border-radius:99px;
@@ -666,6 +673,29 @@
   .restchip.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
   .restchip::after{content:''; position:absolute; inset:-12px -6px;}
   .restgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 0 4px;}
+  /* F91 gyms: header chip (restchip's shape, accent when a gym is set), the
+     ask-at-start grid, the accent "at <gym>" in a card subtitle, and the gym
+     filter chips on the exercise pages. */
+  .gymchip{display:inline-flex; align-items:center; gap:5px; flex:none; position:relative; max-width:60%;
+    padding:4px 10px 4px 8px; border-radius:999px; background:var(--card2); border:1px solid var(--line);
+    color:var(--muted); font-size:12px; font-weight:700; line-height:1;}
+  .gymchip.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+  .gymchip span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .gymchip .ico{width:13px; height:13px; flex:none;}
+  .gymchip::after{content:''; position:absolute; inset:-12px -6px;}
+  .gymgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0;}
+  .gymbtn{padding:14px 8px; border-radius:12px; background:var(--card2); border:1px solid var(--line);
+    font-weight:700; color:var(--text); overflow-wrap:anywhere;}
+  .gymbtn.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+  .gymbtn.none{color:var(--muted);}
+  .gymat{color:var(--accent);}
+  .gymchips{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px;}
+  .gymchips button{padding:5px 11px; border-radius:99px; background:var(--card2); border:1px solid var(--line);
+    color:var(--muted); font-size:12px; font-weight:700;}
+  .gymchips button.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
+  .gymchips button .d{font-weight:500; opacity:.8;}
+  .gymlegend{display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:6px; font-size:11px; color:var(--muted);}
+  .gymlegend i{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px;}
   .rpreset{padding:12px 6px; border-radius:12px; background:var(--card2); border:1px solid var(--line);
     color:var(--text); font-size:15px; font-weight:700; font-variant-numeric:tabular-nums;}
   .rpreset.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
@@ -1268,6 +1298,23 @@ const STRINGS={
     'live.vol':'Vol','live.best':'Best','live.prE1':'PR e1RM',
     'live.newE1':'New e1RM record — {0} kg','live.newReps':'New reps record — {0} reps','live.was':', was {0}',
     'live.try':'▲ try {0}','live.tryReps':'▲ try {0} reps','live.last':' · last: ','live.next':'Next: ',
+    // F91 gyms + F92 rename (R28)
+    'gym.where':'Where are you training?','gym.none':'No gym','gym.lastHint':'{0} is where you trained last time.',
+    'gym.add':'+ Add gym','gym.addTitle':'New gym','gym.namePh':'Gym name','gym.save':'Save',
+    'gym.exists':'You already have a gym with that name','gym.at':'at {0}','gym.firstHere':' · first time here',
+    'gym.atOther':'At {0}: {1}','gym.all':'All gyms','gym.track':'Track per gym','gym.auto':'Auto',
+    'gym.always':'Always','gym.never':'Never',
+    'gym.autoOnSub':'Auto is on because this is a {0} exercise. Machines and cable stacks differ between gyms.',
+    'gym.autoOffSub':'Auto is off: free weights weigh the same everywhere, so one history covers every gym.',
+    'gym.alwaysSub':'History, placeholders and records are kept separately for each gym.',
+    'gym.neverSub':'One history across every gym.',
+    'gym.editTitle':'Edit gym','gym.delete':'Delete gym','gym.deleteQ':'Delete {0}?',
+    'gym.deleteMsg':'Its {0} stay in your log, just without a gym.',
+    'set.gyms':'Gyms','set.gymsSum':'{0} gyms',
+    'set.gymsSub':'Tap a gym to rename or delete it. Deleting a gym keeps its workouts; they just lose the tag.',
+    'xs.rename':'Rename','rn.title':'Rename exercise','rn.save':'Rename',
+    'rn.exists':'An exercise with that name already exists','rn.done':'Renamed to {0}',
+    'rn.rankWarn':'Heads-up: "{0}" has a strength rank. The new name won\'t have one.',
     // discard / delete / finish
     'dw.discardQ':'Discard workout?','dw.discardMsg':'Nothing from this workout will be saved.','dw.discardBtn':'Discard workout',
     'dw.cancelEditQ':'Cancel editing?','dw.cancelEditMsg':'Your changes will be lost.','dw.cancelEditBtn':'Cancel editing',
@@ -1496,6 +1543,23 @@ const STRINGS={
     'live.vol':'Vol','live.best':'Best','live.prE1':'PR e1RM',
     'live.newE1':'Ny e1RM-rekord — {0} kg','live.newReps':'Ny reps-rekord — {0} reps','live.was':', var {0}',
     'live.try':'▲ prøv {0}','live.tryReps':'▲ prøv {0} reps','live.last':' · sist: ','live.next':'Neste: ',
+    // F91 gym + F92 nytt navn (R28)
+    'gym.where':'Hvor trener du?','gym.none':'Ingen gym','gym.lastHint':'{0} er der du trente sist.',
+    'gym.add':'+ Legg til gym','gym.addTitle':'Nytt gym','gym.namePh':'Navn på gymmet','gym.save':'Lagre',
+    'gym.exists':'Du har allerede et gym med det navnet','gym.at':'på {0}','gym.firstHere':' · første gang her',
+    'gym.atOther':'På {0}: {1}','gym.all':'Alle gym','gym.track':'Spor per gym','gym.auto':'Auto',
+    'gym.always':'Alltid','gym.never':'Aldri',
+    'gym.autoOnSub':'Auto er på fordi dette er en {0}-øvelse. Maskiner og kabelstabler er ulike fra gym til gym.',
+    'gym.autoOffSub':'Auto er av: frivekter veier det samme overalt, så én historikk dekker alle gym.',
+    'gym.alwaysSub':'Historikk, plassholdere og rekorder holdes separat for hvert gym.',
+    'gym.neverSub':'Én historikk på tvers av alle gym.',
+    'gym.editTitle':'Rediger gym','gym.delete':'Slett gym','gym.deleteQ':'Slette {0}?',
+    'gym.deleteMsg':'De {0} blir værende i loggen, bare uten gym.',
+    'set.gyms':'Gym','set.gymsSum':'{0} gym',
+    'set.gymsSub':'Trykk på et gym for å endre navn eller slette det. Sletter du et gym, beholdes øktene – de mister bare merket.',
+    'xs.rename':'Endre navn','rn.title':'Endre navn på øvelsen','rn.save':'Endre navn',
+    'rn.exists':'Det finnes allerede en øvelse med det navnet','rn.done':'Nytt navn: {0}',
+    'rn.rankWarn':'Obs: «{0}» har en styrkerangering. Det nye navnet får ingen.',
     'dw.discardQ':'Forkaste økta?','dw.discardMsg':'Ingenting fra denne økta blir lagret.','dw.discardBtn':'Forkast økta',
     'dw.cancelEditQ':'Avbryte redigeringen?','dw.cancelEditMsg':'Endringene dine går tapt.','dw.cancelEditBtn':'Avbryt redigeringen',
     'dw.deleteQ':'Slette økta?','dw.deleteMsg':'Denne økta blir slettet for godt.','dw.deleteBtn':'Slett økta',
@@ -1637,6 +1701,39 @@ function statWorkouts(){
   if(a&&!a.editing&&a.entries&&a.entries.length)return [a,...ws];
   return ws;
 }
+/* ============================== F91 gyms (R28, 2026-09-24) ==============================
+   Owner picks (ROADMAP §R28 G1–G7): ONE library entry per exercise; machine/cable
+   exercises are gym-tracked automatically (ExMeta.gymTrack 'on'/'off' overrides);
+   a workout carries gym:<id>. For a gym-tracked exercise at gym g, history = that
+   gym's workouts PLUS untagged ones (G2 shared baseline); other gyms never count.
+   Ghosts/"last" prefer the gym's own sessions and fall back to untagged ones.
+   settings.gyms=[{id,name}] — ids never change, so renaming a gym rewrites nothing. */
+const SEED_GYMS=['Bjergsted','Forus','Sola','Åsen','Paradis'];
+const newGid=()=>'g'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+function gyms(){const g=store&&store.settings&&store.settings.gyms;return Array.isArray(g)?g:[];}
+function gymName(id){const g=gyms().find(x=>x.id===id);return g?g.name:'';}
+function gymTracked(name){
+  const m=store&&store.ex&&store.ex[name];if(!m)return false;
+  if(m.gymTrack==='on')return true;
+  if(m.gymTrack==='off')return false;
+  const c=m.vid&&typeof CAT_BY_ID!=='undefined'?CAT_BY_ID[m.vid]:null;
+  return !!c&&(c.q==='machine'||c.q==='cable');
+}
+/* the gym scope the LIVE logger uses for one exercise: the workout's gym when the
+   exercise is gym-tracked, else null (= no filter, all history). */
+function liveGym(name){const a=store&&store.active;return a&&a.gym&&gymTracked(name)?a.gym:null;}
+function inGym(w,g){return !g||!w.gym||w.gym===g;}
+/* the gym of your most recent tagged workout that still exists in the list */
+function lastGym(){for(const w of (store.workouts||[]))if(w.gym&&gymName(w.gym))return w.gym;return null;}
+/* G6: the gyms this exercise was done at, newest-first, each with its last date */
+function exGymUse(name){
+  const out=[];const seen=new Set();
+  for(const w of (store.workouts||[])){
+    if(!w.gym||seen.has(w.gym)||!gymName(w.gym))continue;
+    if(w.entries.some(e=>e.name===name&&e.sets.length)){seen.add(w.gym);out.push({id:w.gym,name:gymName(w.gym),last:w.start});}
+  }
+  return out;
+}
 function repRange(t){if(!t)return '';const lo=t.rlo,hi=t.rhi;if(lo==null&&hi==null)return '';if(lo!=null&&hi!=null)return lo===hi?String(lo):lo+'–'+hi;return String(lo!=null?lo:hi);}
 function toast(msg,ms){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(toast._t);toast._t=setTimeout(()=>t.style.display='none',ms||2400);}
 let _undo=null;
@@ -1679,7 +1776,13 @@ function normalizeStore(){
   for(const w of store.workouts){if(!w.id||seen.has(w.id)){w.id=newWid();changed=true;}seen.add(w.id);
     /* B4 (sweep 2026-07-06): a hand-edited backup can lack entries/sets arrays —
        renderLog/renderStats then throw. Coerce like S4 did for top-level fields. */
-    fixEntries(w);}
+    fixEntries(w);
+    if(w.gym!=null&&typeof w.gym!=='string'){delete w.gym;changed=true;}}   // F91: a gym tag is an id string or absent
+  /* F91: the owner's five gyms seed a store that has never had a gym list.
+     Deterministic ids ('g-forus', 'g-asen'…) so a migrated backup can tag
+     workouts before the app ever runs. An EMPTY list stays empty (user deleted all). */
+  if(!Array.isArray(store.settings.gyms))
+    store.settings.gyms=SEED_GYMS.map(n=>({id:'g-'+n.toLowerCase().normalize('NFD').replace(/[^a-z]/g,''),name:n}));
   /* R22 (audit 2026-07-08 A): same bar for routines — a restored backup whose
      routine lacks .exercises (or whose routine exercise lacks .sets) threw in
      renderRoutines and confirmStartInfo, bricking the Routines tab and Home's
@@ -1897,7 +2000,8 @@ function importCsv(text){
     if(!entry||entry.name!==name){entry={name,ss:null,note:'',sets:[]};w.entries.push(entry);}
     entry.sets.push({
       w:weight===''?null:parseFloat(weight),
-      r:reps===''?null:parseInt(reps,10),
+      /* F93: fractional reps survive import (parseInt silently truncated 7.5→7) */
+      r:reps===''?null:parseFloat(String(reps).replace(',','.')),
       dur:dur===''?null:parseFloat(dur),
       dist:dist===''?null:parseFloat(dist),
       note:note.trim(),drop:false});
@@ -1928,31 +2032,134 @@ const POPULAR_ROUTINES=[
 ];
 
 /* ============================== derived stats ============================== */
-function allSetsOf(name,exclActive){
+/* G4 (owner pick B, "ask at start"): every start path presets store.active.gym to
+   your last gym and then opens this sheet — last gym highlighted, "No gym"
+   allowed, "+ Add gym" inline. Dismissing keeps the preset. The header chip
+   reopens it any time (also while editing a past workout). No gyms → no sheet. */
+function askGym(){
+  const a=store.active;if(!a)return;
+  const gs=gyms();if(!gs.length&&!a.editing)return;
+  const lg=lastGym();
+  openModal('<h2>'+T('gym.where')+'</h2>'+
+    '<div class="gymgrid">'+gs.map(g=>'<button class="gymbtn'+(a.gym===g.id?' on':'')+'" data-g="'+esc(g.id)+'" onclick="pickGym(this.dataset.g)">'+esc(g.name)+'</button>').join('')+
+    '<button class="gymbtn none'+(!a.gym?' on':'')+'" onclick="pickGym(\'\')">'+T('gym.none')+'</button></div>'+
+    (!a.editing&&lg&&a.gym===lg?'<p class="tiny muted" style="margin:0 2px 12px">'+T('gym.lastHint',esc(gymName(lg)))+'</p>':'')+
+    '<button class="btn wide" onclick="addGymPrompt(\'pick\')">'+T('gym.add')+'</button>');
+}
+function pickGym(id){closeModal();setWorkoutGym(id||null);}
+/* Switching gym mid-workout re-seeds the ghosts of gym-tracked exercises for
+   sets you haven't touched (not typed, not done, not drop sets) from the new
+   gym's history, falling back to the routine/repeat template (tpl). */
+function setWorkoutGym(id){
+  const a=store.active;if(!a)return;
+  const prev=a.gym||null;id=id||null;
+  if(id)a.gym=id;else delete a.gym;
+  if(prev!==id&&!a.editing)
+    for(const e of a.entries){if(!gymTracked(e.name))continue;
+      e.sets.forEach((s,si)=>{if(s.w==null&&s.r==null&&!s.done&&!s.drop)s.tgt=prevSessionSet(e.name,si,id)||s.tpl||null;});}
+  save();render();
+}
+function gymChipHtml(){
+  const a=store.active;if(!a)return '';
+  if(!gyms().length&&!a.gym)return '';
+  const n=a.gym?gymName(a.gym):'';
+  return '<button class="gymchip'+(n?' on':'')+'" onclick="askGym()" aria-label="'+T('gym.where')+'">'+ico('pin')+'<span>'+(n?esc(n):T('gym.none'))+'</span> ▾</button>';
+}
+/* ctx 'pick' = from the ask sheet (the new gym becomes this workout's gym);
+   'settings' = from the Gyms section. */
+function addGymPrompt(ctx){
+  openModal('<h2>'+T('gym.addTitle')+'</h2>'+
+    '<input id="gymname" style="width:100%;margin:12px 0" maxlength="40" placeholder="'+T('gym.namePh')+'">'+
+    '<button class="btn primary wide" data-ctx="'+ctx+'" onclick="saveNewGym(this.dataset.ctx)">'+T('gym.save')+'</button>',{replace:ctx==='pick'});
+  $('gymname').focus();
+}
+function saveNewGym(ctx){
+  const name=($('gymname').value||'').trim();if(!name)return;
+  if(gyms().some(g=>g.name.toLowerCase()===name.toLowerCase())){toast(T('gym.exists'));return;}
+  const g={id:newGid(),name};
+  store.settings=store.settings||{};store.settings.gyms=[...gyms(),g];
+  save();closeModal();
+  if(ctx==='pick'&&store.active)setWorkoutGym(g.id);else render();
+}
+function gymWorkoutCount(id){return (store.workouts||[]).filter(w=>w.gym===id).length;}
+function editGym(id){
+  const g=gyms().find(x=>x.id===id);if(!g)return;
+  openModal('<h2>'+T('gym.editTitle')+'</h2>'+
+    '<input id="gymname" style="width:100%;margin:12px 0" maxlength="40" value="'+esc(g.name)+'">'+
+    '<button class="btn primary wide" data-g="'+esc(id)+'" onclick="saveGymName(this.dataset.g)">'+T('gym.save')+'</button>'+
+    '<button class="btn wide" style="margin-top:8px;color:var(--bad)" data-g="'+esc(id)+'" onclick="deleteGym(this.dataset.g)">'+T('gym.delete')+'</button>');
+}
+function saveGymName(id){
+  const name=($('gymname').value||'').trim();if(!name)return;
+  if(gyms().some(g=>g.id!==id&&g.name.toLowerCase()===name.toLowerCase())){toast(T('gym.exists'));return;}
+  const g=gyms().find(x=>x.id===id);if(!g)return;
+  g.name=name;save();closeModal();render();
+}
+/* Deleting a gym keeps its workouts — they just lose the tag (→ shared baseline). */
+function removeGymData(id){
+  store.settings.gyms=gyms().filter(g=>g.id!==id);
+  for(const w of (store.workouts||[]))if(w.gym===id)delete w.gym;
+  if(store.active&&store.active.gym===id)delete store.active.gym;
+}
+function deleteGym(id){
+  const g=gyms().find(x=>x.id===id);if(!g)return;
+  confirmDialog({title:T('gym.deleteQ',g.name),message:T('gym.deleteMsg',nPlur('u.workout',gymWorkoutCount(id))),
+    confirmLabel:T('gym.delete'),onYes:()=>{removeGymData(id);save();render();}});
+}
+/* G6: which gym an exercise page is showing. Only a gym-tracked exercise with
+   tagged history gets chips; it opens on the live workout's gym, else the gym
+   it was done at most recently. 'all' = every gym. Sticky per exercise name. */
+const exGymSel={name:null,g:null};
+function exGymScope(name){
+  if(!gymTracked(name))return null;
+  const uses=exGymUse(name);if(!uses.length)return null;
+  if(exGymSel.name!==name||(exGymSel.g!=='all'&&!uses.some(u=>u.id===exGymSel.g)&&exGymSel.g!==liveGym(name))){
+    exGymSel.name=name;exGymSel.g=liveGym(name)||uses[0].id;
+  }
+  return exGymSel.g;
+}
+const scopeGym=sc=>(sc&&sc!=='all')?sc:null;
+/* chips ordered by the last time this exercise was done at each gym, each
+   labeled with that date; the live gym leads if it has no history yet. */
+function gymChipsHtml(name,reopen){
+  const sc=exGymScope(name);if(!sc)return '';
+  const uses=exGymUse(name).slice();
+  const lg=liveGym(name);
+  if(lg&&!uses.some(u=>u.id===lg))uses.unshift({id:lg,name:gymName(lg),last:null});
+  const d=s=>{const x=toDate(s);return x.getDate()+' '+monthName(x.getMonth()).slice(0,3);};
+  const b=(id,label)=>'<button class="'+(sc===id?'on':'')+'" data-n="'+esc(name)+'" data-g="'+esc(id)+'" onclick="exGymSel.g=this.dataset.g;'+reopen+'(this.dataset.n,1)">'+label+'</button>';
+  return '<div class="gymchips">'+uses.map(u=>b(u.id,esc(u.name)+(u.last?' <span class="d">· '+d(u.last)+'</span>':''))).join('')+
+    b('all',T('gym.all'))+'</div>';
+}
+/* ================================================================================ */
+/* F91: the optional `g` (gym id) scopes to that gym + untagged workouts (inGym). */
+function allSetsOf(name,exclActive,g){
   const out=[];
   const ws=exclActive?((store&&store.workouts)||[]):statWorkouts();  // F24 + F26
-  for(const w of ws)for(const e of w.entries)if(e.name===name)for(const s of e.sets)if(statSet(s))out.push({s,date:w.start});
+  for(const w of ws){if(!inGym(w,g))continue;
+    for(const e of w.entries)if(e.name===name)for(const s of e.sets)if(statSet(s))out.push({s,date:w.start});}
   return out;
 }
-function exSessions(name){
+function exSessions(name,g){
   const out=[];
   for(const w of statWorkouts()){                                    // F24 + F26
+    if(!inGym(w,g))continue;
     const sets=[];for(const e of w.entries)if(e.name===name)for(const s of e.sets)if(statSet(s))sets.push(s);
     if(!sets.length)continue;
     let best=null;for(const s of sets){const e1=epley(s.w,s.r);if(e1!=null&&(best==null||e1>best))best=e1;}
-    out.push({date:w.start,sets,best,vol:sets.reduce((a,s)=>a+setVol(s),0)});
+    out.push({date:w.start,sets,best,vol:sets.reduce((a,s)=>a+setVol(s),0),gym:w.gym||null});
   }
   return out; // newest first (workouts sorted desc)
 }
-function prFor(name,exclActive){
+function prFor(name,exclActive,g){
   let maxW=null,maxWr=null,bestE1=null,bestSet=null,total=0,last=null;
-  for(const {s,date} of allSetsOf(name,exclActive)){                 // F24: exclActive → history only (finishWorkout PR check)
+  for(const {s,date} of allSetsOf(name,exclActive,g)){               // F24: exclActive → history only (finishWorkout PR check)
     total++;if(!last||date>last)last=date;
     if(s.w!=null&&(maxW==null||s.w>maxW||(s.w===maxW&&(s.r||0)>(maxWr||0)))){maxW=s.w;maxWr=s.r;}
     const e1=epley(s.w,s.r);
     if(e1!=null&&(bestE1==null||e1>bestE1)){bestE1=e1;bestSet=s;}
   }
-  return {maxW,maxWr,bestE1,bestSet,total,last,sessions:exSessions(name).length};
+  return {maxW,maxWr,bestE1,bestSet,total,last,sessions:exSessions(name,g).length};
 }
 function latestBW(){for(const w of store.workouts)if(w.bw)return w.bw;return store.active&&store.active.bw||null;}
 
@@ -2105,6 +2312,7 @@ const ICO={
   clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   bars:'<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
   star:'<path d="M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 17l-5.3 2.6 1-5.8-4.2-4.1 5.9-.9z"/>',
+  pin:'<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/>',
   note:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   timer:'<path d="M9 2h6M12 2v3"/><circle cx="12" cy="13" r="8"/><path d="M12 10v3.5l2 1.5"/>',
   up:'<path d="M18 15l-6-6-6 6"/>',
@@ -2534,24 +2742,30 @@ function startRoutine(id){
   const r=store.routines.find(x=>x.id===id);if(!r)return;
   if(store.active&&!store.active.editing){toast(T('start.finishFirst'));return;}
   for(const ex of r.exercises)ensureEx(ex.name);
+  const g0=lastGym();                             // F91 G4: preset to your last gym; the ask sheet confirms/changes it
   store.active={start:nowStr(),routine:r.name,bw:latestBW(),fromRoutine:r.id||r.name||true,   /* F31: routine-started → no in-workout "Save as routine" */
+    ...(g0?{gym:g0}:{}),
     entries:r.exercises.map(ex=>({name:ex.name,ss:ex.ss??null,note:'',
       /* Item 5 (2026-07-08): seed each ghost from your ACTUAL last session of this
          exercise (like Repeat workout does) — falling back to the routine's planned
          target only when you've never logged it. Before, a routine always showed the
          frozen template, so kg/reps from your last session never appeared. */
-      sets:ex.sets.map((t,si)=>({w:null,r:null,dur:null,dist:null,note:'',drop:false,
-        tgt:prevSessionSet(ex.name,si)||{tw:t.tw??null,rlo:t.rlo??null,rhi:t.rhi??null}}))}))};
-  diagCount('workoutStarted');save();setView('log');toast(T('start.started',r.name));
+      /* F91: tpl keeps the routine's planned target so a gym switch can fall back to it */
+      sets:ex.sets.map((t,si)=>{const tpl={tw:t.tw??null,rlo:t.rlo??null,rhi:t.rhi??null};
+        return {w:null,r:null,dur:null,dist:null,note:'',drop:false,tpl,
+        tgt:prevSessionSet(ex.name,si,gymTracked(ex.name)?g0:null)||tpl};})}))};
+  diagCount('workoutStarted');save();setView('log');toast(T('start.started',r.name));askGym();
 }
 function startPopular(i){
   if(store.active&&!store.active.editing){toast(T('start.finishFirst'));return;}
   const r=POPULAR_ROUTINES[i];if(!r)return;
   for(const n of r.ex)ensureEx(n);
+  const g0=lastGym();                             // F91 G4
   store.active={start:nowStr(),routine:r.name,bw:latestBW(),fromRoutine:r.name||true,   /* F31: popular routine → no in-workout "Save as routine" */
+    ...(g0?{gym:g0}:{}),
     /* Item 5 (2026-07-08): seed the ghost from your last session of each exercise (null → "—" when never logged). */
-    entries:r.ex.map(n=>({name:n,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:prevSessionSet(n,0)}]}))};
-  diagCount('workoutStarted');save();setView('log');toast(T('start.started',r.name));
+    entries:r.ex.map(n=>({name:n,ss:null,note:'',sets:[{w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:prevSessionSet(n,0,gymTracked(n)?g0:null)}]}))};
+  diagCount('workoutStarted');save();setView('log');toast(T('start.started',r.name));askGym();
 }
 /* F33 (2026-07-06) OWNER SPEC, verbatim: "Pressing on a routine/previous
    workout shouldn't instantly start a new workout, let the user confirm if
@@ -2610,16 +2824,21 @@ function weekSummary(){
   let n=0;for(const w of statWorkouts()){if(toDate(w.start)>=mon)n++;else break;}   // F24: count the live workout too
   return n===0?T('home.weekNone'):T('home.weekSome',n,plur('u.workout',n));
 }
-function startWorkout(){if(store.active&&!store.active.editing){toast(T('start.finishFirst'));return;}store.active={start:nowStr(),routine:'',bw:latestBW(),entries:[]};diagCount('workoutStarted');save();setView('log');}
+function startWorkout(){if(store.active&&!store.active.editing){toast(T('start.finishFirst'));return;}
+  const g0=lastGym();                             // F91 G4
+  store.active={start:nowStr(),routine:'',bw:latestBW(),...(g0?{gym:g0}:{}),entries:[]};diagCount('workoutStarted');save();setView('log');askGym();}
 function repeatWorkout(wid){
   const src=store.workouts.find(w=>w.id===wid);if(!src)return;
   if(store.active&&!store.active.editing){toast(T('start.finishFirst'));return;}
   for(const e of src.entries)ensureEx(e.name);
-  store.active={start:nowStr(),routine:src.routine,bw:latestBW(),
+  /* F91 G4: a repeat presets to the SOURCE workout's gym (you're redoing that
+     session), else your last gym; tpl keeps the source numbers for a gym switch. */
+  const g0=(src.gym&&gymName(src.gym))?src.gym:lastGym();
+  store.active={start:nowStr(),routine:src.routine,bw:latestBW(),...(g0?{gym:g0}:{}),
     entries:src.entries.map(e=>({name:e.name,ss:e.ss??null,note:'',
-      sets:e.sets.map(s=>({w:null,r:null,dur:null,dist:null,note:'',drop:false,
-        tgt:{tw:s.w??null,rlo:s.r??null,rhi:s.r??null}}))}))};
-  diagCount('workoutStarted');save();closeModal();setView('log');toast(T('start.repeating',src.routine||T('home.workout').toLowerCase()));
+      sets:e.sets.map(s=>{const tpl={tw:s.w??null,rlo:s.r??null,rhi:s.r??null};
+        return {w:null,r:null,dur:null,dist:null,note:'',drop:false,tpl,tgt:{...tpl}};})}))};
+  diagCount('workoutStarted');save();closeModal();setView('log');toast(T('start.repeating',src.routine||T('home.workout').toLowerCase()));askGym();
 }
 function saveWorkoutAsRoutine(wid){
   const w=store.workouts.find(x=>x.id===wid);if(!w)return;
@@ -2648,7 +2867,9 @@ function renderActive(){
     '<input class="grow" data-act="routine" placeholder="'+T('rt.name')+'" value="'+esc(a.routine)+'">'+
     (a.editing?'':'<span class="elapsed" id="elapsed">'+elapsedStr()+'</span>')+
     (a.editing?'':'<button class="hbtn" onclick="startRest()" title="'+T('act.startRest')+'" aria-label="'+T('act.restTimer')+'">'+ico('timer')+'</button>')+'</div>'+
-    (a.editing?'':'<div class="tiny muted" style="margin-top:4px">'+T('act.started',fmtClock(a.start))+'</div>')+
+    /* F91 G4: the gym chip rides the "Started" line (and shows alone while editing) */
+    ((a.editing&&!gymChipHtml())?'':'<div class="row" style="margin-top:4px">'+
+      (a.editing?'<span class="grow"></span>':'<span class="tiny muted grow">'+T('act.started',fmtClock(a.start))+'</span>')+gymChipHtml()+'</div>')+
     (a.editing?'<div class="row" style="margin-top:10px"><span class="small muted" style="width:40px">'+T('act.start')+'</span>'+
       '<input class="grow" type="datetime-local" data-act="wstart" value="'+dtVal(a.start)+'"></div>'+
       '<div class="row" style="margin-top:8px"><span class="small muted" style="width:40px">'+T('act.end')+'</span>'+
@@ -2687,7 +2908,9 @@ function renderActive(){
         /* F26: warmup circle shows W (distinct from drop's D) */
         '<span class="setnum'+(s.warmup?' warm':s.drop?' drop':'')+'" title="'+(s.warmup?T('sr.warmup'):s.drop?T('sr.drop'):'')+'">'+(s.warmup?'W':s.drop?'D':si+1)+'</span>'+
         '<div class="setcell"><label>'+T('act.kg')+'</label><input type="text" inputmode="decimal" step="0.5" data-ei="'+ei+'" data-si="'+si+'" data-f="w" value="'+(s.w??'')+'"'+twPh+'></div>'+
-        '<div class="setcell"><label>'+T('act.repsLbl')+'</label><input type="number" inputmode="numeric" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'></div>'+
+        /* F93 (2026-08-21 owner): reps take decimals ("7,5") — same text+decimal
+           pattern as the kg box; type=number+numeric rejected the comma keypad. */
+        '<div class="setcell"><label>'+T('act.repsLbl')+'</label><input type="text" inputmode="decimal" data-ei="'+ei+'" data-si="'+si+'" data-f="r" value="'+(s.r??'')+'"'+rPh+'></div>'+
         '<span class="sp"></span>'+
         /* Item 3 (2026-07-08): the ✓/W/⋯ controls live in ONE tight cluster (8px
            gaps) instead of riding the row's 20px gap each. The R24 ✓ pushed the
@@ -2759,13 +2982,37 @@ function commitActiveAsRoutine(){
   store.routines.push(r);save();closeModal();toast(T('rt.savedTo',name));
 }
 function elapsedStr(){const m=Math.floor((Date.now()-toDate(store.active.start))/60000);return Math.floor(m/60)+':'+pad2(m%60);}
-function lastTimeHint(name){
-  for(const w of store.workouts)for(const e of w.entries)if(e.name===name){
-    const top=e.sets.reduce((a,s)=>setVol(s)>setVol(a)?s:a,e.sets[0]);
-    if(top&&top.w!=null)return T('live.last')+fmtW(top.w)+' kg × '+(top.r||'—');
-    return '';
+/* F91: the newest logged entry of an exercise for gym scope g — that gym's own
+   sessions first, else the newest UNTAGGED one (G2 shared baseline). g null →
+   the newest anywhere (the pre-gym behavior). */
+function lastSessionEntry(name,g){
+  let fb=null;
+  for(const w of (store.workouts||[]))for(const e of w.entries)if(e.name===name&&e.sets.length){
+    if(!g||w.gym===g)return e;
+    if(!w.gym&&!fb)fb=e;
   }
-  return '';
+  return fb;
+}
+function topSetText(e){
+  const top=e&&e.sets.reduce((a,s)=>setVol(s)>setVol(a)?s:a,e.sets[0]);
+  return top&&top.w!=null?fmtW(top.w)+' kg × '+(top.r||'—'):'';
+}
+/* G5 (owner pick A): a gym-tracked card says where it is in the subtitle —
+   "Back · at Forus · last: 59 kg × 8". No history at this gym (and no untagged
+   baseline) → "first time here" and, when it was done at another gym, a second
+   muted line naming that gym's last top set. Free-weight cards are unchanged. */
+function lastTimeHint(name){
+  const g=liveGym(name);
+  const e=lastSessionEntry(name,g);
+  const top=topSetText(e);
+  const last=top?T('live.last')+top:'';
+  if(!g)return last;
+  const at=' · <span class="gymat">'+T('gym.at',esc(gymName(g)))+'</span>';
+  if(e)return at+last;
+  const other=exGymUse(name)[0];
+  const oe=other&&lastSessionEntry(name,other.id);
+  const ot=oe&&topSetText(oe);
+  return at+T('gym.firstHere')+(ot?'<div>'+T('gym.atOther',esc(other.name),ot)+'</div>':'');
 }
 /* F25 (2026-07-06): compact live stats line under the exercise footer —
    today's volume · best set this session · standing PR e1RM (accent).
@@ -2776,7 +3023,7 @@ function cardStatsLine(ei){
   let vol=0,best=null,bestS=null;
   for(const s of e.sets){if(!statSet(s))continue;vol+=setVol(s);
     const v=setVol(s);if(v>0&&(best==null||v>best)){best=v;bestS=s;}}
-  const pr=prFor(e.name,true).bestE1;   // standing PR from HISTORY only (excludes this live session)
+  const pr=prFor(e.name,true,liveGym(e.name)).bestE1;   // standing PR from HISTORY only (excludes this live session); F91 gym scope
   const parts=[T('live.vol')+' '+fmtNum(vol)+' kg'];
   if(bestS)parts.push(T('live.best')+' '+fmtW(bestS.w)+'×'+(bestS.r||0));
   parts.push('<b>'+T('live.prE1')+' '+(pr!=null?fmtW(pr)+' kg':'—')+'</b>');
@@ -2789,17 +3036,18 @@ function cardStatsLine(ei){
    editing; warmups only trigger when the F26 setting counts them (statSet).
    Returns {si, kind:'e1'|'reps', val, prev} for the single best PR-beating set,
    or null. Pure/side-effect-free so it's safe on every keystroke. */
-function histBestReps(name){
+function histBestReps(name,g){
   let best=null;
-  for(const {s} of allSetsOf(name,true))   // exclActive → history only
+  for(const {s} of allSetsOf(name,true,g))   // exclActive → history only
     if((s.w==null||s.w===0)&&s.r&&(best==null||s.r>best))best=s.r;
   return best;
 }
 function prMoment(ei){
   const a=store.active;if(!a||a.editing)return null;
   const e=a.entries[ei];if(!e)return null;
-  const prevE1=prFor(e.name,true).bestE1;         // history-only standing e1RM
-  const prevReps=histBestReps(e.name);            // history-only best bodyweight reps
+  const g=liveGym(e.name);                        // F91: gym-tracked → this gym + untagged only
+  const prevE1=prFor(e.name,true,g).bestE1;       // history-only standing e1RM
+  const prevReps=histBestReps(e.name,g);          // history-only best bodyweight reps
   let bestE1=null,bestE1Si=-1,bestReps=null,bestRepsSi=-1;
   e.sets.forEach((s,si)=>{
     if(!statSet(s))return;                        // warmups excluded unless the setting counts them
@@ -2838,16 +3086,17 @@ function prLineHtml(ei){
    is logged. The latest triggering set wins (its weight/reps drive the target).
    Baseline excludes store.active exactly like prMoment (F36) — history only.
    Returns {si, text} for the row that should carry the chip, or null. Pure. */
-function histBestWorkingW(name){
+function histBestWorkingW(name,g){
   let best=null;
-  for(const {s} of allSetsOf(name,true))          // exclActive → history only; statSet drops warmups
+  for(const {s} of allSetsOf(name,true,g))          // exclActive → history only; statSet drops warmups
     if(s.w!=null&&s.w>0&&(best==null||s.w>best))best=s.w;
   return best;
 }
 function beatHint(e){
   if(!e||!e.sets)return null;
-  const histW=histBestWorkingW(e.name);           // all-time best working weight (history)
-  const histR=histBestReps(e.name);               // all-time best bodyweight reps (history)
+  const g=liveGym(e.name);                        // F91: same gym scope as the PR moment
+  const histW=histBestWorkingW(e.name,g);         // all-time best working weight (history)
+  const histR=histBestReps(e.name,g);             // all-time best bodyweight reps (history)
   let trigWeight=null,trigReps=null,trigIdx=-1;
   e.sets.forEach((s,si)=>{
     if(s.warmup)return;                            // warmups never trigger
@@ -2934,20 +3183,22 @@ function updateLiveCues(ei){
    that was a prefill (ghost-fill law violation). It starts empty; the tgt
    ghost is seeded from the SAME index in the previous SESSION (fallback:
    that session's last set; no history → "—" placeholder from a null tgt). */
-function prevSessionSet(name,idx){
-  for(const w of (store.workouts||[])){          // newest-first; skip the live workout
-    for(const e of w.entries)if(e.name===name&&e.sets.length){
-      const s=e.sets[idx]||e.sets[e.sets.length-1];
-      return {tw:s.w??null,rlo:s.r??null,rhi:s.r??null};
-    }
-  }
-  return null;
+function prevSessionSet(name,idx,g){
+  if(g===undefined)g=liveGym(name);               // F91: the live workout's gym scope by default
+  const e=lastSessionEntry(name,g);if(!e)return null;   // newest-first; the live workout is never in store.workouts
+  const s=e.sets[idx]||e.sets[e.sets.length-1];
+  return {tw:s.w??null,rlo:s.r??null,rhi:s.r??null};
 }
 function addSet(ei){const e=store.active.entries[ei];
   e.sets.push({w:null,r:null,dur:null,dist:null,note:'',drop:false,tgt:prevSessionSet(e.name,e.sets.length)});save();render();}
 /* F15: on-card "+ Drop set" — adds a set already marked D, seeded from the last weight */
+/* F94 (2026-08-21 owner): "it autofilled the weight, dont do that. Add the
+   placeholder we use as usual." — the previous set's numbers become the tgt
+   GHOST (ghost-fill law), never a prefilled value. Falls back to the previous
+   SESSION's seed when the drop's base set is still empty. */
 function addDropSet(ei){const e=store.active.entries[ei];const p=e.sets[e.sets.length-1];
-  e.sets.push({w:p?p.w:null,r:null,dur:null,dist:null,note:'',drop:true});save();render();}
+  e.sets.push({w:null,r:null,dur:null,dist:null,note:'',drop:true,
+    tgt:p&&(p.w!=null||p.r!=null)?{tw:p.w,rlo:p.r,rhi:null}:prevSessionSet(e.name,e.sets.length)});save();render();}
 function removeSet(ei,si){finalizeUndo();const obj=store.active.entries[ei].sets.splice(si,1)[0];
   _undo={type:'set',ei,si,obj,timer:setTimeout(finalizeUndo,5000)};save();render();toastUndo(T('toast.setRemoved'));}
 function copySet(ei,si){const e=store.active.entries[ei];const s=e.sets[si];
@@ -2959,6 +3210,13 @@ function toggleDrop(ei,si){const s=store.active.entries[ei].sets[si];s.drop=!s.d
 /* F26 (2026-07-06): warmup flag — mutually exclusive with drop on the circle
    (a warmup isn't a drop). Default OFF-in-stats via the settings toggle. */
 function toggleWarmup(ei,si){const s=store.active.entries[ei].sets[si];s.warmup=!s.warmup;if(s.warmup)s.drop=false;save();render();}
+/* F96 (2026-08-21): focus a set's kg/reps input after a render — the visible
+   response when ✓ can't complete a set (the old path silently returned, which
+   read as "the last set doesn't fill out" on new exercises and drop sets). */
+function focusSetInput(ei,si,f){
+  const el=document.querySelector('input[data-ei="'+ei+'"][data-si="'+si+'"][data-f="'+f+'"]');
+  if(el)el.focus();
+}
 function toggleDone(ei,si){
   const a=store.active;if(!a)return;
   const s=a.entries[ei].sets[si];
@@ -2966,7 +3224,11 @@ function toggleDone(ei,si){
     if(s.w==null&&s.r==null){
       if(s.tgt&&(s.tgt.tw!=null||s.tgt.rlo!=null)){
         s.w=s.tgt.tw;s.r=s.tgt.rlo;
-      }else return;
+        /* F96: a weight-only ghost (drop set seeded from a reps-less base) fills
+           the kg but can't invent reps — hand the user the reps box instead of
+           committing a done set with empty reps. */
+        if(s.r==null){save();render();focusSetInput(ei,si,'r');return;}
+      }else{focusSetInput(ei,si,'w');return;}   /* F96: no ghost → point at the kg box, never a silent no-op */
     }
     s.done=true;
     /* F89: auto-start uses this exercise's effective rest, and SKIPS entirely when
@@ -3193,8 +3455,17 @@ function exMenu(ei){
        data; picking one runs the F84 replace path (keeps sets, re-seeds ghosts). */
     (meta.vid&&CAT_BY_ID[meta.vid]?'<button onclick="openSubstitute('+ei+')">'+ico('refresh')+T('xm.substitute')+'</button>':'')+
     (a.entries.length>1?'<button onclick="openReorder()">'+ico('sort')+T('ro.title')+'</button>':'')+
+    /* F95 (2026-08-21 owner): "no way to bring the barbell option back up if you
+       disable it during an exercise" — the bar was the only door to its own sheet.
+       Barbell exercises keep a menu row to the plate sheet, on OR off. */
+    (isBarbell(e.name)?'<button onclick="plateFromMenu('+ei+')">'+ico('plate')+T('plate.title')+'</button>':'')+
     '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+T('xm.remove')+'</button>'+
     '</div>');
+}
+/* F95: open the plate sheet for an entry's resting set (same set the bar shows) */
+function plateFromMenu(ei){
+  const a=store.active;if(!a||!a.entries[ei])return;
+  openPlateSheet(ei,activePlateSet(a.entries[ei],null));
 }
 function toggleExInfo(btn){
   const box=btn.closest('.sheet').querySelector('.exinfo');if(!box)return;
@@ -3414,12 +3685,12 @@ function discardWorkout(){
 }
 function finishWorkout(){
   const a=store.active;
-  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,done,...s})=>s)})).filter(e=>e.sets.length);
+  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,tpl,done,...s})=>s)})).filter(e=>e.sets.length);
   if(!entries.length){toast(T('fin.logFirst'));return;}
   if(a.editing){
     const idx=store.workouts.findIndex(x=>x.id===a.editing);
     const orig=idx>=0?store.workouts[idx]:null;   // preserve the workout's origin (imported vs native)
-    const w={id:a.editing,start:a.start,end:a.end||a.start,routine:a.routine.trim(),bw:a.bw||null,entries};
+    const w={id:a.editing,start:a.start,end:a.end||a.start,routine:a.routine.trim(),bw:a.bw||null,...(a.gym?{gym:a.gym}:{}),entries};
     if(orig&&orig.imported)w.imported=true; if(orig&&orig.native)w.native=true;
     for(const e of entries)ensureEx(e.name);
     if(idx>=0)store.workouts[idx]=w;else store.workouts.unshift(w);
@@ -3430,12 +3701,12 @@ function finishWorkout(){
   // PR check against history before saving
   const prs=[];
   for(const e of entries){
-    const before=prFor(e.name,true).bestE1;   // F24: compare against HISTORY only, not the workout being finished
+    const before=prFor(e.name,true,a.gym&&gymTracked(e.name)?a.gym:null).bestE1;   // F24: HISTORY only; F91: within this gym
     let best=null;for(const s of e.sets){if(!statSet(s))continue;const v=epley(s.w,s.r);if(v!=null&&(best==null||v>best))best=v;}
     if(best!=null&&best>0&&(before==null||best>before))prs.push({name:e.name,e1:best});
     ensureEx(e.name);
   }
-  const w={id:newWid(),start:a.start,end:nowStr(),routine:a.routine.trim(),bw:a.bw||null,native:true,entries};   // native = a RepCount-free Sett workout
+  const w={id:newWid(),start:a.start,end:nowStr(),routine:a.routine.trim(),bw:a.bw||null,native:true,...(a.gym?{gym:a.gym}:{}),entries};   // native = a RepCount-free Sett workout
   store.workouts.unshift(w);store.workouts.sort((x,y)=>x.start<y.start?1:-1);
   store.active=null;diagCount('workoutFinished');save();clearInterval(tick);
   const vol=entries.reduce((t,e)=>t+e.sets.reduce((x,s)=>x+(statSet(s)?setVol(s):0),0),0);   // F26
@@ -3541,7 +3812,7 @@ function openWorkout(id){
 function editWorkout(id){
   if(store.active&&!store.active.editing){toast(T('start.finishFirst'));return;}
   const w=store.workouts.find(x=>x.id===id);if(!w)return;
-  store.active={start:w.start,end:w.end,routine:w.routine,bw:w.bw,editing:id,
+  store.active={start:w.start,end:w.end,routine:w.routine,bw:w.bw,editing:id,...(w.gym?{gym:w.gym}:{}),
     entries:w.entries.map(e=>({name:e.name,ss:e.ss,note:e.note||'',
       sets:e.sets.map(s=>({...s}))}))};
   save();closeModal();state.view='log';render();
@@ -3666,11 +3937,15 @@ function rankCardHtml(rk){
 }
 function openExercise(name,replace){
   const m=store.ex[name];if(!m)return;
-  const pr=prFor(name);const rk=showRanks()?rankFor(name):null;
-  const sessions=exSessions(name);
+  const g=scopeGym(exGymScope(name));             // F91 G6: stats/trend/sessions follow the gym chips
+  const pr=prFor(name,false,g);const rk=showRanks()?rankFor(name):null;
+  const sessions=exSessions(name,g);
   const cat=m.vid?CAT_BY_ID[m.vid]:null;
   const cats2=Array.isArray(m.cats2)?m.cats2:[];
-  let h='<h2>'+esc(name)+'</h2><div class="row" style="margin:8px 0 4px">'+catChip(m.cat)+
+  /* F92: Rename sits in the sheet header (G7, as sketched) */
+  let h='<div class="row" style="align-items:flex-start"><h2 class="grow" style="word-break:break-word">'+esc(name)+'</h2>'+
+    '<button class="pillbtn" style="flex:none;margin-top:2px" data-n="'+esc(name)+'" onclick="renameExercise(this.dataset.n)">'+ico('edit')+T('xs.rename')+'</button></div>'+
+    '<div class="row" style="margin:8px 0 4px">'+catChip(m.cat)+
     cats2.map(g=>catChip(g)).join('')+                              /* F57: secondary group chips */
     (m.custom?'<span class="chip">'+T('xs.custom')+'</span>':'')+'</div>';
   if(cat){
@@ -3689,7 +3964,8 @@ function openExercise(name,replace){
     if(rk.locked==='bw')h+='<div class="banner">'+T('xs.bwUnlock')+'</div>';
     else if(rk.locked!=='data')h+=rankCardHtml(rk);
   }
-  h+='<div class="statgrid" style="margin:12px 0">'+
+  h+=gymChipsHtml(name,'openExercise')+
+    '<div class="statgrid" style="margin:12px 0">'+
     '<div class="stat"><div class="v">'+(pr.maxW!=null?fmtW(pr.maxW):'—')+'</div><div class="l">'+T('xs.bestKg')+(pr.maxWr?' ×'+pr.maxWr:'')+'</div></div>'+
     '<div class="stat"><div class="v">'+(pr.bestE1!=null?fmtW(pr.bestE1):'—')+'</div><div class="l">'+T('xs.bestE1')+'</div></div>'+
     '<div class="stat"><div class="v">'+pr.total+'</div><div class="l">'+T('xs.setsTotal')+'</div></div></div>';
@@ -3707,6 +3983,7 @@ function openExercise(name,replace){
      <select> add control over a chip-picker — it stays a single 375px-safe line
      and reuses the native picker the rest of the app uses. Both edits mutate the
      store live and re-render the sheet in place (replace, no stack churn). */
+  h+=gymTrackCardHtml(name);                     // F91 G7: Track per gym — Auto / Always / Never
   const avail=CATS.filter(g=>g!==m.cat&&!cats2.includes(g));
   h+='<div class="card"><h3>'+T('xs.notes')+'</h3>'+
     '<textarea class="howto" id="howto" placeholder="'+T('xs.notesPh')+'">'+esc(m.howto)+'</textarea>'+
@@ -3734,6 +4011,53 @@ function openExercise(name,replace){
   if(cat)startVisual(m.vid);
 }
 function unlinkVisual(name){store.ex[name].vid=null;save();openExercise(name,1);}
+/* F91 G7: the per-exercise override. Auto resolves by the linked visual's
+   equipment (machine/cable → on); the Auto label says which way it went. */
+function gymTrackCardHtml(name){
+  const m=store.ex[name];if(!m)return '';
+  const mode=m.gymTrack==='on'?'on':m.gymTrack==='off'?'off':'auto';
+  const autoOn=(()=>{const c=m.vid&&CAT_BY_ID[m.vid];return !!c&&(c.q==='machine'||c.q==='cable');})();
+  const c=m.vid&&CAT_BY_ID[m.vid];
+  const sub=mode==='on'?T('gym.alwaysSub'):mode==='off'?T('gym.neverSub'):autoOn?T('gym.autoOnSub',esc(c.q)):T('gym.autoOffSub');
+  const b=(k,label)=>'<button class="'+(mode===k?'on':'')+'" data-n="'+esc(name)+'" onclick="setGymTrack(this.dataset.n,\''+k+'\')">'+label+'</button>';
+  return '<div class="card"><h3>'+T('gym.track')+'</h3>'+
+    '<div class="seg" style="margin:8px 0 6px">'+b('auto',T('gym.auto')+' · '+(autoOn?T('set.on'):T('set.off')))+b('on',T('gym.always'))+b('off',T('gym.never'))+'</div>'+
+    '<p class="tiny muted" style="margin:0">'+sub+'</p></div>';
+}
+function setGymTrack(name,mode){
+  const m=store.ex[name];if(!m)return;
+  if(mode==='on'||mode==='off')m.gymTrack=mode;else delete m.gymTrack;
+  exGymSel.name=null;save();openExercise(name,1);
+}
+/* F92 (R28, owner: "i can't rename already made exercises"): rename moves the
+   library entry and EVERY reference — workouts, routines, the live workout — in
+   one pass. Refuses an existing name (merging is not renaming). Pure on the
+   store (exported for the tests); the UI below wraps it. */
+function renameExerciseData(oldN,newN){
+  newN=(newN||'').trim();
+  if(!newN||!store.ex[oldN]||oldN===newN||store.ex[newN])return false;
+  store.ex[newN]=store.ex[oldN];delete store.ex[oldN];
+  const fix=list=>{for(const e of (list||[]))if(e&&e.name===oldN)e.name=newN;};
+  for(const w of (store.workouts||[]))fix(w.entries);
+  for(const r of (store.routines||[]))fix(r.exercises);
+  if(store.active)fix(store.active.entries);
+  if(exGymSel.name===oldN)exGymSel.name=newN;
+  return true;
+}
+function renameExercise(name){
+  const ranked=!!STD()[name];
+  openModal('<h2>'+T('rn.title')+'</h2>'+
+    '<input id="rnname" style="width:100%;margin:12px 0" value="'+esc(name)+'">'+
+    (ranked?'<p class="tiny muted" style="margin:0 2px 12px">'+T('rn.rankWarn',esc(name))+'</p>':'')+
+    '<button class="btn primary wide" data-n="'+esc(name)+'" onclick="doRenameExercise(this.dataset.n)">'+T('rn.save')+'</button>');
+  const i=$('rnname');i.focus();i.select();
+}
+function doRenameExercise(oldN){
+  const newN=($('rnname').value||'').trim();if(!newN||newN===oldN){closeModal();return;}
+  if(store.ex[newN]){toast(T('rn.exists'));return;}
+  if(!renameExerciseData(oldN,newN))return;
+  save();closeModal();toast(T('rn.done',newN));openExercise(newN,1);render();
+}
 /* visual picker: link any catalog visual to any exercise (incl. custom ones) */
 function openVisualPicker(name){
   _vpChunks=1;   // F73: reset the chunk window on a fresh open
@@ -4099,9 +4423,11 @@ function barChart(bars,fmtV){
 function dateBadge(s){const d=toDate(s);
   return '<div class="datebadge"><div class="dow">'+dayName(d.getDay())+'</div><div class="d">'+d.getDate()+'</div></div>';}
 /* full session history for one exercise */
-function openExHistory(name){
-  const sessions=exSessions(name);
-  let h='<h2>'+T('act.history')+'</h2><p class="tiny muted">'+esc(name)+' · '+nPlur('u.session',sessions.length)+'</p>';
+function openExHistory(name,replace){
+  const sc=exGymScope(name);                      // F91 G6
+  const sessions=exSessions(name,scopeGym(sc));
+  let h='<h2>'+T('act.history')+'</h2><p class="tiny muted">'+esc(name)+' · '+nPlur('u.session',sessions.length)+'</p>'+
+    gymChipsHtml(name,'openExHistory');
   if(!sessions.length)h+='<p class="muted small">'+T('xh.never')+'</p>';
   let curMonth='';
   for(const s of sessions){
@@ -4110,10 +4436,10 @@ function openExHistory(name){
       h+='<h3 style="font-size:13px;color:var(--muted);margin:14px 4px 2px">'+fmtMonth(s.date)+'</h3>';}
     h+='<div class="listrow" style="cursor:default">'+dateBadge(s.date)+
       '<div class="grow"><div class="small" style="font-weight:600">'+s.sets.map(x=>fmtW(x.w)+'×'+(x.r??(x.dur!=null?x.dur+'s':'—'))).join(', ')+'</div>'+
-      '<div class="tiny muted">'+T('u.kgVol',fmtNum(s.vol))+'</div></div>'+
+      '<div class="tiny muted">'+T('u.kgVol',fmtNum(s.vol))+(sc&&s.gym&&gymName(s.gym)?' · '+esc(gymName(s.gym)):'')+'</div></div>'+
       (s.best?'<span class="tiny muted">e1RM '+fmtW(s.best)+'</span>':'')+'</div>';
   }
-  openModal(h);
+  openModal(h,{replace:!!replace});
 }
 /* charts: metric + time range */
 const exChart={metric:'e1',range:'all'};
@@ -4123,10 +4449,12 @@ const CHART_METRICS={e1:'ch.e1',vol:'ch.vol',maxw:'ch.maxw',reps:'ch.reps'};
 const CHART_RANGES={'3m':'3M','6m':'6M','1y':'1Y',all:'ch.rangeAll'};
 function openExCharts(name,replace){
   const cutoff={'3m':90,'6m':182,'1y':365}[exChart.range];
-  let sessions=exSessions(name).slice().reverse();
+  const sc=exGymScope(name);                      // F91 G6
+  let sessions=exSessions(name,scopeGym(sc)).slice().reverse();
   if(cutoff)sessions=sessions.filter(s=>toDate(s.date)>Date.now()-cutoff*86400000);
+  const metricOf=s=>({e1:s.best,vol:s.vol,maxw:Math.max(0,...s.sets.map(x=>x.w||0)),reps:s.sets.reduce((a,x)=>a+(x.r||0),0)}[exChart.metric]);
   const pts=sessions.map(s=>({t:toDate(s.date).getDate()+' '+monthName(toDate(s.date).getMonth()).slice(0,3)+' '+String(toDate(s.date).getFullYear()).slice(2),
-    y:{e1:s.best,vol:s.vol,maxw:Math.max(0,...s.sets.map(x=>x.w||0)),reps:s.sets.reduce((a,x)=>a+(x.r||0),0)}[exChart.metric]}))
+    y:metricOf(s)}))
     .filter(p=>p.y!=null&&p.y>0);
   /* R23: metric labels are string keys → T(); range keys 3M/6M/1Y are neutral,
      "All" translates → T() (T() returns the literal itself when not a key). */
@@ -4135,14 +4463,48 @@ function openExCharts(name,replace){
       '<button class="'+(exChart.metric===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.metric=\''+k+'\';openExCharts(this.dataset.n,1)">'+T(v)+'</button>').join('')+'</div>'+
     '<div class="seg">'+Object.entries(CHART_RANGES).map(([k,v])=>
       '<button class="'+(exChart.range===k?'on':'')+'" data-n="'+esc(name)+'" onclick="exChart.range=\''+k+'\';openExCharts(this.dataset.n,1)">'+T(v)+'</button>').join('')+'</div>'+
-    '<div class="card">'+lineChart(pts,v=>fmtW(v))+'</div>'+
+    gymChipsHtml(name,'openExCharts')+
+    /* G6 "All gyms": every gym's progress at once — one line per gym on a time axis */
+    '<div class="card">'+(sc==='all'?gymSeriesChart(sessions,metricOf,v=>fmtW(v)):lineChart(pts,v=>fmtW(v)))+'</div>'+
     '<p class="tiny muted">'+T('ch.foot',exChart.metric==='e1'?T('ch.footE1'):'')+'</p>';
   openModal(h,{replace:!!replace});   /* F55: segment re-renders replace in place; fresh open pushes */
 }
+/* F91 G6: one line per gym (plus "No gym" for untagged sessions, faint) on a
+   shared TIME axis, so gyms trained in different months line up honestly.
+   Colors: accent first, then the superset palette. */
+const GYM_COLORS=['var(--accent)','#4cc2ff','#ffd166','#c792ea','#ff7a3c','#7ee081'];
+function gymSeriesChart(sessions,metricOf,fmtY){
+  const order=[];const by={};
+  for(const s of sessions.slice().reverse()){const k=s.gym&&gymName(s.gym)?s.gym:'';   // newest first → series order by recency
+    if(!(k in by)){by[k]=[];order.push(k);}}
+  for(const s of sessions){const k=s.gym&&gymName(s.gym)?s.gym:'';const y=metricOf(s);if(y!=null&&y>0)by[k].push({ms:toDate(s.date).getTime(),y});}
+  const keys=order.filter(k=>by[k].length);
+  if(!keys.length)return '<p class="muted small">'+T('ch.noData')+'</p>';
+  const all=keys.flatMap(k=>by[k]);
+  const W=560,H=190,L=56,R=12,Tp=14,B=28;
+  let min=Math.min(...all.map(p=>p.y)),max=Math.max(...all.map(p=>p.y));if(min===max){min-=1;max+=1;}
+  let t0=Math.min(...all.map(p=>p.ms)),t1=Math.max(...all.map(p=>p.ms));if(t0===t1){t0-=86400000;t1+=86400000;}
+  const nx=ms=>L+(W-L-R)*(ms-t0)/(t1-t0), ny=v=>Tp+(H-Tp-B)*(1-(v-min)/(max-min));
+  let s='<svg class="bigchart" viewBox="0 0 '+W+' '+H+'">';
+  for(const v of [min,(min+max)/2,max])
+    s+='<line x1="'+L+'" y1="'+ny(v)+'" x2="'+(W-R)+'" y2="'+ny(v)+'" stroke="var(--line)" stroke-width="1"/>'+
+       '<text x="'+(L-8)+'" y="'+(ny(v)+4)+'" font-size="11" fill="var(--muted)" text-anchor="end">'+fmtY(v)+'</text>';
+  let ci=0;const col={};for(const k of keys)col[k]=k?GYM_COLORS[ci++%GYM_COLORS.length]:'var(--faint)';
+  for(const k of keys.slice().reverse()){                 // draw oldest-used first so the current gym sits on top
+    const p=by[k];
+    s+='<path d="'+p.map((q,i)=>(i?'L':'M')+nx(q.ms).toFixed(1)+' '+ny(q.y).toFixed(1)).join(' ')+'" fill="none" stroke="'+col[k]+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+    if(p.length<=30)p.forEach(q=>{s+='<circle cx="'+nx(q.ms).toFixed(1)+'" cy="'+ny(q.y).toFixed(1)+'" r="3" fill="'+col[k]+'"/>';});
+    else s+='<circle cx="'+nx(p[p.length-1].ms).toFixed(1)+'" cy="'+ny(p[p.length-1].y).toFixed(1)+'" r="4" fill="'+col[k]+'"/>';
+  }
+  const lab=ms=>{const d=new Date(ms);return d.getDate()+' '+monthName(d.getMonth()).slice(0,3)+' '+String(d.getFullYear()).slice(2);};
+  s+='<text x="'+L+'" y="'+(H-8)+'" font-size="11" fill="var(--faint)">'+esc(lab(t0))+'</text>'+
+     '<text x="'+(W-R)+'" y="'+(H-8)+'" font-size="11" fill="var(--faint)" text-anchor="end">'+esc(lab(t1))+'</text></svg>';
+  return s+'<div class="gymlegend">'+keys.map(k=>'<span><i style="background:'+col[k]+'"></i>'+(k?esc(gymName(k)):T('gym.none'))+'</span>').join('')+'</div>';
+}
 /* personal records incl. rep-max frontier */
-function repRecords(name){
+function repRecords(name,g){
   const best={};
-  for(const {s,date} of allSetsOf(name))
+  for(const {s,date} of allSetsOf(name,false,g))
     if(s.w!=null&&s.w>0&&s.r&&s.r<=20&&(!best[s.r]||s.w>best[s.r].w))best[s.r]={w:s.w,date};
   const rs=Object.keys(best).map(Number).sort((a,b)=>b-a);
   const out=[];let maxW=-1;
@@ -4152,14 +4514,15 @@ function repRecords(name){
 /* F6 (2026-07-06): the tile-grid layout was a RepCount carbon copy — owner
    asked for Sett's own design, same elements. Design A: hero est. 1RM, rep
    ladder as proportional accent bars, dated best-single-workout list. */
-function openExPRs(name){
-  const rr=repRecords(name);
-  const sessions=exSessions(name);
+function openExPRs(name,replace){
+  const g=scopeGym(exGymScope(name));             // F91 G6: records within the chosen gym (+ untagged)
+  const rr=repRecords(name,g);
+  const sessions=exSessions(name,g);
   const bestBy=(fn)=>{let b=null;for(const s of sessions){const v=fn(s);if(v!=null&&(!b||v>b.v))b={v,date:s.date};}return b;};
   const volR=bestBy(s=>s.vol||null), e1R=bestBy(s=>s.best), repsR=bestBy(s=>s.sets.reduce((a,x)=>a+(x.r||0),0)||null),
         setsR=bestBy(s=>s.sets.length), maxwR=bestBy(s=>Math.max(0,...s.sets.map(x=>x.w||0))||null),
         maxrR=bestBy(s=>Math.max(0,...s.sets.map(x=>x.r||0))||null);
-  let h='<h2>'+T('act.prs')+'</h2><p class="tiny muted">'+esc(name)+'</p>';
+  let h='<h2>'+T('act.prs')+'</h2><p class="tiny muted">'+esc(name)+'</p>'+gymChipsHtml(name,'openExPRs');
   if(!sessions.length)h+='<p class="muted small">'+T('xh.never')+'</p>';
   if(e1R)h+='<div class="card" style="text-align:center">'+
     '<div class="tiny prlabel">'+T('pr.bestE1')+'</div>'+
@@ -4185,7 +4548,7 @@ function openExPRs(name){
     });
     h+='</div>';
   }
-  openModal(h);
+  openModal(h,{replace:!!replace});
 }
 function sparkSvg(pts,cls){
   const w=560,h=56,min=Math.min(...pts),max=Math.max(...pts),pad=4;
@@ -5038,6 +5401,15 @@ function renderSettings(){
     '<p class="small muted" style="margin:8px 0 0">'+T('set.weeklyGoalSub')+'</p></div>';
   const workoutSum=T('set.workoutSum',Math.floor(restT/60)+':'+pad2(restT%60),ranksOn?T('set.on'):T('set.off'),warmOn?T('set.on'):T('set.off'));
   h+=accSection('workout','dumbbell',T('set.workout'),workoutSum,ranksBody+restBody+warmBody+plateBody+goalBody);
+
+  // ---- Gyms (F91 G7, as sketched): tap a gym to rename/delete; + Add gym ----
+  const gs=gyms();
+  const gymsBody='<div class="card">'+gs.map(g=>{const n=gymWorkoutCount(g.id);
+      return '<div class="listrow" data-g="'+esc(g.id)+'" onclick="editGym(this.dataset.g)">'+ico('pin')+
+        '<span class="grow" style="font-weight:600">'+esc(g.name)+'</span><span class="tiny muted">'+nPlur('u.workout',n)+'</span></div>';}).join('')+
+    '<button class="btn wide" style="margin-top:8px" onclick="addGymPrompt(\'settings\')">'+T('gym.add')+'</button>'+
+    '<p class="small muted" style="margin:10px 0 0">'+T('set.gymsSub')+'</p></div>';
+  h+=accSection('gyms','pin',T('set.gyms'),T('set.gymsSum',gs.length),gymsBody);
 
   // ---- Your data ----
   let dataBody='<p class="small muted" style="margin:0 0 12px">'+T('set.dataIntro')+'</p>'+
@@ -5956,7 +6328,8 @@ function wireInputs(){
       const e=store.active.entries[+el.dataset.ei];
       if(el.dataset.f==='note'){e.note=el.value;}
       else{const s=e.sets[+el.dataset.si];
-        s[el.dataset.f]=el.value===''?null:(el.dataset.f==='r'?parseInt(el.value,10):numv(el.value));}
+        /* F93: reps through numv like kg — fractional reps (7,5) are legal now */
+        s[el.dataset.f]=el.value===''?null:numv(el.value);}
       save();
       /* F25/F36/F37/F38: live cues under this exercise card, no full re-render */
       updateLiveCues(+el.dataset.ei);
@@ -6228,10 +6601,10 @@ function autoStopStale(){
   if(!a||a.editing)return false;
   const t=a.touch||toDate(a.start).getTime();
   if(Date.now()-t<AUTOSTOP_MS)return false;
-  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,done,...s})=>s)})).filter(e=>e.sets.length);
+  const entries=a.entries.map(e=>({...e,sets:e.sets.filter(s=>s.w!=null||s.r!=null||s.dur!=null||s.dist!=null).map(({tgt,tpl,done,...s})=>s)})).filter(e=>e.sets.length);
   if(!entries.length){store.active=null;save();toast(T('toast.autoDiscard'));return true;}
   for(const e of entries)ensureEx(e.name);
-  const w={id:newWid(),start:a.start,end:nowStr(new Date(t)),routine:(a.routine||'').trim(),bw:a.bw||null,entries};
+  const w={id:newWid(),start:a.start,end:nowStr(new Date(t)),routine:(a.routine||'').trim(),bw:a.bw||null,...(a.gym?{gym:a.gym}:{}),entries};   // F91: keeps the gym
   store.workouts.unshift(w);store.workouts.sort((x,y)=>x.start<y.start?1:-1);
   store.active=null;save();
   toast(T('toast.autoStop',fmtClock(w.end)));
