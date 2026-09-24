@@ -689,6 +689,16 @@
   .gymbtn.on{background:var(--accent-soft); border-color:var(--accent); color:var(--accent);}
   .gymbtn.none{color:var(--muted);}
   .gymat{color:var(--accent);}
+  /* F99 (2026-09-24 owner: "a little theme based colored tag that shows it in the
+     log section"): the workout's gym as an accent pill beside its name in the Log
+     list and on the workout sheet. Accent = the theme's own color. */
+  .gymtag{display:inline-flex; align-items:center; gap:3px; flex:none; max-width:100%; padding:2px 8px 2px 6px;
+    border-radius:99px; background:var(--accent-soft); color:var(--accent); font-size:11px; font-weight:700; line-height:1.3;}
+  .gymtag .ico{width:11px; height:11px; flex:none;}
+  .gymtag span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* the name keeps priority: it wraps as before, and the pill drops to its own line when it doesn't fit */
+  .wktitle{display:flex; flex-wrap:wrap; align-items:center; gap:3px 7px; min-width:0;}
+  .wktitle .nm{font-weight:700; overflow-wrap:anywhere; min-width:0;}
   .gymchips{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px;}
   .gymchips button{padding:5px 11px; border-radius:99px; background:var(--card2); border:1px solid var(--line);
     color:var(--muted); font-size:12px; font-weight:700;}
@@ -2616,6 +2626,8 @@ function renderLog(){
   h+='<p class="tiny muted" style="margin:2px 4px 0">'+weekSummary()+'</p>';
   return h+historyList();
 }
+/* F99: the gym pill for a saved workout ('' when untagged or the gym was deleted) */
+function gymTagHtml(w){const n=w&&w.gym?gymName(w.gym):'';return n?'<span class="gymtag">'+ico('pin')+'<span>'+esc(n)+'</span></span>':'';}
 function historyList(){
   const perMonth={};
   for(const w of store.workouts)perMonth[monthKey(w.start)]=(perMonth[monthKey(w.start)]||0)+1;
@@ -2630,7 +2642,7 @@ function historyList(){
     h+='<div class="swipe" data-swipe="wk">'+
       '<button class="swipe-act del" aria-label="'+T('dw.deleteBtn')+'" title="'+T('ws.delete')+'" data-id="'+esc(w.id)+'" onclick="swipeDeleteWorkout(this.dataset.id)">'+ico('trash')+'</button>'+
       '<div class="swipe-fg listrow" onclick="openWorkout(\''+esc(w.id)+'\')">'+dateBadge(w.start)+
-      '<div class="grow"><div style="font-weight:700">'+esc(w.routine||T('log.workout'))+'</div>'+
+      '<div class="grow" style="min-width:0"><div class="wktitle"><span class="nm">'+esc(w.routine||T('log.workout'))+'</span>'+gymTagHtml(w)+'</div>'+
       '<div class="tiny muted">'+nPlur('u.exercise',w.entries.length)+' · '+nPlur('u.set',nsets)+' · '+fmtDur(w.start,w.end)+'</div></div>'+
       '<div class="right small"><div style="font-weight:700">'+fmtNum(vol)+' kg</div></div></div></div>';
   }
@@ -3779,7 +3791,7 @@ function openWorkout(id){
   const w=store.workouts.find(x=>x.id===id);if(!w)return;
   const ssColors=['#ff7a3c','#4cc2ff','#7ee081','#ffd166','#c792ea'];
   const times=fmtClockRange(w.start,w.end);const dur=fmtDur(w.start,w.end);
-  let h='<h2>'+esc(w.routine||T('home.workout'))+'</h2>'+
+  let h='<div class="row" style="align-items:center;gap:8px"><h2 style="word-break:break-word;min-width:0">'+esc(w.routine||T('home.workout'))+'</h2>'+gymTagHtml(w)+'</div>'+   /* F99 */
     '<p class="muted small">'+fmtDay(w.start)+(times?' · '+times:'')+(dur?' · '+dur:'')+(w.bw?' · BW '+fmtW(w.bw)+' kg':'')+'</p>';
   for(const e of w.entries){
     h+='<div class="card" style="padding:12px 14px"><div class="row"><b class="grow">'+esc(e.name)+'</b>'+
