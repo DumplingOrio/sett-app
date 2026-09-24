@@ -1708,7 +1708,6 @@ function statWorkouts(){
    gym's workouts PLUS untagged ones (G2 shared baseline); other gyms never count.
    Ghosts/"last" prefer the gym's own sessions and fall back to untagged ones.
    settings.gyms=[{id,name}] — ids never change, so renaming a gym rewrites nothing. */
-const SEED_GYMS=['Bjergsted','Forus','Sola','Åsen','Paradis'];
 const newGid=()=>'g'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function gyms(){const g=store&&store.settings&&store.settings.gyms;return Array.isArray(g)?g:[];}
 function gymName(id){const g=gyms().find(x=>x.id===id);return g?g.name:'';}
@@ -1778,11 +1777,10 @@ function normalizeStore(){
        renderLog/renderStats then throw. Coerce like S4 did for top-level fields. */
     fixEntries(w);
     if(w.gym!=null&&typeof w.gym!=='string'){delete w.gym;changed=true;}}   // F91: a gym tag is an id string or absent
-  /* F91: the owner's five gyms seed a store that has never had a gym list.
-     Deterministic ids ('g-forus', 'g-asen'…) so a migrated backup can tag
-     workouts before the app ever runs. An EMPTY list stays empty (user deleted all). */
-  if(!Array.isArray(store.settings.gyms))
-    store.settings.gyms=SEED_GYMS.map(n=>({id:'g-'+n.toLowerCase().normalize('NFD').replace(/[^a-z]/g,''),name:n}));
+  /* F91: a store starts with NO gyms — the user adds their own (Settings → Gyms,
+     or "+ Add gym" in the picker); a restored backup carries its list. No gym
+     names ship in code: the deploy repo is public (owner call, 2026-09-24). */
+  if(!Array.isArray(store.settings.gyms))store.settings.gyms=[];
   /* R22 (audit 2026-07-08 A): same bar for routines — a restored backup whose
      routine lacks .exercises (or whose routine exercise lacks .sets) threw in
      renderRoutines and confirmStartInfo, bricking the Routines tab and Home's
@@ -2998,7 +2996,7 @@ function topSetText(e){
   return top&&top.w!=null?fmtW(top.w)+' kg × '+(top.r||'—'):'';
 }
 /* G5 (owner pick A): a gym-tracked card says where it is in the subtitle —
-   "Back · at Forus · last: 59 kg × 8". No history at this gym (and no untagged
+   "Back · at <gym> · last: 59 kg × 8". No history at this gym (and no untagged
    baseline) → "first time here" and, when it was done at another gym, a second
    muted line naming that gym's last top set. Free-weight cards are unchanged. */
 function lastTimeHint(name){
