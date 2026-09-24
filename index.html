@@ -696,9 +696,11 @@
     border-radius:99px; background:var(--accent-soft); color:var(--accent); font-size:11px; font-weight:700; line-height:1.3;}
   .gymtag .ico{width:11px; height:11px; flex:none;}
   .gymtag span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  /* the name keeps priority: it wraps as before, and the pill drops to its own line when it doesn't fit */
-  .wktitle{display:flex; flex-wrap:wrap; align-items:center; gap:3px 7px; min-width:0;}
-  .wktitle .nm{font-weight:700; overflow-wrap:anywhere; min-width:0;}
+  /* F99b (owner, on -b3: "it has to be consistent throughout instead of changing
+     whenever the name of the workout is different"): the pill ALWAYS sits on its
+     own line directly under the name — same spot on every row, any name length. */
+  .wktitle .nm{display:block; font-weight:700; overflow-wrap:anywhere;}
+  .wktitle .gymtag{margin:3px 0 1px;}
   .gymchips{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px;}
   .gymchips button{padding:5px 11px; border-radius:99px; background:var(--card2); border:1px solid var(--line);
     color:var(--muted); font-size:12px; font-weight:700;}
@@ -2642,7 +2644,7 @@ function historyList(){
     h+='<div class="swipe" data-swipe="wk">'+
       '<button class="swipe-act del" aria-label="'+T('dw.deleteBtn')+'" title="'+T('ws.delete')+'" data-id="'+esc(w.id)+'" onclick="swipeDeleteWorkout(this.dataset.id)">'+ico('trash')+'</button>'+
       '<div class="swipe-fg listrow" onclick="openWorkout(\''+esc(w.id)+'\')">'+dateBadge(w.start)+
-      '<div class="grow" style="min-width:0"><div class="wktitle"><span class="nm">'+esc(w.routine||T('log.workout'))+'</span>'+gymTagHtml(w)+'</div>'+
+      '<div class="grow" style="min-width:0"><div class="wktitle"><span class="nm">'+esc(w.routine||T('log.workout'))+'</span>'+(gymTagHtml(w)?'<div>'+gymTagHtml(w)+'</div>':'')+'</div>'+
       '<div class="tiny muted">'+nPlur('u.exercise',w.entries.length)+' · '+nPlur('u.set',nsets)+' · '+fmtDur(w.start,w.end)+'</div></div>'+
       '<div class="right small"><div style="font-weight:700">'+fmtNum(vol)+' kg</div></div></div></div>';
   }
@@ -3791,7 +3793,8 @@ function openWorkout(id){
   const w=store.workouts.find(x=>x.id===id);if(!w)return;
   const ssColors=['#ff7a3c','#4cc2ff','#7ee081','#ffd166','#c792ea'];
   const times=fmtClockRange(w.start,w.end);const dur=fmtDur(w.start,w.end);
-  let h='<div class="row" style="align-items:center;gap:8px"><h2 style="word-break:break-word;min-width:0">'+esc(w.routine||T('home.workout'))+'</h2>'+gymTagHtml(w)+'</div>'+   /* F99 */
+  let h='<h2 style="word-break:break-word">'+esc(w.routine||T('home.workout'))+'</h2>'+
+    (gymTagHtml(w)?'<div style="margin:6px 0 2px">'+gymTagHtml(w)+'</div>':'')+   /* F99b: own line under the title, like the Log rows */
     '<p class="muted small">'+fmtDay(w.start)+(times?' · '+times:'')+(dur?' · '+dur:'')+(w.bw?' · BW '+fmtW(w.bw)+' kg':'')+'</p>';
   for(const e of w.entries){
     h+='<div class="card" style="padding:12px 14px"><div class="row"><b class="grow">'+esc(e.name)+'</b>'+
