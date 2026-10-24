@@ -1333,6 +1333,17 @@ const STRINGS={
     'gym.deleteMsg':'Its {0} stay in your log, just without a gym.',
     'set.gyms':'Gyms','set.gymsSum':'{0} gyms',
     'set.gymsSub':'Tap a gym to rename or delete it. Deleting a gym keeps its workouts; they just lose the tag.',
+    'set.feedback':'Feedback','fb.sum':'Report a bug or idea','fb.sumUnsent':'{0} unsent',
+    'fb.bug':'Bug','fb.idea':'Idea','fb.ph':'What happened, or what would you like?',
+    'fb.save':'Save note','fb.saved':'Note saved','fb.savedLater':'Saved — send it from Settings → Feedback',
+    'fb.intro':'Notes stay on this phone until you send them.',
+    'fb.to':'Send to','fb.toPh':'your@email.com','fb.send':'Send unsent notes by email ({0})',
+    'fb.sendSub':'Opens your mail app with every unsent note. Nothing leaves your phone until you press send there. Add screenshots to the email if they help.',
+    'fb.nothing':'No unsent notes','fb.needTo':'Add the email address to send to first',
+    'fb.sentMarked':'Mail opened — notes marked as sent',
+    'fb.unsentH':'Not sent yet','fb.sentH':'Sent','fb.sentOn':'sent {0}',
+    'fb.report':'Report a problem','fb.reportTitle':'Report a problem',
+    'fb.markUnsent':'Mark as unsent','fb.delete':'Delete note',
     'xs.rename':'Rename','rn.title':'Rename exercise','rn.save':'Rename',
     'rn.exists':'An exercise with that name already exists','rn.done':'Renamed to {0}',
     'rn.rankWarn':'Heads-up: "{0}" has a strength rank. The new name won\'t have one.',
@@ -1578,6 +1589,17 @@ const STRINGS={
     'gym.deleteMsg':'De {0} blir værende i loggen, bare uten gym.',
     'set.gyms':'Gym','set.gymsSum':'{0} gym',
     'set.gymsSub':'Trykk på et gym for å endre navn eller slette det. Sletter du et gym, beholdes øktene – de mister bare merket.',
+    'set.feedback':'Tilbakemelding','fb.sum':'Meld fra om feil eller ideer','fb.sumUnsent':'{0} ikke sendt',
+    'fb.bug':'Feil','fb.idea':'Idé','fb.ph':'Hva skjedde, eller hva ønsker du deg?',
+    'fb.save':'Lagre notat','fb.saved':'Notat lagret','fb.savedLater':'Lagret – send det fra Innstillinger → Tilbakemelding',
+    'fb.intro':'Notatene blir på telefonen til du sender dem.',
+    'fb.to':'Send til','fb.toPh':'din@epost.no','fb.send':'Send usendte notater på e-post ({0})',
+    'fb.sendSub':'Åpner e-postappen med alle usendte notater. Ingenting forlater telefonen før du trykker send der. Legg ved skjermbilder i e-posten hvis det hjelper.',
+    'fb.nothing':'Ingen usendte notater','fb.needTo':'Legg inn e-postadressen du vil sende til først',
+    'fb.sentMarked':'E-post åpnet – notatene er merket som sendt',
+    'fb.unsentH':'Ikke sendt ennå','fb.sentH':'Sendt','fb.sentOn':'sendt {0}',
+    'fb.report':'Meld fra om et problem','fb.reportTitle':'Meld fra om et problem',
+    'fb.markUnsent':'Merk som ikke sendt','fb.delete':'Slett notat',
     'xs.rename':'Endre navn','rn.title':'Endre navn på øvelsen','rn.save':'Endre navn',
     'rn.exists':'Det finnes allerede en øvelse med det navnet','rn.done':'Nytt navn: {0}',
     'rn.rankWarn':'Obs: «{0}» har en styrkerangering. Det nye navnet får ingen.',
@@ -1802,6 +1824,12 @@ function normalizeStore(){
      or "+ Add gym" in the picker); a restored backup carries its list. No gym
      names ship in code: the deploy repo is public (owner call, 2026-09-24). */
   if(!Array.isArray(store.settings.gyms))store.settings.gyms=[];
+  /* R29: feedback notes — keep only well-formed ones (a hand-edited backup must
+     never break the Feedback section) */
+  if(!Array.isArray(store.feedback))store.feedback=[];
+  else{const n=store.feedback.length;
+    store.feedback=store.feedback.filter(f=>f&&typeof f==='object'&&typeof f.text==='string'&&f.id);
+    if(store.feedback.length!==n)changed=true;}
   /* R22 (audit 2026-07-08 A): same bar for routines — a restored backup whose
      routine lacks .exercises (or whose routine exercise lacks .sets) threw in
      renderRoutines and confirmStartInfo, bricking the Routines tab and Home's
@@ -2351,6 +2379,8 @@ const ICO={
   refresh:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
   /* weight plate seen face-on — outer rim + centre hole (plate calculator, 2026-07-09) */
   plate:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/>',
+  /* speech bubble — the feedback inbox (R29) */
+  chat:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
 };
 function ico(name,sz){return '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"'+(sz?' style="width:'+sz+'px;height:'+sz+'px"':'')+'>'+(ICO[name]||'')+'</svg>';}
 /* F44 (2026-07-07): the badger cameo rebuilt to MATCH the app icon (icon-512.png)
@@ -3480,6 +3510,8 @@ function exMenu(ei){
        disable it during an exercise" — the bar was the only door to its own sheet.
        Barbell exercises keep a menu row to the plate sheet, on OR off. */
     (isBarbell(e.name)?'<button onclick="plateFromMenu('+ei+')">'+ico('plate')+T('plate.title')+'</button>':'')+
+    /* R29: note a problem mid-workout, stamped with this exercise + set */
+    '<button onclick="openFeedbackFromWorkout('+ei+')">'+ico('chat')+T('fb.report')+'</button>'+
     '<button class="del" onclick="removeEntry('+ei+');closeModal()">'+ico('trash')+T('xm.remove')+'</button>'+
     '</div>');
 }
@@ -5350,6 +5382,133 @@ function consistencyGridHtml(){
    footer + the hidden Diagnostics card stay OUTSIDE the accordion at page bottom,
    so the 7-tap devTap gate is unchanged. */
 function toggleSettingsSection(id){state.setSection=(state.setSection===id?null:id);render();}
+/* ============================== R29: feedback inbox ==============================
+   Bug/idea notes written in the app (Settings → Feedback, or "Report a problem" in
+   a workout exercise's ⋯ menu). They live in store.feedback, so they ride the JSON
+   backup too, and go out as ONE email the user sends from their own mail app.
+   Sett itself uploads nothing — the on-device promise stands. The address is
+   settings.feedbackTo, saved on the device and never in code (the deploy repo is
+   public). The email is plain English in a fixed shape: the session-resume
+   ritual searches Gmail for FB_TAG and reads these notes back (owner 2026-10-24). */
+const FB_TAG='[Sett feedback]';
+let fbKind='bug';
+let fbOpen=url=>{try{window.location.href=url;}catch(e){}};   // swapped by the test harness
+function fbNotes(){return Array.isArray(store.feedback)?store.feedback:[];}
+function fbUnsent(){return fbNotes().filter(n=>!n.sent);}
+function addFeedback(kind,text,where){
+  text=String(text||'').trim();if(!text)return null;
+  const n={id:'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),t:nowStr(),
+    kind:kind==='idea'?'idea':'bug',text:text.slice(0,4000),v:APP_VERSION,where:String(where||'')};
+  store.feedback=[...fbNotes(),n];save();
+  return n;
+}
+/* Where a workout note came from — exercise, the set you're on, the gym. English on
+   purpose: it's read back by the resume ritual, not shown in the app. */
+function fbWorkoutWhere(ei){
+  const a=store.active,e=a&&a.entries[ei];if(!e)return 'Workout';
+  const n=e.sets.length,done=e.sets.filter(s=>s.done).length,g=a.gym?gymName(a.gym):'';
+  return (a.editing?'Editing a past workout':'Workout')+': '+e.name+' · set '+Math.min(done+1,Math.max(n,1))+' of '+n+(g?' · at '+g:'');
+}
+function fbMail(notes){
+  const bugs=notes.filter(n=>n.kind==='bug').length,ideas=notes.length-bugs,parts=[];
+  if(bugs)parts.push(bugs+(bugs===1?' bug':' bugs'));
+  if(ideas)parts.push(ideas+(ideas===1?' idea':' ideas'));
+  const subject=FB_TAG+' '+parts.join(', ')+' — v'+APP_VERSION;
+  const L=['Sett v'+APP_VERSION+' · '+platformOS()+' · '+(isStandalone()?'installed app':'browser tab')+' · sent '+nowStr(),''];
+  for(const n of notes){
+    L.push('--- '+String(n.kind).toUpperCase()+' · '+n.t+' · v'+(n.v||'?')+(n.where?' · '+n.where:''));
+    L.push(n.text,'');
+  }
+  /* diagnostics only when a bug is in the batch: the last few error lines from
+     sett:diag (error text + source only — that log never holds workout data) */
+  if(bugs){
+    const errs=diagLoad().log.filter(e=>e.type==='error').slice(-5);
+    L.push('--- DIAGNOSTICS · last '+errs.length+' errors');
+    if(!errs.length)L.push('none recorded');
+    for(const e of errs)L.push((e.t||'')+' · v'+(e.v||'?')+' · '+String(e.msg||'').slice(0,160)+(e.src?' · '+e.src:''));
+    L.push('');
+  }
+  L.push('--- END');
+  return {subject,body:L.join('\n')};
+}
+function fbMailto(to,mail){
+  return 'mailto:'+encodeURIComponent(to).replace(/%40/g,'@')+
+    '?subject='+encodeURIComponent(mail.subject)+'&body='+encodeURIComponent(mail.body);
+}
+function setFeedbackTo(v){
+  store.settings=store.settings||{};
+  store.settings.feedbackTo=String(v||'').trim().slice(0,120);save();
+}
+/* the Bug | Idea segmented control flips in place — no re-render, so a half-typed
+   note is never wiped */
+function fbSeg(btn,k){
+  fbKind=k==='idea'?'idea':'bug';
+  for(const b of btn.parentNode.children)b.classList.toggle('on',b===btn);
+}
+function fbSegHtml(){
+  return '<div class="seg" style="margin:0 0 10px">'+['bug','idea'].map(k=>
+    '<button class="'+(fbKind===k?'on':'')+'" onclick="fbSeg(this,\''+k+'\')">'+T('fb.'+k)+'</button>').join('')+'</div>';
+}
+function saveFeedbackNote(){
+  const ta=$('fbtext');if(!ta)return;
+  if(!addFeedback(fbKind,ta.value,'Settings'))return;
+  render();toast(T('fb.saved'));
+}
+function openFeedbackFromWorkout(ei){
+  fbKind='bug';
+  openModal('<h2>'+T('fb.reportTitle')+'</h2>'+
+    '<p class="tiny muted" style="margin:2px 0 10px">'+T('fb.intro')+'</p>'+fbSegHtml()+
+    '<textarea id="fbtext" class="howto" maxlength="4000" placeholder="'+T('fb.ph')+'" style="margin-bottom:10px"></textarea>'+
+    '<button class="btn primary wide" onclick="saveFeedbackFromWorkout('+ei+')">'+T('fb.save')+'</button>');
+  const ta=$('fbtext');if(ta)ta.focus();
+}
+function saveFeedbackFromWorkout(ei){
+  const ta=$('fbtext');if(!ta)return;
+  if(!addFeedback(fbKind,ta.value,fbWorkoutWhere(ei)))return;
+  closeModal();toast(T('fb.savedLater'));
+}
+function sendFeedback(){
+  const inp=$('fbto');if(inp)setFeedbackTo(inp.value);
+  const to=(store.settings&&store.settings.feedbackTo)||'';
+  const notes=fbUnsent();
+  if(!notes.length){toast(T('fb.nothing'));return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){toast(T('fb.needTo'));if(inp)inp.focus();return;}
+  const url=fbMailto(to,fbMail(notes));
+  const at=nowStr();for(const n of notes)n.sent=at;save();
+  fbOpen(url);
+  render();toast(T('fb.sentMarked'));
+}
+function openFeedbackNote(id){
+  const n=fbNotes().find(x=>x.id===id);if(!n)return;
+  openModal('<div class="row" style="gap:8px;margin-bottom:6px"><span class="chip">'+T('fb.'+n.kind)+'</span>'+
+      '<span class="tiny muted grow">'+esc(n.t)+(n.sent?' · '+T('fb.sentOn',esc(n.sent)):'')+'</span></div>'+
+    (n.where?'<p class="tiny muted" style="margin:0 0 8px">'+esc(n.where)+'</p>':'')+
+    '<p class="small" style="white-space:pre-wrap;word-break:break-word;margin:0 0 14px">'+esc(n.text)+'</p>'+
+    (n.sent?'<button class="btn wide" style="margin-bottom:8px" data-f="'+esc(id)+'" onclick="fbMarkUnsent(this.dataset.f)">'+T('fb.markUnsent')+'</button>':'')+
+    '<button class="btn wide" style="color:var(--bad)" data-f="'+esc(id)+'" onclick="fbDelete(this.dataset.f)">'+T('fb.delete')+'</button>');
+}
+function fbMarkUnsent(id){const n=fbNotes().find(x=>x.id===id);if(!n)return;delete n.sent;save();closeModal();render();}
+function fbDelete(id){store.feedback=fbNotes().filter(x=>x.id!==id);save();closeModal();render();}
+function feedbackBody(){
+  const all=fbNotes(),unsent=all.filter(n=>!n.sent),sent=all.filter(n=>n.sent);
+  const row=n=>'<div class="listrow" data-f="'+esc(n.id)+'" onclick="openFeedbackNote(this.dataset.f)">'+
+    '<span class="chip" style="flex:none">'+T('fb.'+n.kind)+'</span>'+
+    '<span class="grow small" style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(n.text)+'</span>'+
+    '<span class="tiny muted" style="flex:none">'+esc(String(n.sent||n.t).slice(5,10))+'</span></div>';
+  const head=t=>'<div class="l" style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:4px 0 6px">'+t+'</div>';
+  const to=(store.settings&&store.settings.feedbackTo)||'';
+  return '<div class="card">'+fbSegHtml()+
+      '<textarea id="fbtext" class="howto" maxlength="4000" placeholder="'+T('fb.ph')+'" style="margin-bottom:10px"></textarea>'+
+      '<button class="btn primary wide" onclick="saveFeedbackNote()">'+T('fb.save')+'</button>'+
+      '<p class="small muted" style="margin:10px 0 0">'+T('fb.intro')+'</p></div>'+
+    (unsent.length?'<div class="card">'+head(T('fb.unsentH'))+unsent.slice().reverse().map(row).join('')+'</div>':'')+
+    '<div class="card">'+head(T('fb.to'))+
+      '<input id="fbto" type="email" autocomplete="email" inputmode="email" style="width:100%;margin:0 0 10px" maxlength="120" placeholder="'+T('fb.toPh')+'" value="'+esc(to)+'" onchange="setFeedbackTo(this.value)">'+
+      '<button class="btn primary wide"'+(unsent.length?'':' disabled')+' onclick="sendFeedback()">'+T('fb.send',unsent.length)+'</button>'+
+      '<p class="small muted" style="margin:10px 0 0">'+T('fb.sendSub')+'</p></div>'+
+    (sent.length?'<details class="card"><summary class="small muted" style="cursor:pointer">'+T('fb.sentH')+' ('+sent.length+')</summary>'+
+      sent.slice().reverse().map(row).join('')+'</details>':'');
+}
 function accSection(id,icon,title,summary,body,chip){
   const open=state.setSection===id;
   return '<div class="acc'+(open?' open':'')+'">'+
@@ -5432,6 +5591,10 @@ function renderSettings(){
     '<button class="btn wide" style="margin-top:8px" onclick="addGymPrompt(\'settings\')">'+T('gym.add')+'</button>'+
     '<p class="small muted" style="margin:10px 0 0">'+T('set.gymsSub')+'</p></div>';
   h+=accSection('gyms','pin',T('set.gyms'),T('set.gymsSum',gs.length),gymsBody);
+
+  // ---- Feedback (R29): write bug/idea notes, send them as one email ----
+  const fbN=fbUnsent().length;
+  h+=accSection('feedback','chat',T('set.feedback'),fbN?T('fb.sumUnsent',fbN):T('fb.sum'),feedbackBody(),fbN||null);
 
   // ---- Your data ----
   let dataBody='<p class="small muted" style="margin:0 0 12px">'+T('set.dataIntro')+'</p>'+
