@@ -448,6 +448,12 @@
   /* F29 (2026-07-06): the iOS long-press-to-reorder was selecting the row text
      mid-hold and firing the callout. Kill selection/callout on the reorder rows. */
   #rolist .listrow{user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;}
+  /* F100 (R30, owner's first in-app report 2026-10-24: "When using the quick reorder
+     during a workout it likes to select the text"). The rows were already
+     unselectable, but the title + help line above them weren't — the iOS hold
+     that arms a drag started a selection there. The WHOLE reorder sheet is
+     now unselectable (and startRoDrag clears any selection that slipped in). */
+  #rosheet, #rosheet *{user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;}
   .draghandle{touch-action:none; cursor:grab; color:var(--faint); font-size:20px; line-height:1;
     padding:2px 8px 2px 0; margin-right:2px; align-self:center; user-select:none;}
   .draghandle:active{cursor:grabbing; color:var(--accent);}
@@ -1333,6 +1339,8 @@ const STRINGS={
     'gym.deleteMsg':'Its {0} stay in your log, just without a gym.',
     'set.gyms':'Gyms','set.gymsSum':'{0} gyms',
     'set.gymsSub':'Tap a gym to rename or delete it. Deleting a gym keeps its workouts; they just lose the tag.',
+    'set.imgsAll':'Offline: pictures for all {0} of your exercises are saved on this phone.',
+    'set.imgsSome':'Offline: pictures for {0} of {1} exercises saved so far — the rest download next time you open Sett online.',
     'set.feedback':'Feedback','fb.sum':'Report a bug or idea','fb.sumUnsent':'{0} unsent',
     'fb.bug':'Bug','fb.idea':'Idea','fb.ph':'What happened, or what would you like?',
     'fb.save':'Save note','fb.saved':'Note saved','fb.savedLater':'Saved — send it from Settings → Feedback',
@@ -1589,6 +1597,8 @@ const STRINGS={
     'gym.deleteMsg':'De {0} blir værende i loggen, bare uten gym.',
     'set.gyms':'Gym','set.gymsSum':'{0} gym',
     'set.gymsSub':'Trykk på et gym for å endre navn eller slette det. Sletter du et gym, beholdes øktene – de mister bare merket.',
+    'set.imgsAll':'Frakoblet: bilder for alle {0} øvelsene dine er lagret på telefonen.',
+    'set.imgsSome':'Frakoblet: bilder for {0} av {1} øvelser er lagret så langt – resten lastes ned neste gang du åpner Sett på nett.',
     'set.feedback':'Tilbakemelding','fb.sum':'Meld fra om feil eller ideer','fb.sumUnsent':'{0} ikke sendt',
     'fb.bug':'Feil','fb.idea':'Idé','fb.ph':'Hva skjedde, eller hva ønsker du deg?',
     'fb.save':'Lagre notat','fb.saved':'Notat lagret','fb.savedLater':'Lagret – send det fra Innstillinger → Tilbakemelding',
@@ -3328,7 +3338,7 @@ function replaceEntryExercise(ei,name){
    title/Done areas to scroll the sheet); acceptable for typical short lists. */
 function openReorder(){
   const a=store.active;if(!a||a.entries.length<2)return;
-  let h='<h2>'+T('ro.title')+'</h2><p class="tiny muted" style="margin-bottom:4px">'+T('ro.help')+'</p><div id="rolist">';
+  let h='<div id="rosheet"><h2>'+T('ro.title')+'</h2><p class="tiny muted" style="margin-bottom:4px">'+T('ro.help')+'</p><div id="rolist">';
   a.entries.forEach((e,ei)=>{
     h+='<div class="listrow" data-ro="'+ei+'" style="cursor:grab; touch-action:none">'+
       '<span class="draghandle" data-rodrag="'+ei+'">⠿</span>'+
@@ -3336,7 +3346,7 @@ function openReorder(){
       '<div class="tiny muted">'+nPlur('u.set',e.sets.length)+(e.ss!=null?' · '+T('ro.superset')+' '+String.fromCharCode(65+e.ss%26):'')+'</div></div>'+
       '</div>';
   });
-  h+='</div><button class="btn primary wide" style="margin-top:12px" onclick="closeModal()">'+T('ro.done')+'</button>';
+  h+='</div><button class="btn primary wide" style="margin-top:12px" onclick="closeModal()">'+T('ro.done')+'</button></div>';
   /* F55: the reorder sheet wires live pointer listeners onto its rows AFTER the
      HTML is in the DOM — those can't survive an innerHTML restore from the
      back-stack. Pass wireRoList as opts.rewire so a pop re-attaches them. */
@@ -3406,7 +3416,16 @@ function startRoDrag(e,row,captureEl){
   const rows=[...document.querySelectorAll('#rolist [data-ro]')];
   const from=+row.dataset.ro;
   const rowH=row.getBoundingClientRect().height;
-  roDrag={from,row,y0:e.clientY,target:from,rows,rowH,slot:from,
+  /* F100: drop any selection the arming hold managed to start */
+  try{const sel=window.getSelection&&window.getSelection();if(sel&&sel.removeAllRanges)sel.removeAllRanges();}catch(_){}
+  const ov=$('overlay');
+  roDrag={from,row,y0:e.clientY,y:e.clientY,target:from,rows,rowH,slot:from,
+    ov,sc0:ov?ov.scrollTop:0,raf:0,
+    /* F101: the scroll limit is measured ONCE, here — the dragged row's own
+       transform makes the sheet taller as it moves, so a live scrollHeight would
+       let auto-scroll chase the row forever (caught in preview: 2387px on a
+       346px list) */
+    scMax:ov?Math.max(0,(ov.scrollHeight||0)-(ov.clientHeight||0)):0,
     centers:rows.map(r=>{const b=r.getBoundingClientRect();return b.top+b.height/2;})};
   try{(captureEl||row).setPointerCapture(e.pointerId);}catch(_){}
   row.style.touchAction='none';   // now that the drag is armed, own the gesture
@@ -3422,10 +3441,42 @@ function startRoDrag(e,row,captureEl){
   document.addEventListener('pointercancel',roDragEnd);
   if(e.preventDefault)e.preventDefault();
 }
+/* F101 (R30, same report: "would be nice for the reordering to auto scroll a lil
+   bit when moving up or down"). While a drag holds within ROEDGE px of the
+   scroller's visible top/bottom, the sheet scrolls by itself — gently at the
+   zone's edge, up to ROSPEED px per frame at the very edge. Pure, so test.js
+   can pin the curve. Negative = scroll up. */
+const ROEDGE=64, ROSPEED=12;
+function roEdgeSpeed(y,top,bottom){
+  if(!(bottom-top>ROEDGE*2))return 0;   // a scroller this short has no room for edge zones
+  if(y<top+ROEDGE)return -Math.ceil(ROSPEED*Math.min(1,(top+ROEDGE-y)/ROEDGE));
+  if(y>bottom-ROEDGE)return Math.ceil(ROSPEED*Math.min(1,(y-(bottom-ROEDGE))/ROEDGE));
+  return 0;
+}
+function roAutoScroll(){
+  if(!roDrag)return;
+  roDrag.raf=0;
+  const ov=roDrag.ov;if(!ov)return;
+  const r=ov.getBoundingClientRect(),top=Math.max(0,r.top),bottom=Math.min(window.innerHeight||r.bottom,r.bottom);
+  const v=roEdgeSpeed(roDrag.y,top,bottom);if(!v)return;
+  const before=ov.scrollTop;ov.scrollTop=Math.max(0,Math.min(roDrag.scMax,before+v));
+  if(ov.scrollTop===before)return;   // hit the end of the list — stop asking
+  roApply();
+  roDrag.raf=requestAnimationFrame(roAutoScroll);
+}
 function roDragMove(e){
   if(!roDrag)return;e.preventDefault();
-  roDrag.row.style.transform='translateY('+(e.clientY-roDrag.y0)+'px)';
-  let ti=0;for(const c of roDrag.centers)if(e.clientY>c)ti++;
+  roDrag.y=e.clientY;
+  roApply();
+  if(!roDrag.raf&&typeof requestAnimationFrame==='function')roDrag.raf=requestAnimationFrame(roAutoScroll);
+}
+/* Place the dragged row + neighbours for the finger at roDrag.y. Everything is
+   measured in "start-of-drag" coordinates: the scroll the sheet has done since
+   (dy) is added to the finger, so the row stays under it while the list scrolls. */
+function roApply(){
+  const dy=roDrag.ov?roDrag.ov.scrollTop-roDrag.sc0:0,y=roDrag.y+dy;
+  roDrag.row.style.transform='translateY('+(y-roDrag.y0)+'px)';
+  let ti=0;for(const c of roDrag.centers)if(y>c)ti++;
   roDrag.target=Math.max(0,Math.min(roDrag.centers.length,ti));
   /* F32: the dragged row's DESTINATION index (target minus 1 when moving down,
      because its own slot is counted). Neighbors between origin and destination
@@ -3445,6 +3496,7 @@ function roDragMove(e){
 }
 function roDragEnd(){
   if(!roDrag)return;
+  if(roDrag.raf&&typeof cancelAnimationFrame==='function')cancelAnimationFrame(roDrag.raf);
   document.removeEventListener('pointermove',roDragMove);
   document.removeEventListener('touchmove',roTouchBlock);
   document.removeEventListener('pointerup',roDragEnd);
@@ -5602,7 +5654,10 @@ function renderSettings(){
     (window.SETT_LOCAL_CSV?'<button class="btn wide" style="margin-bottom:10px" onclick="importBundled()">'+T('set.importBundled')+'</button>':'')+
     '<button class="btn wide" style="margin-bottom:10px" onclick="exportJson()">'+T('set.exportJson')+'</button>'+
     '<button class="btn wide" style="margin-bottom:10px" onclick="exportCsv()">'+T('set.exportCsv')+'</button>'+
-    '<label class="btn wide">'+T('set.restore')+'<input type="file" accept=".json,application/json" style="display:none" id="jsonfile"></label>';
+    '<label class="btn wide">'+T('set.restore')+'<input type="file" accept=".json,application/json" style="display:none" id="jsonfile"></label>'+
+    /* S8: how many library photos are saved for offline use (the worker's reply) */
+    (imgStatus&&imgStatus.total?'<p class="small muted" style="margin:12px 0 0">'+
+      (imgStatus.have>=imgStatus.total?T('set.imgsAll',imgStatus.total/2):T('set.imgsSome',imgStatus.have/2|0,imgStatus.total/2))+'</p>':'');
   // F53: muscle-group review — only when something disagrees
   if(dg)dataBody+='<div class="card" style="margin-top:12px"><div class="row"><div class="grow"><h3 style="margin:0">'+T('set.reviewGroups')+'</h3>'+
     '<p class="tiny muted" style="margin:4px 0 0">'+T('set.reviewDisagree',dg,plur('u.exercise',dg))+'</p></div>'+
@@ -5736,19 +5791,18 @@ const ROADMAP={
   ],
   ahead:[
     ['Next · build',[
-      ['Feedback inbox','report bugs and ideas from inside the app']
-    ]],
-    ['Before 1.0 · gym-proof',[
-      ['Offline visuals','pre-cache your own library'],
-      ['Offline session test','airplane mode in the gym'],
-      ['Backup round-trip','export → restore, proven'],
-      ['Bokmål review','native read-through']
+      ['Feedback inbox','report bugs and ideas from inside the app'],
+      ['Smoother reorder','no stray text selection; the list scrolls while you drag'],
+      ['Offline visuals','your library\'s pictures saved on the phone, kept across updates'],
+      ['Backup round-trip','proven in code — your phone export restored on the desktop still to do']
     ]],
     ['The finish',[
-      ['v1.0.0','two clean RepCount-free weeks + backup proven']
+      ['v1.0.0','Sett as a real app on the App Store']
     ]]
   ],
   parked:[
+    ['Offline session test','one workout in airplane mode, start to finish'],
+    ['Bokmål review','a native read-through of the Norwegian text'],
     ['Pick-up rest','rest auto-starts when you pick the phone up'],
     ['Reverse plate','type the bar you loaded → total weight'],
     ['Fire-list','backup nudge · wake lock · bodyweight (Apple Health)'],
@@ -5900,6 +5954,16 @@ function exportJson(){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
   a.download='sett-backup-'+nowStr().slice(0,10)+'.json';a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+/* M3 backup round-trip (2026-10-24): the restore path, lifted out of the file
+   input's handler unchanged so test.js can drive export → restore end to end.
+   true = the store was replaced; false = not a Sett backup, the store untouched. */
+function restoreBackupText(t){
+  try{const s=JSON.parse(t);
+    if(!s||s.schema!==1||!Array.isArray(s.workouts))throw new Error('bad shape');
+    store=s;normalizeStore();migrateVisuals();migrateGroups();save();diagCount('backupRestored');
+    return true;
+  }catch(e){return false;}
 }
 function exportCsv(){
   diagCount('csvExported');
@@ -6593,10 +6657,8 @@ function wireInputs(){
   const js=$('jsonfile');if(js)js.onchange=()=>{
     const f=js.files[0];if(!f)return;
     f.text().then(t=>{
-      try{const s=JSON.parse(t);
-        if(!s||s.schema!==1||!Array.isArray(s.workouts))throw new Error('bad shape');
-        store=s;normalizeStore();migrateVisuals();migrateGroups();save();diagCount('backupRestored');toast(T('toast.restored',store.workouts.length,plur('u.workout',store.workouts.length)));render();
-      }catch(e){toast(T('toast.notBackup'));}
+      if(restoreBackupText(t)){toast(T('toast.restored',store.workouts.length,plur('u.workout',store.workouts.length)));render();}
+      else toast(T('toast.notBackup'));
     });
   };
   /* Consistency grid opens scrolled to the current (rightmost) week. */
@@ -6837,8 +6899,39 @@ function checkForUpdates(manual){
     else if(manual&&!swReg.installing){toast(T('toast.updLatest'));swManualCheck=false;}
   }).catch(()=>{if(manual)toast(T('toast.updOffline'));});
 }
+/* S8 (M3 gym-proof): both photo frames of every library exercise that has a
+   catalog visual, so they're on the phone before the gym — not only the ones
+   already viewed online. The worker keeps them in a cache that updates don't
+   drop, and replies with how many are saved (imgStatus → Settings → Your data). */
+let imgStatus=null;
+function libraryImgUrls(){
+  const ids=new Set();
+  for(const m of Object.values(store.ex||{}))if(m&&m.vid&&CAT_BY_ID[m.vid])ids.add(m.vid);
+  const out=[];
+  for(const id of [...ids].sort())out.push('exercises/'+id+'/0.jpg','exercises/'+id+'/1.jpg');
+  return out;
+}
+function precacheLibraryImgs(reg){
+  try{
+    const w=reg&&reg.active;if(!w)return false;
+    const urls=libraryImgUrls();if(!urls.length)return false;
+    w.postMessage({type:'precacheImgs',urls});
+    return true;
+  }catch(e){return false;}
+}
+function onSwMessage(e){
+  const d=e&&e.data;
+  if(d&&d.type==='imgStatus'){
+    imgStatus={have:+d.have||0,total:+d.total||0};
+    if(state.view==='settings'&&state.setSection==='data')render();
+  }
+}
 if('serviceWorker' in navigator&&location.protocol!=='file:'){
   const hadCtrl=!!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('message',onSwMessage);
+  /* S8: once a worker is active, top up the library photos — a few seconds in,
+     so it never competes with the app opening */
+  if(navigator.serviceWorker.ready)navigator.serviceWorker.ready.then(reg=>setTimeout(()=>precacheLibraryImgs(reg),3000)).catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
     if(swRefreshing)return;
     // a new version took over: reload if auto-update (or a manual check) asked for it
