@@ -750,7 +750,7 @@
 <script>
 'use strict';
 /* ============================== constants ============================== */
-const APP_VERSION='0.9.37';
+const APP_VERSION='0.9.38';
 /* Changelog convention (2026-07-08, owner ask): a version only gets an entry once
    its change is CONFIRMED working on device. Internal/fix-attempt bumps (needed for
    the service-worker cache to update) do NOT get a changelog line — otherwise the
@@ -758,6 +758,15 @@ const APP_VERSION='0.9.37';
    (v0.9.29 onward: drift, background-scroll, bar position) is HELD here until the
    whole thing is confirmed on-device, then lands as ONE honest consolidated entry. */
 const CHANGELOG=[
+  {v:'0.9.38', date:'2026-10-24', items:[
+    'Gyms — Sett asks where you\'re training when you start a workout, and machine and cable exercises keep their own records, last-time hints and charts per gym (filter by gym or see all gyms at once). Manage your gyms in Settings.',
+    'Workouts in the Log now show which gym they were done at.',
+    'You can rename an exercise — its history, routines and records come with it.',
+    'Reps can be decimals now, like 7,5.',
+    'Drop sets no longer fill in the weight for you — the previous weight shows as a hint, like everywhere else.',
+    'Turned the barbell visual off mid-workout? Barbell exercises now have it in their ⋯ menu, on or off.',
+    'Small fixes: the last set you tick off fills in like the others, and the PR highlight no longer spills onto the card edge.',
+  ]},
   {v:'0.9.37', date:'2026-08-21', items:[
     'Each exercise can now have its own rest time — tap the rest chip on the exercise card for presets, ±15s steps, or Off. Off skips the auto-timer for that exercise; everything else keeps your default.',
     'The loaded-barbell visual now follows the set you\'re actually on — the other sets show a small plate summary instead of repeating the full bar.',
@@ -5559,13 +5568,12 @@ const ROADMAP={
     ['.21–.25','Hardening','cancel-safe, restore-safe, logging loop, substitutes'],
     ['v0.9.35','Nav bar','app-shell layout — closed, confirmed on device'],
     ['v0.9.36','Load & rhythm','plate calculator + consistency streak — confirmed on device'],
-    ['v0.9.37','Tuned rest','per-exercise rest presets + the plate bar follows your set — confirmed on device']
+    ['v0.9.37','Tuned rest','per-exercise rest presets + the plate bar follows your set — confirmed on device'],
+    ['v0.9.38','Gyms','per-gym tracking, rename exercises, half reps — confirmed on device']
   ],
   ahead:[
     ['Next · build',[
-      ['Gym profiles','pick your gym — machine exercises track per gym'],
-      ['Rename exercises','fix a name without losing history'],
-      ['Half reps','decimal reps in the log']
+      ['Feedback inbox','report bugs and ideas from inside the app']
     ]],
     ['Before 1.0 · gym-proof',[
       ['Offline visuals','pre-cache your own library'],
